@@ -19,48 +19,30 @@ for deterministic frames; there they use the bundled seed dataset.)
 
 ## Deploy it
 
-The published site is **https://maintenancesystemitc.web.app**.  The root
-**redirects to `/login.html`**, so a visitor always lands on the sign-in
-screen first.
+The repository root is the served tree. `server/app.py` serves the pages and
+the API on one origin, and there is no build step and no `public/` assembly in
+V5.
 
-```bash
-python tools/build_public.py    # assemble public/ from the site files
-firebase deploy --only hosting:maintenancesystemitc --project maintenancesystemitc
-```
-
-`tools/build_public.py` copies the site into `public/` from an explicit allow
-list: the pages, `css/`, `js/`, `img/`, `icons/`, the manifest, the service
-worker and the readme. The repository root is the working tree, so pointing
-Firebase Hosting at it would publish the backend source, the developer
-documentation and the screenshot captures; the build step is what keeps the
-public surface to the files that make up the site. `public/` is git-ignored
-and never committed.
-
-The hosting config has no catch-all rewrite: every screen is a real file, so
-an unknown path returns the real `404.html` instead of the landing page, and
-the only rewrite is the redirect from `/` to `/login.html`.
+For a static host, publish only the site files at the root: the pages, `css/`,
+`js/`, `img/`, `icons/`, `manifest.webmanifest`, `sw.js` and `offline.html`.
+Do not publish `server/`, `tools/` or `docs/`. Host the backend separately if
+you want live data; when the API is absent, `js/api.js` falls back to the
+browser engine, so the pages still work, and when it is present the same pages
+switch to the live service on their own.
 
 **The cache policy.** The site files are not renamed when they change, so a
 long cache on them would leave a returning visitor on the old build for a
 year. Only the images, the icons and the fonts are cached for a year; the
 pages, the stylesheets and the scripts revalidate every time, and the service
-worker precaches the whole shell (`sw.js`) under a version that is bumped
-when the shell changes, so a release reaches the phones that installed it.
-
-**What the published site is.**  It is a static deployment, so the workflow
-engine runs in the browser: the records live in the browser storage, the role
-still decides what each person may do, and every screen works. The Python
-backend in `server/` is a separate service and is **not** part of this
-deployment; host it separately and the same pages switch to the live service
-on their own, because `js/api.js` looks for the API first and falls back to
-the browser engine when it is not there.
+worker precaches the whole shell (`sw.js`) under a version that is bumped when
+the shell changes, so a release reaches the phones that installed it.
 
 ## Pages
 
 | File | Screen | SOP coverage |
 |---|---|---|
 | `index.html` | Gallery / preview |  --  |
-| `login.html` | **Google-only sign-in**: real Google Identity Services when the backend has a client id, else the UP Cebu Workspace account chooser (one account per role) |  --  |
+| `login.html` | **UPMail sign-in**: real Google Identity Services when the backend has a client id; the development account chooser appears only when the explicit demo flag is on |  --  |
 | `roles.html` | **Roles & Access**: the four roles, what each can do, full feature matrix | 28, 28.1, 28.2 |
 | `dashboard.html` | Role-aware summary: KPIs, the active ticket queue, maintenance due, audit feed, on-hold pointers | steps 2–8, 26, 28 |
 | `ticket.html` | **Read-only service record**: status & audit history, impact/urgency, dependency hold, diagnosis/parts/costs, testing, confirmation  --  with links into the section screens | steps 3–18 |
@@ -109,15 +91,18 @@ right screen. The "Sign in" affordances carry `?next=<page>` so signing in
 returns you to the page you were on.
 
 The bare pages (`dashboard.html`…) keep working for bookmarks and the frozen
-Figma snapshots; the sidebar simply links to the role-named ones.
+design snapshots; the sidebar simply links to the role-named ones.
 
 ## Sign-in & roles
 
-Authentication is **Google Workspace only**  --  no local passwords. When the
-backend runs with a Google client id, `login.html` performs real Google Identity
-Services sign-in (the server verifies the `id_token`); otherwise it keeps the
-demo account chooser. Either way the chosen account scopes the whole
-workspace to that role:
+Authentication is **UPMail Google Workspace only**, restricted to
+`@upcebu.edu.ph`, with no local passwords. When the backend runs with a Google
+client id, `login.html` performs real Google Identity Services sign-in and the
+server verifies the `id_token`. The development account chooser is shown only
+when demo mode is explicitly on (`--demo` or `ITC_DEMO_MODE`), never in a
+network-facing deployment. Either way the chosen account scopes the whole
+workspace to that role, and an account with no provisioned role sees **Access
+not granted**:
 
 | Role | Person | Can primarily |
 |---|---|---|
@@ -146,12 +131,12 @@ At **≤ 480 px** real touch targets are enforced: table checkboxes, `.t-id`
 record links, chip links and the reply-visibility switch all get a ≥ 36 px
 hit area (desktop density is deliberately unchanged).
 
-## Getting PNGs for Figma
+## Getting PNGs for design review
 
 **Automated (recommended):**
 
 ```
-python tools/shots.py            # all 20 pages x 5 viewports -> shots/
+python tools/shots.py            # all 20 pages x 6 viewports -> shots/
 python tools/shots.py --both     # canvas frames + full-page frames
 python tools/shots.py --only dashboard.html reports.html
 python tools/shots.py --viewports desktop mobile
@@ -159,7 +144,7 @@ python tools/shots.py --viewports desktop mobile
 
 Every capture loads the page with `?demo=1`, which rebuilds the canonical seed,
 freezes the clock and disables the random intake simulation  --  so the PNGs are
-**deterministic** (identical on every run) and ready to import as Figma frames
+**deterministic** (identical on every run) and ready to import as design frames
 at 1x scale. Output goes to `shots/` plus a `shots/index.html` review gallery.
 
 - **Canvas frames** (`<page>--<view>.png`) are exactly the design canvas
@@ -204,7 +189,7 @@ flush to both edges, tables scroll inside their card instead of overlapping a
 neighbouring column, and forms use a plain 2-column grid so `.span-2` fields
 fill a whole row.
 
-## Interactive states (checkbox-driven, no JS)
+## Interactive states
 
 - **Notification bell**  --  click to open the dropdown (top bar on desktop, app bar on mobile). Covers SOP notify steps (6, 7, 14.2).
 - **Coordinate schedule modal**  --  on `technician.html` (IT Technician lane) and `review.html` (coordinator), click *Coordinate service schedule* (SOP 10).
@@ -219,13 +204,13 @@ Zero-config checkers under `tools/` (plus the backend suite):
 
 | Command | What it proves |
 |---|---|
-| `python tools/ui_check.py` | **the UI house rules** on all 72 pages: the three stylesheets load in order, no inline style survives, the shell placeholders and the page head are always there, every class used in the markup is defined in the stylesheets, and no page carries its own `<style>` block |
+| `python tools/ui_check.py` | **the UI house rules** on all 71 pages: the three stylesheets load in order, no inline style survives, the shell placeholders and the page head are always there, every class used in the markup is defined in the stylesheets, and no page carries its own `<style>` block |
 | `python tools/validate.py` | HTML well-formedness, duplicate ids, `label for` → id, dead internal links, `getElementById` targets exist |
 | `node tools/smoke.js` | **60 workflow assertions**  --  the whole SOP engine (`store/ui/flow/live`) in a VM: every branch of the flowchart |
-| `node tools/pagetest.js` | **286 page assertions**  --  serves the mockups and drives every screen in jsdom: forms, modals, sign-in, page guard, role-lane separation, filters, schedule check, plus a load+sentinel check for every Phase-C screen in each role and a reply-composer regression guard; fails on any console/window error |
+| `node tools/pagetest.js` | **347 page assertions**  --  serves the pages and drives every screen in jsdom: forms, modals, sign-in, page guard, role-lane separation, filters, schedule check, plus a load+sentinel check for every Phase-C screen in each role and a reply-composer regression guard; fails on any console/window error |
 | `node tools/rolepages_test.js` | **64 role-URL assertions**  --  every legal role page exists, no forbidden combo does, each page pins its own role and prefixes its nav links, a **sessionless** load renders the URL's role (never login  --  the import/share path), a signed-in wrong-role URL redirects, and bare pages still work |
-| `python tools/responsive.py` | **responsive checks** (72 pages × 8 viewports)  --  drives headless Chrome over the DevTools Protocol and flags horizontal overflow, elements past the viewport, clipped text and sub-36 px tap targets (content inside an intentional horizontal scroller is exempt) |
-| `python server/tests.py` | **321 backend assertions**  --  engine, RBAC, requester office-tenancy, technician data scope, Google OIDC verification, notification delivery, SQLite persistence, HTTP API, SSE, seed shape, site serving |
+| `python tools/responsive.py` | **responsive checks** (71 pages × 8 viewports)  --  drives headless Chrome over the DevTools Protocol and flags horizontal overflow, elements past the viewport, clipped text and sub-36 px tap targets (content inside an intentional horizontal scroller is exempt) |
+| `python server/tests.py` | **335 backend assertions**  --  engine, RBAC, requester office-tenancy, technician data scope, Google OIDC verification, notification delivery, SQLite persistence, HTTP API, SSE, seed shape, site serving |
 | `python tools/api_check.py` | **17 end-to-end assertions**  --  real Chrome loads the site served by the backend and verifies the UI talks to it (live by default) |
 | `python tools/permission_parity_check.py` | the permission map, the backend guards and the frontend mirror never drift apart |
 | `python tools/appendix_c_check.py` | every node and edge of the Appendix C workflow data is present in the Workflow Guide |
@@ -269,7 +254,7 @@ Server-Sent Events, and serves the whole site on the same origin:
 ```
 python server/app.py                 # serves http://127.0.0.1:8787/
 python server/app.py --open          # ...and opens your browser
-python server/tests.py               # 271 assertions
+python server/tests.py               # 335 assertions
 ```
 
 Open `http://127.0.0.1:8787/` and every page is live. `js/api.js` wires the
@@ -291,15 +276,10 @@ and the random live-intake simulation disabled (see `js/store.js`). This is what
 byte-for-byte reproducible. Normal browsing (no query string) is unaffected  -- 
 data still persists to `localStorage` and syncs across tabs.
 
-## Figma UI kit
+## Design exports
 
-The whole UI is exported for Figma under [`../figma/`](../figma/): design tokens
-(`tokens.json`), the 11 line icons as SVG, **245 self-contained frozen snapshots**
-(160 pages  --  every page × role × desktop/laptop/tablet/mobile/small-phone  --  plus
-85 interactive states: modals, toasts, notification, account, access-denied),
-build-ready component specs,
-and a ready-to-run **Figma plugin** (`figma/plugin/`) that creates the variables,
-styles and primitive components. Regenerate with `python tools/figma_snapshots.py`
-and `python tools/figma_plugin.py` (from `mockups/`); see
-[`../figma/README.md`](../figma/README.md) for the import routes.
+The checked-in visual evidence is `docs/screenshots/`, 60 captures at 390, 768
+and 1440 px in both themes, produced by `python tools/gate_shots.py`. For a
+larger export, `python tools/shots.py` renders 20 pages at six viewports into
+the generated `shots/` directory, and `shots/index.html` is the review gallery.
 

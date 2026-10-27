@@ -8,7 +8,7 @@ Every capture loads the page with ?demo=1, which (see js/store.js) rebuilds the
 canonical seed, freezes the clock and disables the random intake simulation, so
 the PNGs are deterministic and identical on every run.
 
-Run:  python tools/shots.py                 # all pages, all 5 viewports
+Run:  python tools/shots.py                 # all pages, all 6 viewports
       python tools/shots.py --only dashboard.html reports.html
       python tools/shots.py --viewports desktop mobile
 """

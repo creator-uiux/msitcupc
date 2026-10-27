@@ -16,7 +16,7 @@ default  --  there is no user-facing API toggle.
 ```bash
 python server/app.py            # serves the whole site on http://127.0.0.1:8787/
 # open http://127.0.0.1:8787/
-python server/tests.py          # 271 backend assertions (engine, RBAC, tenancy, OIDC, delivery, HTTP, SSE, site serving)
+python server/tests.py          # 335 backend assertions (engine, RBAC, tenancy, OIDC, delivery, HTTP, SSE, site serving)
 python tools/api_check.py       # 17 end-to-end browser assertions against the API
 ```
 
@@ -405,7 +405,7 @@ Zero-dependency Python 3 standard library service in [`server/`](server/); see
 | `server/delivery.py` | Notification delivery: outbox / console / SMTP e-mail / SMS webhook |
 | `server/workers.py` | Background world-clock thread (schedule/reminder/dependency/reschedule) |
 | `server/app.py` | `ThreadingHTTPServer`: static files + REST + SSE hub + CLI |
-| `server/tests.py` | 271 assertions: engine, RBAC, tenancy, OIDC, delivery, persistence, HTTP, SSE, seed shape, site serving |
+| `server/tests.py` | 335 assertions: engine, RBAC, tenancy, OIDC, delivery, persistence, HTTP, SSE, seed shape, site serving |
 
 **HTTP surface**
 
@@ -464,12 +464,12 @@ by the backend it is live by default. In API mode it:
 **Verification**
 
 ```bash
-python server/tests.py        # 271 passed
+python server/tests.py        # 335 passed
 python tools/api_check.py     # 17 passed  (real Chrome over CDP; live by default)
 python tools/validate.py      # static validation
 node tools/smoke.js           # 54 passed
 node tools/pagetest.js        # 232 passed
-python tools/responsive.py    # 0 problems (71 pages × 5 viewports, CDP-measured)
+python tools/responsive.py    # 0 problems (71 pages × 8 viewports, CDP-measured)
 ```
 
 ## 13. Non-functional

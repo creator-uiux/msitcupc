@@ -644,7 +644,7 @@ class ItcHandler(BaseHTTPRequestHandler):
         body = row["data"] or b""
         ctype = row["mime"] or "application/octet-stream"
         disposition = "attachment" if download else "inline"
-        # A range request lets a video seek: the browser asks for the part of
+        # A range request lets a reader seek: the browser asks for the part of
         # the file it still needs instead of the whole thing again.
         rng = self._range(len(body))
         if rng is None:            # no Range header: the whole file

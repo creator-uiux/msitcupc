@@ -64,7 +64,7 @@ the design narrative.
 | `delivery.py` | Notification delivery: outbox / console / SMTP e-mail / SMS webhook |
 | `workers.py` | Background world-clock thread |
 | `app.py` | `ThreadingHTTPServer`: static files + REST + SSE hub + CLI |
-| `tests.py` | 271 assertions: engine, RBAC, tenancy, OIDC, delivery, persistence, HTTP, SSE, seed shape, site serving |
+| `tests.py` | 335 assertions: engine, RBAC, tenancy, OIDC, delivery, persistence, HTTP, SSE, seed shape, site serving |
 
 The engine keeps the prototype's method names (camelCase), status strings, guard
 messages, history `kind`s and notification wording **verbatim**, so the existing
@@ -204,7 +204,7 @@ breaks the workflow.
 ## Tests
 
 ```bash
-python server/tests.py        # 271 assertions (quiet); add -v to list each
+python server/tests.py        # 335 assertions (quiet); add -v to list each
 ```
 
 Covers the full ticket lifecycle and guards, dependency hold/resolve/cancel,
