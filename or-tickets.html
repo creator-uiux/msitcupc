@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OR - Tickets - ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- Theme before first paint (?theme=dark|light, else the saved choice), so an
+     import or a direct link never flashes the wrong palette.
+     Defaults to light (no auto-OS-dark). -->
+<script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1E3A5F">
+<script>(function(){var P="or",R="requester",F="tickets.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="chromeSide"></aside>
+  <div class="main">
+    <header class="appbar" id="chromeAppbar"></header>
+    <header class="topbar" id="chromeTopbar"></header>
+
+    <main class="content">
+      <div class="sec-title">
+        <h2>Service tickets</h2>
+        <span class="hint">Search, filter, sort and page through every request you are allowed to see</span>
+      </div>
+
+      <!-- quick chips + search -->
+      <div class="card card-pad">
+        <div class="row row-between">
+          <div class="seg" id="tkChips"></div>
+          <div class="row">
+            <a class="btn btn-soft" id="tkNew" href="request.html">New request</a>
+            <button class="btn btn-ghost" id="tkExport">Export CSV</button>
+          </div>
+        </div>
+        <div class="row row-bottom mt">
+          <label class="field-inline grow"><span>Search</span>
+            <input type="search" id="tkQ" placeholder="Ticket id, issue, office, asset, technician…"></label>
+          <label class="field-inline"><span>&nbsp;</span>
+            <button class="btn btn-ghost" id="tkMore">Advanced filters</button></label>
+        </div>
+
+        <!-- advanced filters -->
+        <div id="tkAdv" hidden class="divided">
+          <div class="filters">
+            <div class="field"><label for="fOffice">Office</label><select id="fOffice"><option value="">All offices</option></select></div>
+            <div class="field"><label for="fStatus">Status</label><select id="fStatus"><option value="">All statuses</option></select></div>
+            <div class="field"><label for="fPriority">Priority</label><select id="fPriority"><option value="">All priorities</option></select></div>
+            <div class="field"><label for="fCategory">Category</label><select id="fCategory"><option value="">All categories</option></select></div>
+            <div class="field"><label for="fTech">Technician</label><select id="fTech"><option value="">All technicians</option></select></div>
+            <div class="field"><label for="fSource">Source</label><select id="fSource"><option value="">All sources</option></select></div>
+            <div class="field"><label for="fFrom">Created from</label><input type="date" id="fFrom"></div>
+            <div class="field"><label for="fTo">Created to</label><input type="date" id="fTo"></div>
+            <div class="field"><label for="fMine">Scope</label>
+              <select id="fMine"><option value="1">My office / my requests</option><option value="0">Whole register (authorized)</option></select></div>
+            <div class="field"><label for="fOverdue">Overdue only</label>
+              <select id="fOverdue"><option value="">No</option><option value="1">Yes</option></select></div>
+            <div class="field"><label for="fSort">Sort by</label>
+              <select id="fSort">
+                <option value="updated">Last updated</option><option value="created">Created</option>
+                <option value="status">Status</option><option value="priority">Priority</option>
+                <option value="target">Target date</option><option value="id">Ticket id</option>
+              </select></div>
+            <div class="field"><label for="fOrder">Direction</label>
+              <select id="fOrder"><option value="desc">Descending</option><option value="asc">Ascending</option></select></div>
+            <div class="field filter-action"><button class="btn btn-ghost" id="fReset">Reset filters</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- bulk bar -->
+      <div class="card card-pad mt" id="tkBulk" hidden>
+        <div class="row row-between">
+          <b id="tkBulkCount">0 selected</b>
+          <div class="row">
+            <button class="btn btn-ghost" id="tkClearSel">Clear selection</button>
+            <button class="btn btn-primary" id="tkBulkAssign">Bulk assign (≥1 selected)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- table / cards -->
+      <div class="card mt">
+        <div class="card-head">
+          <h3>Results</h3>
+          <span class="chip" id="tkTotal"> -- </span>
+          <span class="hint" id="tkScopeNote"></span>
+        </div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="tkAll" aria-label="Select all"></th>
+              <th>Ticket</th><th>Office / requester</th><th>Status</th><th>Priority</th>
+              <th>Target</th><th>Technician</th><th>Updated</th>
+            </tr>
+          </thead>
+          <tbody id="tkBody"></tbody>
+        </table>
+        <div id="tkPagination"></div>
+        <div class="empty" id="tkEmpty" hidden><img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No tickets match these filters.</div>
+      </div>
+    </main>
+
+    <nav class="bottomnav" id="chromeBottom"></nav>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/flow.js"></script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/time.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/query.js"></script>
+<script src="js/actions.js"></script>
+<script src="js/live.js"></script>
+<script>
+UI.mountChrome({ title: 'Service Tickets', sub: 'The ticket register  --  filter, sort, page and drill in' });
+
+var PER_PAGE = 20;
+var CHIPS = [
+  ['open', 'Open'], ['mine', 'My tickets'], ['', 'All'], ['closed', 'Closed'],
+  ['cancelled', 'Cancelled'], ['overdue', 'Overdue']
+];
+var F = {};           /* filter state forwarded to the query / API */
+var chip = 'open';
+var page = 1;
+var selected = {};
+var last = null;      /* last query envelope */
+
+function isLive() { return !!(window.ApiMode && window.Api && window.Api.tickets); }
+
+/* ------------------------------- filters ------------------------------- */
+function paramBag() {
+  var p = {
+    q: F.q || '', status: chip === 'open' ? 'open' : chip === 'closed' ? 'closed'
+      : chip === 'cancelled' ? 'cancelled' : '',
+    office: F.office || '', priority: F.priority || '', category: F.category || '',
+    technician: F.tech || '', source: F.source || '',
+    from: F.from || '', to: F.to || '', overdue: chip === 'overdue' ? '1' : (F.overdue || ''),
+    sort: F.sort || 'updated', order: F.order || 'desc', page: page, size: PER_PAGE
+  };
+  if (chip === 'open') p.status = 'open';
+  /* scope: requesters default to their own records; mine=0 widens to the office register */
+  if (UI.roleKey() === 'requester') p.mine = F.mine === '0' ? '0' : '1';
+  else if (F.mine === '1') p.mine = '1';
+  else if (F.mine === '0') p.mine = '0';
+  return p;
+}
+
+function fillFilters() {
+  var db = Store.db, offices = {}, cats = {}, techs = {}, src = {}, prios = {};
+  db.tickets.forEach(function (t) {
+    offices[t.office] = 1; cats[t.category] = 1; src[t.source] = 1; prios[t.priority] = 1;
+    if (t.technician) techs[t.technician] = 1;
+  });
+  (db.schedules || []).forEach(function (s) { if (s.technician) techs[s.technician] = 1; });
+  fill('fOffice', 'All offices', Object.keys(offices).sort(), F.office);
+  fill('fCategory', 'All categories', Object.keys(cats).sort(), F.category);
+  fill('fTech', 'All technicians', Object.keys(techs).sort(), F.tech);
+  fill('fSource', 'All sources', Object.keys(src).sort(), F.source);
+  fill('fStatus', 'All statuses', Query.ALL_STATES, F.status, function (s) { return UI.STATUS[s] ? UI.STATUS[s][0] : s; });
+  fill('fPriority', 'All priorities', ['low', 'medium', 'high', 'critical'], F.priority, function (p) {
+    return p.charAt(0).toUpperCase() + p.slice(1);
+  });
+  function fill(id, all, arr, cur, lab) {
+    var el = document.getElementById(id);
+    if (el.dataset.filled === arr.length + ':' + all) { el.value = cur || ''; return; }
+    el.dataset.filled = arr.length + ':' + all;
+    el.innerHTML = '<option value="">' + all + '</option>' + arr.map(function (v) {
+      return '<option value="' + UI.attr(v) + '">' + UI.esc(lab ? lab(v) : v) + '</option>';
+    }).join('');
+    el.value = cur || '';
+  }
+}
+
+/* ------------------------------- chips ------------------------------- */
+function renderChips() {
+  document.getElementById('tkChips').innerHTML = CHIPS.map(function (c) {
+    return '<label class="' + (chip === c[0] ? 'on' : '') + '" data-chip="' + c[0] + '">' + c[1] + '</label>';
+  }).join('');
+}
+
+/* ------------------------------- query ------------------------------- */
+function runQuery() {
+  var bag = paramBag();
+  if (isLive()) {
+    var env = Query.list(bag);
+    if (env) return env;
+    /* backend unreachable: degrade to the local mirror */
+  }
+  var rows = Query.queryTickets(Store.db.tickets, bag, UI.viewerName());
+  return {
+    items: rows.items, total: rows.total, page: rows.page, pages: rows.pages,
+    size: rows.size, counts: rows.counts, overdue: rows.overdue
+  };
+}
+
+function rowHTML(t, i) {
+  var overdue = t.overdue === undefined ? Query.isOverdue(t) : t.overdue;
+  var sel = selected[t.id] ? ' checked' : '';
+  return '<tr data-href="ticket.html?id=' + encodeURIComponent(t.id) + '" style="--row-index:' + i + '"' +
+    (t.status === 'cancelled' ? ' class="row-cancelled"' : '') + '>' +
+    '<td data-label="Select" class="tk-sel"><input type="checkbox" data-sel="' + UI.attr(t.id) + '"' + sel + ' aria-label="Select ' + UI.attr(t.id) + '"></td>' +
+    '<td class="td-main" data-label="Ticket"><div class="t-id">' + UI.esc(t.id) + '</div>' +
+    '<div class="t-title">' + UI.esc(String(t.issue).slice(0, 56)) + (String(t.issue).length > 56 ? '…' : '') + '</div>' +
+    '<div class="t-sub">' + UI.esc(t.category) + (t.asset ? ' · Asset ' + UI.esc(t.asset) : '') +
+    (t.linkedTo ? ' · linked ' + UI.esc(t.linkedTo) : '') + '</div></td>' +
+    '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div><div class="t-sub">' + UI.esc(t.requester) + '</div></td>' +
+    '<td data-label="Status">' + UI.badge(t.status) + (overdue ? ' <span class="badge b-needs-info">overdue</span>' : '') + UI.waitingOn(t.status) + '</td>' +
+    '<td data-label="Priority">' + UI.prio(t.priority) + '</td>' +
+    '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : (overdue ? 'past SLA' : ' -- ')) + '</td>' +
+    '<td data-label="Technician"><div class="t-title">' + UI.esc(t.technician || ' -- ') + '</div></td>' +
+    '<td data-label="Updated">' + UI.timeAgo(t.updatedAt || t.createdAt) + '</td></tr>';
+}
+
+function render() {
+  fillFilters();
+  renderChips();
+
+  document.getElementById('tkNew').hidden = !UI.can('request.html');
+  document.getElementById('tkNew').href = UI.urlFor('request.html', UI.roleKey());
+
+  last = runQuery();
+
+  document.getElementById('tkTotal').textContent = last.total + ' of ' + Store.db.tickets.length;
+  document.getElementById('tkScopeNote').textContent = UI.roleKey() === 'requester'
+    ? 'office tenancy applied  --  you only see records your office owns'
+    : 'the register you are authorized to view';
+  document.getElementById('tkEmpty').hidden = last.total > 0;
+
+  document.getElementById('tkBody').innerHTML = last.items.map(rowHTML).join('');
+
+  document.querySelectorAll('#tkBody tr[data-href]').forEach(function (tr) {
+    tr.addEventListener('click', function (e) {
+      if (e.target && e.target.tagName === 'INPUT') return;
+      location.href = tr.dataset.href;
+    });
+  });
+  document.querySelectorAll('#tkBody [data-sel]').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      if (cb.checked) selected[cb.dataset.sel] = 1; else delete selected[cb.dataset.sel];
+      renderBulk();
+    });
+  });
+
+  var pg = { items: last.items, total: last.total, page: last.page, perPage: last.size, pages: last.pages };
+  UI.renderPagination(document.getElementById('tkPagination'), pg, function (p) { page = p; render(); });
+
+  renderBulk();
+}
+
+function renderBulk() {
+  var ids = Object.keys(selected);
+  var bar = document.getElementById('tkBulk');
+  bar.hidden = ids.length === 0;
+  document.getElementById('tkBulkCount').textContent = ids.length + ' selected';
+  /* bulk assign is a coordinator responsibility */
+  document.getElementById('tkBulkAssign').hidden = UI.roleKey() !== 'coordinator';
+}
+
+/* ------------------------------- events ------------------------------- */
+document.getElementById('tkQ').addEventListener('input', UI.debounce(function (e) {
+  F.q = e.target.value; page = 1; render();
+}, 240));
+document.getElementById('tkMore').addEventListener('click', function () {
+  var adv = document.getElementById('tkAdv');
+  adv.hidden = !adv.hidden;
+});
+document.getElementById('tkAll').addEventListener('change', function (e) {
+  if (!last) return;
+  last.items.forEach(function (t) { if (e.target.checked) selected[t.id] = 1; else delete selected[t.id]; });
+  render();
+});
+document.getElementById('tkClearSel').addEventListener('click', function () { selected = {}; render(); });
+document.getElementById('tkExport').addEventListener('click', function () {
+  if (!last) return;
+  var withCost = UI.roleKey() !== 'requester';
+  var rows = [withCost ? ['Ticket', 'Office', 'Requester', 'Status', 'Priority', 'Category', 'Target', 'Technician', 'Created', 'Turnaround (h)', 'Cost']
+                       : ['Ticket', 'Office', 'Requester', 'Status', 'Priority', 'Category', 'Target', 'Technician', 'Created', 'Turnaround (h)']];
+  last.items.forEach(function (t) {
+    var row = [t.id, t.office, t.requester, UI.STATUS[t.status] ? UI.STATUS[t.status][0] : t.status,
+      t.priority, t.category, t.target ? UI.dateOnly(t.target) : '', t.technician || '',
+      UI.dateOnly(t.createdAt), t.turnaroundHours == null ? '' : t.turnaroundHours];
+    if (withCost) row.push((t.diagnosis && t.diagnosis.cost) || 0);
+    rows.push(row);
+  });
+  UI.downloadCSV('tickets.csv', rows);
+});
+document.getElementById('tkChips').addEventListener('click', function (e) {
+  var l = e.target.closest('[data-chip]');
+  if (!l) return;
+  chip = l.dataset.chip; page = 1; render();
+});
+['fOffice', 'fStatus', 'fPriority', 'fCategory', 'fTech', 'fSource', 'fFrom', 'fTo', 'fMine', 'fOverdue', 'fSort', 'fOrder'].forEach(function (id) {
+  document.getElementById(id).addEventListener('change', function () { readFilters(); page = 1; render(); });
+});
+function readFilters() {
+  F.office = document.getElementById('fOffice').value;
+  F.status = document.getElementById('fStatus').value;
+  F.priority = document.getElementById('fPriority').value;
+  F.category = document.getElementById('fCategory').value;
+  F.tech = document.getElementById('fTech').value;
+  F.source = document.getElementById('fSource').value;
+  F.from = document.getElementById('fFrom').value;
+  F.to = document.getElementById('fTo').value;
+  F.mine = document.getElementById('fMine').value;
+  F.overdue = document.getElementById('fOverdue').value;
+  F.sort = document.getElementById('fSort').value;
+  F.order = document.getElementById('fOrder').value;
+}
+document.getElementById('fReset').addEventListener('click', function () {
+  F = {}; chip = 'open'; page = 1;
+  ['fOffice', 'fStatus', 'fPriority', 'fCategory', 'fTech', 'fSource', 'fFrom', 'fTo', 'fOverdue'].forEach(function (id) {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('fMine').value = UI.roleKey() === 'requester' ? '1' : '';
+  document.getElementById('fSort').value = 'updated';
+  document.getElementById('fOrder').value = 'desc';
+  document.getElementById('tkQ').value = '';
+  render();
+});
+
+/* bulk assign (coordinator): a modal that assigns every selected ticket */
+document.getElementById('tkBulkAssign').addEventListener('click', function () {
+  var ids = Object.keys(selected);
+  if (!ids.length) return;
+  UI.openModal('Bulk assign ' + ids.length + ' ticket(s)  --  Status: Assigned',
+    UI.field('Technician', UI.select('tech', [['J. Tan', 'J. Tan  --  hardware / network'], ['M. Uy', 'M. Uy  --  printers / UPS'], ['K. Villanueva', 'K. Villanueva  --  systems']], 'J. Tan', true)) +
+    '<div class="note mt"><span>' + UI.icon('info') + '</span><div>Only tickets currently <b>Submitted</b> can be assigned; others are skipped and reported.</div></div>',
+    '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Assign selected</button>');
+  document.getElementById('mGo').onclick = function () {
+    var tech = UI.modalValue('tech'), done = 0, skipped = 0;
+    UI.closeModal();
+    ids.forEach(function (id) {
+      var r = Flow.assign(id, tech);
+      if (r && r.ok) done++; else skipped++;
+    });
+    UI.toast(done + ' assigned' + (skipped ? ', ' + skipped + ' skipped (wrong status)' : '') + '.', done ? 'ok' : 'err');
+    selected = {};
+    UI.renderBell();
+    render();
+  };
+});
+
+Store.subscribe(render);
+render();
+Live.start();
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

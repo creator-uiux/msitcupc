@@ -1,0 +1,250 @@
+
+/* ============================================================
+   VISUAL REFRESH 2.0  --  modern elevation, depth & micro-motion
+   Appended last on purpose: equal specificity, later wins.
+   Uses variables so the dark theme keeps working automatically.
+   ============================================================ */
+
+/* --- refined tokens --- */
+:root{
+  --radius:18px;
+  --radius-sm:12px;
+  --shadow-sm:0 1px 2px rgba(4,32,20,.05),0 1px 3px rgba(4,32,20,.05);
+  --shadow:0 1px 2px rgba(4,32,20,.05),0 10px 26px -6px rgba(4,32,20,.1);
+  --shadow-lg:0 24px 60px -12px rgba(4,32,20,.2);
+  --ring:rgba(10,107,58,.22);
+}
+
+/* --- page canvas: softer, airier wash --- */
+html:not([data-theme="dark"]) body{
+  background:
+    radial-gradient(1100px 620px at 92% -10%, #ddf0e4 0%, rgba(221,240,228,0) 60%),
+    radial-gradient(900px 520px at -6% 4%, #e6f3ec 0%, rgba(230,243,236,0) 55%),
+    linear-gradient(180deg,#f3f7f5 0%,#eef4f0 100%);
+}
+html:not([data-theme="dark"]) body{background-attachment:fixed}
+
+/* --- smooth global motion baseline --- */
+.card,.kpi,.btn,.field input,.field select,.field textarea,.list li,.node,
+.table tr,.g-card,.chip,.nav-item,.bell,.avatar,.lane,.toast,.role-card{
+  transition-timing-function:cubic-bezier(.2,.7,.3,1);
+}
+
+/* --- cards: layered depth + hover lift --- */
+.card{
+  box-shadow:var(--shadow);
+  transition:box-shadow .22s ease,transform .22s ease,border-color .22s ease;
+}
+.card:hover{
+  box-shadow:0 2px 4px rgba(4,32,20,.05),0 18px 40px -10px rgba(4,32,20,.16);
+  transform:translateY(-1px);
+}
+.card:has(.table):hover{transform:none}
+.card-head{
+  background:linear-gradient(180deg,#fbfdfc,rgba(251,253,252,0));
+}
+html[data-theme="dark"] .card-head{background:none}
+
+/* --- KPI: crisper accent bar + livelier numbers --- */
+.kpi::after{
+  content:"";position:absolute;left:0;right:0;top:0;height:3px;
+  background:linear-gradient(90deg,var(--brand-3),var(--brand-2) 55%,transparent);
+  opacity:.9;border-radius:0 0 0 4px;
+}
+.kpi .value{
+  font-weight:700;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;
+}
+.kpi{transition:box-shadow .22s ease,transform .22s ease}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 14px 30px -10px rgba(4,32,20,.16)}
+
+/* --- buttons: gradient primaries, tactile press --- */
+.btn{border-radius:11px}
+.btn-primary{
+  background:linear-gradient(180deg,var(--brand-2),var(--brand));
+  box-shadow:0 8px 18px -4px rgba(1,68,33,.35),inset 0 1px 0 rgba(255,255,255,.14);
+  transition:background .15s ease,box-shadow .18s ease,transform .1s ease;
+}
+.btn-primary:hover{
+  background:linear-gradient(180deg,#0c7d45,#01361a);
+  box-shadow:0 12px 24px -4px rgba(1,68,33,.42);
+  transform:translateY(-1px);
+}
+.btn-primary:active{transform:translateY(0) scale(.985);box-shadow:0 4px 10px -2px rgba(1,68,33,.35)}
+.btn-ghost{
+  transition:background .15s ease,border-color .15s ease,color .15s ease,box-shadow .15s ease;
+}
+.btn-ghost:hover{
+  border-color:var(--brand);color:var(--brand-2);
+  box-shadow:0 4px 14px -4px rgba(4,32,20,.14);
+}
+.btn-soft:hover{background:#dcefe5}
+html[data-theme="dark"] .btn-soft:hover{background:var(--brand-soft);filter:brightness(1.25)}
+
+/* --- forms: glowing focus ring + hover border --- */
+.field input,.field select,.field textarea{
+  transition:border-color .16s ease,box-shadow .16s ease,background .16s ease;
+}
+.field input:hover,.field select:hover,.field textarea:hover{border-color:#b9d4c5}
+html[data-theme="dark"] .field input:hover,
+html[data-theme="dark"] .field select:hover,
+html[data-theme="dark"] .field textarea:hover{border-color:var(--brand-3)}
+.field input:focus,.field select:focus,.field textarea:focus{
+  border-color:var(--brand-2);
+  box-shadow:0 0 0 4px var(--ring);
+  outline:none;
+}
+
+/* --- nav: active glow + icon nudge --- */
+.nav-item{border-radius:12px;position:relative}
+.nav-item svg{transition:transform .18s ease}
+.nav-item:hover svg{transform:scale(1.08)}
+.nav-item.active{
+  background:linear-gradient(135deg,var(--brand-2),var(--brand));
+  box-shadow:0 12px 26px -6px rgba(1,68,33,.5),inset 0 1px 0 rgba(255,255,255,.16);
+}
+.nav-item.active::before{
+  content:"";position:absolute;left:-14px;top:50%;transform:translateY(-50%);
+  width:4px;height:60%;border-radius:0 4px 4px 0;background:#35c98e;
+  box-shadow:0 0 12px rgba(53,201,142,.8);
+}
+
+/* --- topbar: cleaner glass --- */
+.topbar{
+  background:rgba(247,251,249,.86);
+  backdrop-filter:blur(14px) saturate(1.4);
+  -webkit-backdrop-filter:blur(14px) saturate(1.4);
+}
+html[data-theme="dark"] .topbar{background:rgba(7,22,14,.86)}
+
+/* --- search: focus-within glow --- */
+.search{transition:border-color .16s ease,box-shadow .16s ease}
+.search:focus-within{
+  border-color:var(--brand-2);
+  box-shadow:0 0 0 4px var(--ring);
+}
+
+/* --- tables: calmer headers, sticky feel, striped polish --- */
+.table th{
+  font-weight:600;letter-spacing:.07em;
+  background:linear-gradient(180deg,#f4f9f6,#eef4f0);
+  position:sticky;top:0;z-index:1;
+}
+html[data-theme="dark"] .table th{background:var(--surface-2)}
+.table td{transition:background .12s ease}
+.table tbody tr:hover td{background:#f2f8f4}
+html[data-theme="dark"] .table tbody tr:hover td{background:var(--surface-2)}
+.table tbody tr{transition:none}
+
+/* --- badges & pills: bolder microtype --- */
+.badge{font-weight:600;padding:4px 11px}
+.badge::before{width:6px;height:6px;box-shadow:0 0 6px currentColor}
+.prio{font-weight:600}
+
+/* --- charts: gradient stems with rounded caps + grow-in --- */
+.bar .stem{
+  background:linear-gradient(180deg,#16b368,#0a6b3a);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 3px 8px -2px rgba(4,32,20,.25);
+  transform-origin:bottom;
+  animation:grow-up .6s cubic-bezier(.2,.7,.3,1) backwards;
+}
+.bar.alt .stem{background:linear-gradient(180deg,#9fb3a8,#64748b)}
+.bar:hover .stem{filter:brightness(1.12)}
+@keyframes grow-up{from{transform:scaleY(.35);opacity:.4}to{transform:scaleY(1);opacity:1}}
+
+.meter{
+  height:9px;background:linear-gradient(90deg,#e2ece6,#eef4f0);
+  box-shadow:inset 0 1px 2px rgba(4,32,20,.08);
+}
+.meter>i{
+  background:linear-gradient(90deg,var(--brand-2),var(--brand-3));
+  box-shadow:0 1px 4px -1px rgba(4,32,20,.3);
+  transition:width .6s cubic-bezier(.2,.7,.3,1);
+}
+
+/* --- timeline: brighter nodes --- */
+.timeline li::before{
+  box-shadow:0 0 0 2px #fff,0 2px 6px rgba(4,32,20,.2);
+}
+html[data-theme="dark"] .timeline li::before{box-shadow:0 0 0 2px var(--surface)}
+
+/* --- list rows: hover affordance --- */
+.list li{transition:background .14s ease,padding-left .14s ease}
+.list li:hover{background:rgba(10,107,58,.045)}
+html[data-theme="dark"] .list li:hover{background:rgba(255,255,255,.04)}
+
+/* --- notification bell: pulse when it matters --- */
+.bell{transition:border-color .15s ease,box-shadow .15s ease}
+.bell:hover{box-shadow:0 6px 16px -6px rgba(4,32,20,.2)}
+.bell .count{
+  background:linear-gradient(180deg,#f87171,#dc2626);
+  box-shadow:0 0 0 2px #fff,0 2px 8px rgba(220,38,38,.5);
+  animation:pulse-count 2.4s infinite;
+}
+@keyframes pulse-count{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+
+/* --- toasts: springy entrance --- */
+.toast{animation:toastin .38s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes toastin{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+
+/* --- modals: soft rise + backdrop fade --- */
+.modal,.modal-host{animation:fade-in .2s ease}
+.modal-card{animation:rise-in .32s cubic-bezier(.2,.9,.3,1.05)}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes rise-in{from{opacity:0;transform:translateY(22px) scale(.98)}to{opacity:1;transform:none}}
+
+/* --- page content: gentle entrance --- */
+.content{animation:page-in .32s ease}
+@keyframes page-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* --- gallery cards: richer hover --- */
+.g-card:hover{transform:translateY(-5px) scale(1.004);box-shadow:0 22px 48px -14px rgba(4,32,20,.24)}
+.g-thumb{transition:transform .3s ease}
+.g-card:hover .g-thumb{transform:scale(1.015)}
+
+/* --- login hero: living glow --- */
+.login-hero::before{
+  animation:hero-drift 9s ease-in-out infinite alternate;
+}
+@keyframes hero-drift{
+  from{transform:translate(0,0) scale(1);opacity:.9}
+  to{transform:translate(-46px,36px) scale(1.12);opacity:1}
+}
+.login-card{
+  box-shadow:0 28px 70px -18px rgba(4,32,20,.24),0 4px 14px rgba(4,32,20,.06);
+}
+
+/* --- flow map: active node breathing --- */
+.node.active-node{
+  animation:node-breathe 2.2s ease-in-out infinite;
+}
+@keyframes node-breathe{
+  0%,100%{box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+  50%{box-shadow:0 0 0 7px rgba(34,197,94,.08)}
+}
+
+/* --- scrollbars: slimmer, subtler --- */
+*::-webkit-scrollbar{width:9px;height:9px}
+*::-webkit-scrollbar-thumb{background:rgba(75,120,97,.35);border-radius:99px;border:2px solid transparent;background-clip:content-box}
+*::-webkit-scrollbar-thumb:hover{background:rgba(75,120,97,.55);background-clip:content-box}
+html{scrollbar-width:thin;scrollbar-color:rgba(75,120,97,.35) transparent}
+
+/* --- selection color matched to brand --- */
+::selection{background:rgba(10,143,80,.22)}
+
+/* --- pagination: tactile --- */
+.pagination .btn:hover{transform:translateY(-2px)}
+.pagination .btn:active{transform:translateY(0) scale(.97)}
+
+/* --- spinner: faster, brand gradient --- */
+.spinner{
+  border-color:rgba(10,143,80,.25);
+  border-top-color:var(--brand-3);
+  animation:spin .65s linear infinite;
+}
+
+/* --- reduced motion: honour everything --- */
+@media (prefers-reduced-motion:reduce){
+  .bar .stem,.toast,.modal-card,.content,.bell .count,
+  .node.active-node,.login-hero::before{animation:none !important}
+}

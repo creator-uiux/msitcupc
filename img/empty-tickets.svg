@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150" role="img" aria-label="No tickets yet">
+  <title>No tickets yet</title>
+  <g fill="none" stroke="#C9DCD2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="52" y="26" width="96" height="104" rx="8"/>
+    <path d="M72 26v104M128 26v104"/>
+    <path d="M52 56h20M128 56h20M52 90h20M128 90h20"/>
+  </g>
+  <circle cx="100" cy="76" r="30" fill="#E6F3EC" stroke="#9FC7B2" stroke-width="3"/>
+  <path d="M90 76l7 7 14-15" fill="none" stroke="#0E6B43" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ITC Maintenance System">
+  <title>ITC Maintenance System</title>
+  <rect width="64" height="64" rx="14" fill="#0E6B43"/>
+  <g fill="none" stroke="#EAF6EF" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="13" y="15" width="38" height="26" rx="4"/>
+    <path d="M23 50h18"/>
+    <path d="M32 41v9"/>
+  </g>
+  <path d="M23 27.5l6 6 12-12" fill="none" stroke="#5EEAD4" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

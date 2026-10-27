@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings  --  ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- Theme before first paint (?theme=dark|light, else the saved choice), so an
+     import or a direct link never flashes the wrong palette.
+     Defaults to light (no auto-OS-dark). -->
+<script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1E3A5F">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="chromeSide"></aside>
+  <div class="main">
+    <header class="appbar" id="chromeAppbar"></header>
+    <header class="topbar" id="chromeTopbar"></header>
+
+    <main class="content">
+      <div class="sec-title">
+        <h2>Settings &amp; reference data</h2>
+        <span class="hint">Categories, priorities, sources and maintenance frequencies used across the system</span>
+      </div>
+
+      <section class="grid grid-2">
+        <div class="stack">
+          <div class="card">
+            <div class="card-head"><h3>Reference data</h3><span class="hint">used by intake, assessment and scheduling</span></div>
+            <div class="card-pad"><div id="refGroups"></div></div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card">
+            <div class="card-head"><h3>Operational settings</h3><span class="hint">reminder loop &amp; simulation</span></div>
+            <div class="card-pad"><div id="opSettings"></div></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3>Approval, priority and closure</h3><span class="hint">policy the workflow enforces</span></div>
+            <div class="card-pad"><div id="policySettings"></div></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3>Maintenance frequencies</h3><span class="hint">previous due date + these days = next due</span></div>
+            <div class="card-pad"><div id="freqTable"></div></div>
+          </div>
+
+          <div class="note"><span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3l7 3v5c0 4.4-3 8.2-7 10-4-1.8-7-5.6-7-10V6z"/><path d="M9.3 12l1.9 1.9 3.6-3.7"/></svg></span><div><b>Audited:</b> every change here is written to the audit log with the actor, time and the exact option changed.</div></div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottomnav" id="chromeBottom"></nav>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/flow.js"></script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/time.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/live.js"></script>
+<script>
+UI.mountChrome({ title: 'Settings', sub: 'Reference data & system settings' });
+
+var GROUPS = [
+  { key: 'categories', label: 'Categories', hint: 'service classification' },
+  { key: 'sources', label: 'Sources', hint: 'how a request arrived' },
+  { key: 'priorities', label: 'Priorities', hint: 'internal key + label' },
+  { key: 'frequencies', label: 'Frequencies', hint: 'preventive maintenance interval' }
+];
+
+function settings() { return Store.db.settings || {}; }
+
+function render() {
+  var s = settings();
+
+  document.getElementById('refGroups').innerHTML = GROUPS.map(function (g) {
+    var items = s[g.key] || [];
+    var isPrio = g.key === 'priorities', isFreq = g.key === 'frequencies';
+    var rows = items.map(function (row) {
+      var label = isPrio || isFreq ? row[1] : row;
+      var extra = isPrio ? '<span class="t-sub mono">' + UI.esc(row[0]) + '</span>'
+        : isFreq ? '<span class="t-sub">every ' + row[2] + ' days</span>' : '';
+      return '<li><div class="body"><strong>' + UI.esc(label) + '</strong>' + extra + '</div>' +
+        '<button class="btn btn-ghost btn-sm" data-rm="' + g.key + '" data-val="' + UI.attr(label) + '">Remove</button></li>';
+    }).join('');
+    return '<div class="ref-group mb-md">' +
+      '<div class="card-head-row">' +
+      '<b class="card-title">' + g.label + '</b><span class="hint">' + g.hint + '</span></div>' +
+      '<ul class="list">' + rows + '</ul>' +
+      '<div class="row row-tight mt-sm">' +
+      '<input type="text" class="ref-new grow" data-group="' + g.key + '" placeholder="Add ' + g.label.toLowerCase().replace(/s$/, '') + '…">' +
+      (isFreq ? '<input type="number" class="ref-days input-days" data-group="frequencies" placeholder="days" min="1" max="730">' : '') +
+      '<button class="btn btn-soft btn-sm" data-add="' + g.key + '">Add</button></div></div>';
+  }).join('');
+
+  /* operational settings */
+  document.getElementById('opSettings').innerHTML =
+    '<div class="grid grid-form">' +
+    UI.field('Follow-up reminder interval (minutes)', UI.numberInput('reminderMinutes', s.reminderMinutes || 2, { min: 1, max: 1440 })) +
+    UI.field('First reminder after (business days)', UI.numberInput('reminderBusinessDays', s.reminderBusinessDays || 3, { min: 1, max: 60 })) +
+    UI.field('Simulation', UI.select('simulate', [['1', 'On  --  generate demo intake'], ['0', 'Off  --  deterministic']], s.simulate ? '1' : '0', true)) +
+    '</div><div class="form-actions">' +
+    '<button class="btn btn-primary" id="saveOp">Save settings</button></div>';
+
+  /* policy: approval categories, priority matrix, authorized closure roles */
+  var PRIOS = [['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['critical', 'Critical']];
+  var IMPACTS = [['high', 'High'], ['medium', 'Medium'], ['low', 'Low']];
+  var URGENCIES = [['high', 'High'], ['medium', 'Medium'], ['low', 'Low']];
+  var matrix = s.priorityMatrix || {};
+  var defaultCell = { high: { high: 'critical', medium: 'high', low: 'medium' },
+                      medium: { high: 'high', medium: 'medium', low: 'low' },
+                      low: { high: 'medium', medium: 'low', low: 'low' } };
+  function cell(impact, urg) {
+    var v = (matrix[impact] && matrix[impact][urg]) || defaultCell[impact][urg];
+    return UI.select('pm_' + impact + '_' + urg, PRIOS, v, true);
+  }
+  var approvalCats = s.approvalCategories || [];
+  var allCats = (s.categories || []).slice();
+  var closureRoles = s.authorizedClosureRoles || ['coordinator', 'management'];
+  var ROLE_OPTS = [['coordinator', 'IT Coordinator'], ['management', 'System Administrator']];
+
+  document.getElementById('policySettings').innerHTML =
+    '<div class="card-title mb-sm">Categories that need coordinator approval</div>' +
+    '<p class="card-sub">Approval is off by default and is never required for every service. A gated category cannot start work until the coordinator signs it off.</p>' +
+    '<ul class="policy-list">' +
+    allCats.map(function (c) {
+      var id = 'appr_' + c.replace(/[^A-Za-z0-9]+/g, '_');
+      return '<li><label class="row" for="' + id + '">' +
+        '<input type="checkbox" class="policy-check" id="' + id + '" data-approval="' + UI.attr(c) + '"' +
+        (approvalCats.indexOf(c) > -1 ? ' checked' : '') + '>' +
+        '<span class="body">' + UI.esc(c) + '</span></label></li>';
+    }).join('') + '</ul>' +
+    '<div class="card-title mt-md mb-sm">Impact and urgency matrix</div>' +
+    '<p class="card-sub">The coordinator records the impact and the urgency. The matrix decides the priority, and the entry is always stored with all three.</p>' +
+    '<div class="matrix-list">' +
+    IMPACTS.map(function (i) {
+      return '<div class="matrix-group">' + i[1] + ' impact</div>' +
+        URGENCIES.map(function (u) {
+          return '<div class="matrix-row">' +
+            '<label for="fpm_' + i[0] + '_' + u[0] + '">Urgency ' + u[1] + '</label>' +
+            cell(i[0], u[0]) + '</div>';
+        }).join('');
+    }).join('') + '</div>' +
+    '<div class="card-title mt-md mb-sm">Authorized closure</div>' +
+    '<p class="card-sub">Only these roles may close a Resolved record without an office confirmation. A reason is always required and the closure is always visible in the history.</p>' +
+    '<ul class="policy-list">' +
+    ROLE_OPTS.map(function (r) {
+      var id = 'acl_' + r[0];
+      return '<li><label class="row" for="' + id + '">' +
+        '<input type="checkbox" class="policy-check" id="' + id + '" data-closure="' + r[0] + '"' +
+        (closureRoles.indexOf(r[0]) > -1 ? ' checked' : '') + '>' +
+        '<span class="body">' + UI.esc(r[1]) + '</span></label></li>';
+    }).join('') + '</ul>' +
+    '<div class="form-actions">' +
+    '<button class="btn btn-primary" id="savePolicy">Save policy</button></div>';
+
+  /* frequency table (the single source of the next-due rule) */
+  document.getElementById('freqTable').innerHTML =
+    '<table class="table"><thead><tr><th>Frequency</th><th>Key</th><th>Days</th></tr></thead><tbody>' +
+    (s.frequencies || []).map(function (row) {
+      return '<tr><td data-label="Frequency">' + UI.esc(row[1]) + '</td><td data-label="Key"><span class="mono">' + UI.esc(row[0]) + '</span></td><td data-label="Days">' + row[2] + '</td></tr>';
+    }).join('') + '</tbody></table>' +
+    '<p class="card-sub mt">The next due date is <b>previous due date + days</b>  --  a late visit never drifts the whole plan.</p>';
+
+  /* bind */
+  document.querySelectorAll('[data-rm]').forEach(function (b) {
+    b.onclick = function () {
+      UI.confirmDialog({ title: 'Remove option', text: 'Remove "' + b.dataset.val + '" from ' + b.dataset.rm + '?', go: 'Remove', danger: true }, function () {
+        var r = window.Admin.saveRef({ group: b.dataset.rm, value: b.dataset.val, remove: true });
+        UI.toast(r.msg, r.ok ? 'ok' : 'err');
+      });
+    };
+  });
+  document.querySelectorAll('[data-add]').forEach(function (b) {
+    b.onclick = function () {
+      var group = b.dataset.add;
+      var input = document.querySelector('.ref-new[data-group="' + group + '"]');
+      var value = input ? input.value : '';
+      if (!value.trim()) { UI.toast('Enter a value.', 'err'); return; }
+      var body = { group: group, value: value };
+      if (group === 'frequencies') {
+        var days = document.querySelector('.ref-days[data-group="frequencies"]');
+        body.days = days ? days.value : 30;
+      }
+      var r = window.Admin.saveRef(body);
+      UI.toast(r.msg, r.ok ? 'ok' : 'err');
+      if (r.ok && input) input.value = '';
+    };
+  });
+  var so = document.getElementById('saveOp');
+  if (so) so.onclick = function () {
+    var r = window.Admin.saveSettings({
+      reminderMinutes: document.querySelector('[name="reminderMinutes"]').value,
+      reminderBusinessDays: document.querySelector('[name="reminderBusinessDays"]').value,
+      simulate: document.querySelector('[name="simulate"]').value === '1'
+    });
+    UI.toast(r.msg, r.ok ? 'ok' : 'err');
+  };
+  var sp = document.getElementById('savePolicy');
+  if (sp) sp.onclick = function () {
+    var cats = [], roles = [], matrix = {};
+    document.querySelectorAll('[data-approval]').forEach(function (el) {
+      if (el.checked) cats.push(el.dataset.approval);
+    });
+    document.querySelectorAll('[data-closure]').forEach(function (el) {
+      if (el.checked) roles.push(el.dataset.closure);
+    });
+    IMPACTS.forEach(function (i) {
+      matrix[i[0]] = {};
+      URGENCIES.forEach(function (u) {
+        var sel = document.querySelector('[name="pm_' + i[0] + '_' + u[0] + '"]');
+        if (sel) matrix[i[0]][u[0]] = sel.value;
+      });
+    });
+    var r = window.Admin.saveSettings({
+      approvalCategories: cats,
+      authorizedClosureRoles: roles,
+      priorityMatrix: matrix
+    });
+    UI.toast(r.msg, r.ok ? 'ok' : 'err');
+  };
+}
+
+Store.subscribe(render);
+render();
+Live.start();
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

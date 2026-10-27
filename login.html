@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="google-client-id" content="">
+<meta name="itc-demo-mode" content="">
+<title>Sign in | ITC Maintenance System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<link rel="stylesheet" href="css/login.css">
+<script src="js/theme.js"></script>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#0A3D28">
+</head>
+<body class="login-body" data-fit="viewport">
+
+<div class="lp-theme" id="themeSwitch" role="group" aria-label="Colour theme">
+  <button type="button" data-theme-choice="light" aria-label="Light theme" aria-pressed="false" title="Light theme">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+  </button>
+  <button type="button" data-theme-choice="system" aria-label="System theme" aria-pressed="false" title="System theme">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.5" y="3.5" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+  </button>
+  <button type="button" data-theme-choice="dark" aria-label="Dark theme" aria-pressed="false" title="Dark theme">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3a6.4 6.4 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+  </button>
+</div>
+
+<main class="lp-main">
+  <section class="lp-card" aria-labelledby="lpHeadline">
+
+    <div class="lp-hero">
+      <span class="lp-pill"><i aria-hidden="true"></i>University of the Philippines Cebu</span>
+
+      <div class="lp-hero-copy">
+        <h1 id="lpHeadline">Maintenance Management,<br><span>from request to closure.</span></h1>
+        <p>Submit, track, and close IT service and maintenance requests efficiently with our user-friendly platform.</p>
+      </div>
+
+      <ul class="lp-tiles" aria-label="Service qualities">
+        <li>
+          <span class="lp-tile-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3l2.4-6 3.6 12 2.6-8 1.7 2H21"/></svg>
+          </span>
+          <span>Live</span>
+        </li>
+        <li>
+          <span class="lp-tile-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5.4c0 4.4 3 7.7 7 9.6 4-1.9 7-5.2 7-9.6V6l-7-3Z"/><path d="m9.3 12 1.9 1.9 3.7-3.8"/></svg>
+          </span>
+          <span>Secure</span>
+        </li>
+        <li>
+          <span class="lp-tile-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 5 13.5h5L10 22l8-11.5h-5L13 2Z"/></svg>
+          </span>
+          <span>Fast</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="lp-panel">
+      <div class="lp-panel-inner">
+        <div class="lp-seals">
+          <img src="img/up-seal.png" width="60" height="60" alt="University of the Philippines seal">
+          <img src="img/upc-seal.png" width="60" height="60" alt="University of the Philippines Cebu seal">
+        </div>
+
+        <h2>Welcome back</h2>
+        <p class="lp-system">IT Service and Maintenance Management System</p>
+
+        <div id="signedIn" class="lp-signed" hidden></div>
+
+        <div id="authBlock" class="lp-auth">
+          <div class="lp-action">
+            <button type="button" class="lp-upm" id="googleBtn">
+              <span class="lp-g" aria-hidden="true">
+                <svg viewBox="0 0 48 48" width="18" height="18" focusable="false">
+                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                </svg>
+              </span>
+              <span class="lp-upm-label">Login with UPMail</span>
+            </button>
+            <div id="gsiBtn" class="lp-gsi" hidden></div>
+          </div>
+
+          <p class="lp-hint">Sign in using your existing UPMail.</p>
+
+          <p id="loginError" class="lp-error" role="alert" hidden></p>
+
+          <div id="demoBlock" class="lp-demo" hidden>
+            <div class="lp-demo-head">
+              <span class="lp-demo-tag">Demo only</span>
+              <span>Development accounts</span>
+            </div>
+            <ul id="demoAccounts" class="lp-demo-list"></ul>
+          </div>
+
+          <p class="lp-domain">Restricted to <b>@upcebu.edu.ph</b> UPMail accounts.</p>
+        </div>
+
+        <div id="accessDenied" class="lp-denied" hidden>
+          <span class="lp-denied-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          </span>
+          <h3>Access not granted</h3>
+          <p>Your UPMail account is signed in, but no role has been provisioned for it. Contact the IT Office to request access.</p>
+          <p class="lp-denied-mail" id="deniedMail"></p>
+          <button type="button" class="lp-upm lp-upm-small" id="tryAnother">Try another account</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="lp-foot">University of the Philippines Cebu <span aria-hidden="true">&middot;</span> IT Office</p>
+</main>
+
+<script src="js/store.js"></script>
+<script>window.ITC_API = false; /* the sign-in page drives auth itself; app pages run live */</script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/login.js"></script>
+</body>
+</html>

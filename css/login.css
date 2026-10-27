@@ -1,0 +1,765 @@
+/* ==========================================================================
+   SIGN-IN  --  split card over the campus photograph
+   ----------------------------------------------------------------------
+   Loaded after css/app.css, css/green.css and css/kit.css, so this sheet owns
+   the sign-in screen.  Every selector is scoped to .login-body or an lp- class
+   that exists only on login.html, so the working pages are never touched.
+
+   Structure
+     .login-body    full-viewport photograph with a light neutral vignette
+     .lp-main       the measure: the split card and its caption
+     .lp-card       glass hero on the left, off-white panel on the right
+     .lp-hero       pill, serif headline, lead, and the Live/Secure/Fast tiles
+     .lp-panel      the two seals, "Welcome back", UPMail button and helper
+     .lp-theme      Light / System / Dark switch, fixed at the top right
+
+   Sizing is fluid.  Type steps and insets are clamps so 320, 390, 768, 1440,
+   2560 and 3440 pixels keep the same proportions.  The breakpoints change only
+   the arrangement: two columns, then stacked, then panel only on short phones.
+   ========================================================================== */
+
+.login-body{
+  --lp-panel:#F7F7F2;
+  --lp-panel-2:#F1F2EA;
+  --lp-ink:#17241C;
+  --lp-ink-2:#3E4E44;
+  --lp-muted:#63716A;
+  --lp-line:#D3D8CF;
+  --lp-soft:#EFF2EC;
+  --lp-brand:#0A5C3A;
+  --lp-brand-deep:#063D26;
+  --lp-amber:#E8B339;
+  --lp-error:#9B2C24;
+  --lp-serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --lp-sans:var(--font-sans,"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif);
+  --lp-pad-x:clamp(20px,4vw,36px);
+
+  position:relative;
+  min-height:100vh;
+  min-height:100svh;
+  margin:0;
+  padding:clamp(18px,4vh,48px) clamp(14px,3vw,40px);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  overflow-x:hidden;
+  color:var(--lp-ink);
+  background:#0A2318;
+  font-family:var(--lp-sans);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+/* The photograph and the scrim are separate fixed layers so the picture can
+   be corrected on its own without washing out the card. */
+.login-body::before{
+  content:"";
+  display:block;
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background-image:url("../img/login-bg.jpg");
+  background-position:center;
+  background-size:cover;
+  background-repeat:no-repeat;
+}
+.login-body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background:
+    radial-gradient(120% 90% at 50% 8%,rgba(255,252,244,.10) 0%,rgba(255,252,244,0) 55%),
+    linear-gradient(180deg,rgba(9,26,18,.16) 0%,rgba(6,22,15,.28) 62%,rgba(4,17,11,.42) 100%);
+}
+
+/* ------------------------------------------------------------ theme switch */
+.lp-theme{
+  position:fixed;
+  top:clamp(10px,2vh,18px);
+  right:clamp(10px,2vw,20px);
+  z-index:20;
+  display:flex;
+  align-items:center;
+  gap:2px;
+  padding:4px;
+  border-radius:999px;
+  background:rgba(8,28,19,.46);
+  border:1px solid rgba(255,255,255,.26);
+  -webkit-backdrop-filter:blur(14px) saturate(130%);
+  backdrop-filter:blur(14px) saturate(130%);
+  box-shadow:0 10px 30px -18px rgba(0,0,0,.8);
+}
+.lp-theme button{
+  width:44px;
+  height:44px;
+  min-width:44px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:0;
+  border-radius:50%;
+  background:transparent;
+  color:rgba(255,255,255,.82);
+  cursor:pointer;
+  transition:background .16s ease,color .16s ease,transform .16s ease;
+}
+.lp-theme button svg{width:19px;height:19px;display:block}
+.lp-theme button:hover{background:rgba(255,255,255,.14);color:#fff}
+.lp-theme button.on{background:rgba(255,255,255,.94);color:#17241C}
+.lp-theme button:focus-visible,
+.lp-upm:focus-visible,
+.lp-demo-account:focus-visible,
+.lp-link:focus-visible{
+  outline:2px solid var(--lp-amber);
+  outline-offset:2px;
+}
+
+/* ---------------------------------------------------------------- measure */
+.lp-main{
+  position:relative;
+  z-index:1;
+  width:100%;
+  max-width:1000px;
+  margin:auto 0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:clamp(12px,2vh,18px);
+}
+
+.lp-card{
+  width:100%;
+  min-height:min(548px,calc(100svh - 110px));
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(340px,1fr);
+  border-radius:16px;
+  overflow:hidden;
+  background:var(--lp-panel);
+  box-shadow:
+    0 44px 110px -52px rgba(2,16,10,.86),
+    0 8px 26px -18px rgba(2,16,10,.55);
+}
+
+/* ------------------------------------------------------------------- hero */
+.lp-hero{
+  position:relative;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  padding:clamp(26px,4.4vh,44px) clamp(26px,3.4vw,36px);
+  background:
+    linear-gradient(158deg,rgba(13,44,31,.58) 0%,rgba(6,29,19,.68) 100%);
+  -webkit-backdrop-filter:blur(20px) saturate(135%);
+  backdrop-filter:blur(20px) saturate(135%);
+  border-right:1px solid rgba(255,255,255,.10);
+  color:#fff;
+}
+.lp-pill{
+  align-self:flex-start;
+  display:inline-flex;
+  align-items:center;
+  gap:9px;
+  padding:8px 14px;
+  border:1px solid rgba(255,255,255,.28);
+  border-radius:999px;
+  background:rgba(255,255,255,.10);
+  color:rgba(255,255,255,.94);
+  font-size:12.5px;
+  font-weight:500;
+  line-height:1.3;
+  letter-spacing:.003em;
+  white-space:nowrap;
+}
+.lp-pill i{
+  width:7px;
+  height:7px;
+  flex:0 0 7px;
+  border-radius:50%;
+  background:var(--lp-amber);
+  box-shadow:0 0 0 3px rgba(232,179,57,.18);
+}
+.lp-hero-copy{margin-top:clamp(34px,7vh,68px)}
+
+.lp-hero h1{
+  margin:0;
+  font-family:var(--lp-serif);
+  font-size:clamp(28px,2.4vw,33px);
+  font-weight:600;
+  line-height:1.18;
+  letter-spacing:-.014em;
+  color:#fff;
+  text-wrap:balance;
+}
+.lp-hero h1 span{
+  display:block;
+  color:rgba(255,255,255,.94);
+  font-weight:600;
+}
+.lp-hero-copy p{
+  margin:clamp(16px,2.4vh,22px) 0 0;
+  max-width:37ch;
+  color:rgba(255,255,255,.84);
+  font-size:clamp(13.5px,.95vw,15px);
+  line-height:1.65;
+}
+
+.lp-tiles{
+  list-style:none;
+  margin:auto 0 0;
+  padding:clamp(28px,5vh,52px) 0 0;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+.lp-tiles li{
+  min-height:clamp(68px,9.2vh,82px);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:8px 6px;
+  border:1px solid rgba(255,255,255,.24);
+  border-radius:14px;
+  background:rgba(255,255,255,.09);
+  color:rgba(255,255,255,.94);
+  font-size:clamp(12px,.9vw,13px);
+  font-weight:500;
+  line-height:1.2;
+}
+.lp-tile-icon{display:grid;place-items:center;width:20px;height:20px;color:#fff}
+.lp-tile-icon svg{width:20px;height:20px;display:block}
+
+/* ------------------------------------------------------------------ panel */
+.lp-panel{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:clamp(30px,5vh,52px) clamp(24px,3.4vw,44px);
+  background:var(--lp-panel);
+}
+.lp-panel-inner{
+  width:100%;
+  max-width:320px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+}
+.lp-seals{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+.lp-seals img{
+  width:clamp(52px,4.2vw,60px);
+  height:auto;
+  display:block;
+  filter:drop-shadow(0 2px 4px rgba(7,32,20,.14));
+}
+.lp-panel h2{
+  margin:clamp(14px,2.2vh,20px) 0 0;
+  font-family:var(--lp-serif);
+  font-size:clamp(23px,1.8vw,25px);
+  font-weight:600;
+  line-height:1.15;
+  letter-spacing:-.012em;
+  color:var(--lp-ink);
+}
+.lp-system{
+  margin:clamp(8px,1.4vh,11px) 0 0;
+  max-width:33ch;
+  color:var(--lp-muted);
+  font-size:clamp(10.5px,.8vw,12px);
+  font-weight:600;
+  line-height:1.6;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  text-wrap:balance;
+}
+
+/* ------------------------------------------------------------- UPMail CTA */
+.lp-auth{width:100%;display:flex;flex-direction:column;align-items:center}
+.lp-action{
+  position:relative;
+  width:100%;
+  margin-top:clamp(24px,4vh,34px);
+}
+.lp-upm{
+  width:100%;
+  min-height:40px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  padding:0 18px;
+  border:1.4px solid #46584C;
+  border-radius:999px;
+  background:transparent;
+  color:var(--lp-ink);
+  cursor:pointer;
+  font-family:inherit;
+  font-size:14px;
+  font-weight:600;
+  line-height:1.2;
+  text-decoration:none;
+  transition:background .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease;
+}
+.lp-upm:hover{
+  background:var(--lp-soft);
+  border-color:var(--lp-brand);
+  box-shadow:0 8px 20px -16px rgba(6,43,28,.7);
+  transform:translateY(-1px);
+}
+.lp-upm:active{transform:translateY(0)}
+.lp-g{display:inline-grid;place-items:center;width:20px;height:20px;flex:0 0 20px}
+.lp-g svg{display:block}
+.lp-upm-label{display:inline-block}
+.lp-upm-small{
+  max-width:280px;
+  margin:14px auto 0;
+  min-height:44px;
+  font-size:13.5px;
+}
+
+/* Google's rendered button is laid invisibly over the pill: the visible
+   control keeps the required "Login with UPMail" wording while Google
+   Identity Services still owns the credential flow. */
+.lp-gsi{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  border-radius:999px;
+  opacity:.001;
+}
+.lp-gsi[hidden]{display:none !important}
+.lp-gsi iframe{
+  width:100% !important;
+  height:100% !important;
+  border-radius:999px;
+}
+
+.lp-hint{
+  margin:clamp(12px,2vh,16px) 0 0;
+  color:var(--lp-ink-2);
+  font-family:var(--lp-serif);
+  font-size:clamp(13px,.95vw,14px);
+  line-height:1.5;
+}
+
+.lp-error{
+  width:100%;
+  margin:clamp(12px,2vh,16px) 0 0;
+  padding:10px 12px;
+  border:1px solid #EFC7C3;
+  border-radius:10px;
+  background:#FDF1F0;
+  color:var(--lp-error);
+  font-size:12.5px;
+  line-height:1.5;
+  text-align:left;
+}
+.lp-error[hidden]{display:none !important}
+
+.lp-domain{
+  margin:clamp(20px,3.4vh,28px) 0 0;
+  color:var(--lp-muted);
+  font-size:11px;
+  line-height:1.55;
+}
+.lp-domain b{color:var(--lp-ink-2);font-weight:600}
+
+/* ------------------------------------------------------------ demo mode */
+.lp-demo{
+  width:100%;
+  margin-top:clamp(16px,2.4vh,20px);
+  padding-top:clamp(14px,2.2vh,18px);
+  border-top:1px solid var(--lp-line);
+  text-align:left;
+}
+.lp-demo[hidden]{display:none !important}
+.lp-demo-head{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--lp-muted);
+  font-size:11px;
+  line-height:1.4;
+}
+.lp-demo-tag{
+  flex:0 0 auto;
+  padding:3px 7px;
+  border-radius:999px;
+  background:#F6E7C8;
+  color:#6F4B0D;
+  font-size:9.5px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.lp-demo-list{
+  list-style:none;
+  margin:10px 0 0;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.lp-demo-account{
+  width:100%;
+  min-height:48px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:7px 9px;
+  border:1px solid var(--lp-line);
+  border-radius:10px;
+  background:var(--lp-soft);
+  color:var(--lp-ink);
+  cursor:pointer;
+  font-family:inherit;
+  text-align:left;
+  transition:background .15s ease,border-color .15s ease;
+}
+.lp-demo-account:hover{background:#E7EDE3;border-color:#B9C6B8}
+.lp-avatar{
+  width:30px;
+  height:30px;
+  flex:0 0 30px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  color:#fff;
+  font-size:10.5px;
+  font-weight:700;
+  letter-spacing:.02em;
+}
+.lp-demo-text{min-width:0;flex:1;display:flex;flex-direction:column}
+.lp-demo-text b{
+  display:block;
+  color:var(--lp-ink);
+  font-size:12.5px;
+  font-weight:600;
+  line-height:1.3;
+}
+.lp-demo-text i{
+  display:block;
+  overflow-wrap:anywhere;
+  color:var(--lp-muted);
+  font-style:normal;
+  font-size:11px;
+  line-height:1.4;
+}
+.lp-demo-role{
+  flex:0 0 auto;
+  padding:3px 7px;
+  border:1px solid var(--lp-line);
+  border-radius:999px;
+  color:var(--lp-ink-2);
+  font-size:9.5px;
+  font-weight:600;
+  letter-spacing:.03em;
+  white-space:nowrap;
+}
+
+/* ------------------------------------------------------------ signed in */
+.lp-signed{width:100%;display:flex;flex-direction:column;align-items:center}
+.lp-signed[hidden]{display:none !important}
+.lp-user{
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-top:clamp(24px,4vh,34px);
+  padding:10px 12px;
+  border:1px solid var(--lp-line);
+  border-radius:12px;
+  background:var(--lp-soft);
+  text-align:left;
+}
+.lp-user-text{min-width:0;flex:1;display:flex;flex-direction:column}
+.lp-user-text b{display:block;color:var(--lp-ink);font-size:13px;font-weight:600}
+.lp-user-text i{
+  display:block;
+  overflow-wrap:anywhere;
+  color:var(--lp-muted);
+  font-style:normal;
+  font-size:11.5px;
+}
+.lp-user-role{
+  flex:0 0 auto;
+  padding:3px 7px;
+  border:1px solid var(--lp-line);
+  border-radius:999px;
+  color:var(--lp-ink-2);
+  font-size:9.5px;
+  font-weight:600;
+  white-space:nowrap;
+}
+.lp-link{
+  margin-top:12px;
+  padding:8px 10px;
+  border:0;
+  background:none;
+  color:var(--lp-muted);
+  cursor:pointer;
+  font-family:inherit;
+  font-size:12.5px;
+  line-height:1.3;
+  text-decoration:underline;
+  text-underline-offset:3px;
+}
+.lp-link:hover{color:var(--lp-brand)}
+
+/* ------------------------------------------------------- access not granted */
+.lp-denied{
+  width:100%;
+  margin-top:clamp(24px,4vh,34px);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+.lp-denied[hidden]{display:none !important}
+.lp-denied-icon{
+  width:46px;
+  height:46px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:#F8E8E6;
+  color:#9B2C24;
+}
+.lp-denied-icon svg{width:22px;height:22px;display:block}
+.lp-denied h3{
+  margin:14px 0 0;
+  color:var(--lp-ink);
+  font-family:var(--lp-serif);
+  font-size:24px;
+  font-weight:600;
+  line-height:1.2;
+}
+.lp-denied p{
+  margin:10px 0 0;
+  color:var(--lp-muted);
+  font-size:12.5px;
+  line-height:1.6;
+}
+.lp-denied-mail{
+  overflow-wrap:anywhere;
+  font-weight:600;
+  color:var(--lp-ink-2) !important;
+}
+
+/* ------------------------------------------------------------------ foot */
+.lp-foot{
+  position:relative;
+  z-index:1;
+  margin:0;
+  color:rgba(255,255,255,.78);
+  font-size:11.5px;
+  line-height:1.5;
+  text-align:center;
+  text-shadow:0 1px 2px rgba(0,0,0,.42);
+}
+.lp-foot span{margin:0 4px;opacity:.7}
+
+/* ==========================================================================
+   DARK THEME
+   ========================================================================== */
+html[data-theme="dark"] .login-body{
+  --lp-panel:#101A14;
+  --lp-panel-2:#0C1510;
+  --lp-ink:#F2F8F4;
+  --lp-ink-2:#C4D5C9;
+  --lp-muted:#A1B2A6;
+  --lp-line:#31443A;
+  --lp-soft:#17261D;
+  --lp-brand:#6EE7A8;
+  color:#F2F8F4;
+  background:#03110A;
+}
+html[data-theme="dark"] .login-body::after{
+  background:
+    radial-gradient(120% 90% at 50% 8%,rgba(255,252,244,.04) 0%,rgba(255,252,244,0) 55%),
+    linear-gradient(180deg,rgba(1,10,6,.40) 0%,rgba(1,8,5,.52) 62%,rgba(0,6,4,.64) 100%);
+}
+html[data-theme="dark"] .login-body::before{
+  background-image:url("../img/login-bg.jpg");
+}
+html[data-theme="dark"] .lp-hero{
+  background:linear-gradient(158deg,rgba(8,30,20,.62) 0%,rgba(3,18,11,.74) 100%);
+  border-right-color:rgba(255,255,255,.08);
+}
+html[data-theme="dark"] .lp-panel{
+  background:linear-gradient(165deg,#132119 0%,#0C1711 100%);
+}
+html[data-theme="dark"] .lp-theme{
+  background:rgba(3,16,10,.62);
+  border-color:rgba(255,255,255,.18);
+}
+html[data-theme="dark"] .lp-upm{
+  border-color:#5B7A68;
+  color:#EAF5EE;
+}
+html[data-theme="dark"] .lp-upm:hover{
+  background:#1B2C22;
+  border-color:#82B899;
+}
+html[data-theme="dark"] .lp-hint{color:#C4D5C9}
+html[data-theme="dark"] .lp-domain{color:#A1B2A6}
+html[data-theme="dark"] .lp-domain b{color:#D5E6DA}
+html[data-theme="dark"] .lp-error{
+  border-color:#5A2A26;
+  background:#2A1513;
+  color:#FCA5A5;
+}
+html[data-theme="dark"] .lp-demo{border-top-color:#31443A}
+html[data-theme="dark"] .lp-demo-tag{background:#3A2D10;color:#F3D28A}
+html[data-theme="dark"] .lp-demo-account{
+  background:#17261D;
+  border-color:#31443A;
+}
+html[data-theme="dark"] .lp-demo-account:hover{background:#1D3125;border-color:#486353}
+html[data-theme="dark"] .lp-demo-text b{color:#F2F8F4}
+html[data-theme="dark"] .lp-demo-text i{color:#A1B2A6}
+html[data-theme="dark"] .lp-demo-role{color:#C4D5C9;border-color:#31443A}
+html[data-theme="dark"] .lp-user{background:#17261D;border-color:#31443A}
+html[data-theme="dark"] .lp-user-text b{color:#F2F8F4}
+html[data-theme="dark"] .lp-user-text i{color:#A1B2A6}
+html[data-theme="dark"] .lp-user-role{color:#C4D5C9;border-color:#31443A}
+html[data-theme="dark"] .lp-link{color:#A1B2A6}
+html[data-theme="dark"] .lp-link:hover{color:#6EE7A8}
+html[data-theme="dark"] .lp-denied-icon{background:#2A1513;color:#FCA5A5}
+html[data-theme="dark"] .lp-denied h3{color:#F2F8F4}
+html[data-theme="dark"] .lp-denied p{color:#A1B2A6}
+html[data-theme="dark"] .lp-denied-mail{color:#D5E6DA !important}
+html[data-theme="dark"] .lp-foot{color:rgba(255,255,255,.68)}
+
+/* ==========================================================================
+   ARRANGEMENT BREAKPOINTS
+   ========================================================================== */
+
+/* A little tighter before the card stacks. */
+@media (max-width:1099px){
+  .lp-main{max-width:min(940px,94vw)}
+}
+
+/* Tablet portrait: hero above the panel, one measure. */
+@media (max-width:900px){
+  .login-body{padding-top:clamp(20px,4vh,34px)}
+  .lp-main{max-width:600px}
+  .lp-card{
+    grid-template-columns:minmax(0,1fr);
+    min-height:0;
+    border-radius:16px;
+  }
+  .lp-hero{
+    padding:clamp(24px,4vh,34px) clamp(24px,5vw,34px) clamp(28px,4.6vh,38px);
+    border-right:0;
+    border-bottom:1px solid rgba(255,255,255,.10);
+  }
+  .lp-hero-copy{margin-top:clamp(18px,3.4vh,28px)}
+  .lp-hero h1{font-size:clamp(26px,5.2vw,36px)}
+  .lp-hero-copy p{margin-top:12px;max-width:52ch}
+  .lp-tiles{margin-top:clamp(18px,3vh,26px);padding-top:0}
+  .lp-tiles li{min-height:56px}
+  .lp-panel{padding:clamp(28px,4.6vh,40px) clamp(24px,5vw,38px)}
+  .lp-seals img{width:58px}
+  .lp-panel h2{font-size:28px}
+}
+
+/* Phone: same composition, compacted. */
+@media (max-width:600px){
+  .login-body{padding:74px 12px 16px}
+  .lp-main{gap:12px}
+  .lp-card{border-radius:14px}
+  .lp-hero{padding:20px 20px 24px}
+  .lp-pill{font-size:11.5px;padding:7px 12px;gap:7px}
+  .lp-hero-copy{margin-top:16px}
+  .lp-hero h1{font-size:clamp(22px,6.2vw,26px);line-height:1.18}
+  .lp-hero-copy p{margin-top:10px;font-size:13px;line-height:1.55}
+  .lp-tiles{margin-top:16px;gap:7px}
+  .lp-tiles li{min-height:52px;font-size:11px;gap:5px}
+  .lp-tile-icon,.lp-tile-icon svg{width:18px;height:18px}
+  .lp-panel{padding:26px 20px 30px}
+  .lp-panel-inner{max-width:330px}
+  .lp-seals img{width:52px}
+  .lp-panel h2{font-size:26px;margin-top:12px}
+  .lp-system{font-size:9px;letter-spacing:.11em}
+  .lp-action{margin-top:22px}
+  .lp-hint{font-size:13px;margin-top:11px}
+  .lp-domain{margin-top:18px;font-size:10.5px}
+  .lp-foot{font-size:10.5px;padding-bottom:4px}
+  .lp-upm{min-height:44px;font-size:13.5px}
+  .lp-demo-account{min-height:50px}
+}
+
+/* Very narrow phones: shave one more step. */
+@media (max-width:359px){
+  .login-body{padding-left:10px;padding-right:10px}
+  .lp-hero{padding:18px 16px 22px}
+  .lp-hero h1{font-size:21px;line-height:1.2}
+  .lp-panel{padding:22px 16px 26px}
+  .lp-seals img{width:46px}
+  .lp-panel h2{font-size:24px}
+  .lp-user{gap:8px;padding:8px 9px}
+  .lp-user-role{display:none}
+}
+
+/* Short phones: the panel owns the screen so the UPMail button is always
+   visible without scrolling.  This covers 320x568 and 390x700. */
+@media (max-width:900px) and (max-height:620px){
+  .login-body{padding-top:56px}
+  .lp-hero{padding:14px 18px 16px}
+  .lp-hero-copy{margin-top:10px}
+  .lp-hero h1{font-size:clamp(20px,4.4vw,26px)}
+  .lp-hero-copy p{display:none}
+  .lp-tiles{display:none}
+  .lp-card{grid-template-columns:minmax(0,1fr);border-radius:14px}
+  .lp-panel{border-radius:14px;padding-top:18px;padding-bottom:20px}
+  .lp-seals img{width:48px}
+  .lp-panel h2{font-size:22px;margin-top:8px}
+  .lp-action{margin-top:16px}
+  .lp-domain{margin-top:12px}
+}
+
+/* Short landscape (for example 844x390): keep two columns and compact them. */
+@media (max-height:620px) and (min-width:761px){
+  .login-body{padding:56px 18px 14px}
+  .lp-main{max-width:900px;gap:10px}
+  .lp-card{min-height:0}
+  .lp-hero{padding:20px 24px}
+  .lp-pill{font-size:11px;padding:6px 11px}
+  .lp-hero-copy{margin-top:14px}
+  .lp-hero h1{font-size:clamp(23px,3vw,30px)}
+  .lp-hero-copy p{display:none}
+  .lp-tiles{margin-top:14px;padding-top:0}
+  .lp-tiles li{min-height:46px}
+  .lp-panel{padding:18px 24px}
+  .lp-seals img{width:40px}
+  .lp-panel h2{font-size:22px;margin-top:8px}
+  .lp-system{font-size:8.5px;margin-top:5px}
+  .lp-action{margin-top:14px}
+  .lp-hint{font-size:12px;margin-top:9px}
+  .lp-domain{margin-top:10px;font-size:10px}
+  .lp-upm{min-height:44px}
+  .lp-theme{top:8px;right:10px}
+  .lp-theme button{width:38px;height:38px;min-width:38px}
+  .lp-foot{display:none}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .lp-theme button,
+  .lp-upm,
+  .lp-demo-account{transition:none}
+}

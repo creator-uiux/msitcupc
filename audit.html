@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit Log  --  ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- Theme before first paint (?theme=dark|light, else the saved choice), so an
+     import or a direct link never flashes the wrong palette.
+     Defaults to light (no auto-OS-dark). -->
+<script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1E3A5F">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="chromeSide"></aside>
+  <div class="main">
+    <header class="appbar" id="chromeAppbar"></header>
+    <header class="topbar" id="chromeTopbar"></header>
+
+    <main class="content">
+      <div class="sec-title">
+        <h2>Audit log</h2>
+        <span class="hint">Append-only record of every status change and administrative action</span>
+      </div>
+
+      <div class="card">
+        <div class="filters">
+          <div class="field"><label for="aQ">Search</label>
+            <input type="search" id="aQ" placeholder="Text, record id or person…"></div>
+          <div class="field"><label for="aBy">Actor</label>
+            <select id="aBy"><option value="">All actors</option></select></div>
+          <div class="field"><label for="aType">Subject</label>
+            <select id="aType"><option value="">All subjects</option></select></div>
+          <div class="field"><label for="aKind">Event</label>
+            <select id="aKind"><option value="">All events</option></select></div>
+          <div class="field"><label for="aFrom">From</label><input type="date" id="aFrom"></div>
+          <div class="field"><label for="aTo">To</label><input type="date" id="aTo"></div>
+          <div class="field filter-action">
+            <button class="btn btn-ghost" id="aReset">Reset</button></div>
+          <div class="field filter-action">
+            <button class="btn btn-soft" id="aCsv">Export CSV</button></div>
+        </div>
+      </div>
+
+      <div class="card mt">
+        <div class="card-head"><h3>Events</h3>
+          <span class="chip" id="aCount"> -- </span>
+          <span class="hint">newest first</span></div>
+        <table class="table">
+          <thead><tr><th>When</th><th>Actor</th><th>Event</th><th>Record</th><th>Detail</th></tr></thead>
+          <tbody id="aBody"></tbody>
+        </table>
+        <div id="aPagination"></div>
+        <div class="empty" id="aEmpty" hidden><img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No audit events match these filters.</div>
+      </div>
+    </main>
+
+    <nav class="bottomnav" id="chromeBottom"></nav>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/flow.js"></script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/time.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/live.js"></script>
+<script>
+UI.mountChrome({ title: 'Audit log', sub: 'Who did what, when  --  tamper-evident history' });
+
+var A_F = { q: '', by: '', type: '', kind: '', from: '', to: '' };
+var aPage = 1;
+var A_PER = 20;
+
+var KINDS = { create: 'created', status: 'status change', edit: 'edited', comment: 'message', remind: 'reminder',
+  cancel: 'cancelled', dep: 'dependency', test: 'test', confirm: 'confirmation', link: 'link', close: 'closure',
+  attach: 'attachment', office: 'office', user: 'user', ref: 'reference data', settings: 'settings',
+  schedule: 'schedule', job: 'maintenance job', outcome: 'outcome', profile: 'profile' };
+
+function audit() { return (Store.db.audit || []).slice().sort(function (a, b) {
+  return new Date(b.at) - new Date(a.at) || (b.id - a.id);
+}); }
+
+function fill() {
+  function opt(id, all, vals, label) {
+    var el = document.getElementById(id);
+    if (el.dataset.filled) return;
+    el.dataset.filled = '1';
+    el.innerHTML = '<option value="">' + all + '</option>' + vals.map(function (v) {
+      return '<option value="' + UI.attr(v) + '">' + UI.esc(label ? label(v) : v) + '</option>';
+    }).join('');
+  }
+  var rows = audit(), bys = {}, types = {}, kinds = {};
+  rows.forEach(function (a) { if (a.by) bys[a.by] = 1; if (a.subjectType) types[a.subjectType] = 1; if (a.kind) kinds[a.kind] = 1; });
+  opt('aBy', 'All actors', Object.keys(bys).sort(), null);
+  opt('aType', 'All subjects', Object.keys(types).sort(), null);
+  opt('aKind', 'All events', Object.keys(kinds).sort(), function (k) { return KINDS[k] || k; });
+  document.getElementById('aBy').value = A_F.by;
+  document.getElementById('aType').value = A_F.type;
+  document.getElementById('aKind').value = A_F.kind;
+}
+
+function filtered() {
+  return audit().filter(function (a) {
+    if (A_F.by && a.by !== A_F.by) return false;
+    if (A_F.type && a.subjectType !== A_F.type) return false;
+    if (A_F.kind && a.kind !== A_F.kind) return false;
+    if (A_F.from && String(a.at).slice(0, 10) < A_F.from) return false;
+    if (A_F.to && String(a.at).slice(0, 10) > A_F.to) return false;
+    if (A_F.q) {
+      var hay = [a.text, a.subjectId, a.by, a.status, a.role].join(' ').toLowerCase();
+      if (hay.indexOf(A_F.q.toLowerCase()) === -1) return false;
+    }
+    return true;
+  });
+}
+
+function render() {
+  fill();
+  var rows = filtered();
+  document.getElementById('aCount').textContent = rows.length + ' of ' + audit().length;
+  document.getElementById('aEmpty').hidden = rows.length > 0;
+
+  var pg = UI.paginate(rows, aPage, A_PER);
+  document.getElementById('aBody').innerHTML = pg.items.map(function (a, i) {
+    var link = a.subjectType === 'ticket' && String(a.subjectId).indexOf('IT-') === 0
+      ? 'ticket.html?id=' + encodeURIComponent(a.subjectId) : '';
+    return '<tr style="--row-index:' + i + '">' +
+      '<td data-label="When"><div class="t-title">' + UI.clock(a.at) + '</div><div class="t-sub">' + UI.timeAgo(a.at) + '</div></td>' +
+      '<td data-label="Actor"><div class="t-title">' + UI.esc(a.by) + '</div><div class="t-sub">' + UI.esc(a.role || '') + '</div></td>' +
+      '<td data-label="Event"><span class="chip">' + UI.esc(KINDS[a.kind] || a.kind) + '</span></td>' +
+      '<td data-label="Record">' + (link ? '<a class="t-id" href="' + link + '">' + UI.esc(a.subjectId) + '</a>'
+        : '<span class="t-id">' + UI.esc(a.subjectId || ' -- ') + '</span>') +
+        '<div class="t-sub">' + UI.esc(a.subjectType || '') + '</div>' +
+        (a.status ? '<div class="t-sub">' + UI.esc(a.status) + '</div>' : '') + '</td>' +
+      '<td data-label="Detail">' + UI.esc(a.text) + '</td></tr>';
+  }).join('');
+
+  UI.renderPagination(document.getElementById('aPagination'), pg, function (p) { aPage = p; render(); });
+}
+
+function sync() {
+  A_F = {
+    q: document.getElementById('aQ').value, by: document.getElementById('aBy').value,
+    type: document.getElementById('aType').value, kind: document.getElementById('aKind').value,
+    from: document.getElementById('aFrom').value, to: document.getElementById('aTo').value
+  };
+  aPage = 1; render();
+}
+document.getElementById('aQ').addEventListener('input', UI.debounce(sync, 200));
+['aBy', 'aType', 'aKind', 'aFrom', 'aTo'].forEach(function (id) {
+  document.getElementById(id).addEventListener('change', sync);
+});
+document.getElementById('aReset').addEventListener('click', function () {
+  A_F = { q: '', by: '', type: '', kind: '', from: '', to: '' };
+  ['aQ', 'aBy', 'aType', 'aKind', 'aFrom', 'aTo'].forEach(function (id) { document.getElementById(id).value = ''; });
+  aPage = 1; render();
+});
+document.getElementById('aCsv').addEventListener('click', function () {
+  var rows = [['when', 'actor', 'role', 'event', 'subject', 'record', 'status', 'detail']];
+  filtered().forEach(function (a) {
+    rows.push([a.at, a.by, a.role || '', a.kind || '', a.subjectType || '', a.subjectId || '', a.status || '', a.text]);
+  });
+  UI.downloadCSV('audit-log.csv', rows);
+});
+
+Store.subscribe(render);
+render();
+Live.start();
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

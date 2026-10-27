@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offline -- ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#1E3A5F">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1E3A5F">
+</head>
+<body>
+<div class="app">
+  <div class="main">
+    <main class="content">
+      <div class="card card-pad offline-card">
+        <div class="offline-ic"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m7.5 4.3 9 5.1"/><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></div>
+        <h2>You are offline</h2>
+        <p class="muted">
+          The service worker keeps the app shell available, but ticket data needs
+          a connection. Reconnect and try again; nothing you submitted was lost.
+        </p>
+        <div class="row row-center">
+          <button type="button" class="btn btn-primary" onclick="window.location.reload()">Retry</button>
+          <a class="btn btn-ghost" href="dashboard.html">Go to the dashboard</a>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script>
+/* Reconnect automatically as soon as the network returns. */
+window.addEventListener('online', function () { window.location.reload(); });
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

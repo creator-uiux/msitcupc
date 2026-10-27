@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OR - Flow - ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1E3A5F">
+<!-- Theme before first paint (?theme=dark|light, else the saved choice), so an
+     import or a direct link never flashes the wrong palette.
+     Defaults to light (no auto-OS-dark). -->
+<script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
+<script>(function(){var P="or",R="requester",F="flow.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="chromeSide"></aside>
+  <div class="main">
+    <header class="appbar" id="chromeAppbar"></header>
+    <header class="topbar" id="chromeTopbar"></header>
+
+    <main class="content">
+      <div class="sec-title">
+        <h2>Workflow Guide -- the documented process, four lanes</h2>
+        <span class="hint">extracted from <span class="mono">Maintenance System.pdf</span> (Owner: Anthony Derecho, updated Jan 30, 2021)</span>
+      </div>
+
+      <div class="note mb-md"><span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m16.2 7.8-1.8 5.4a2 2 0 0 1-1.3 1.3l-5.4 1.8 1.8-5.4a2 2 0 0 1 1.3-1.3Z"/></svg></span><div>
+        <b>Who acts next.</b> <span id="nextOwnerText">Select a lane to see who must act next for each status.</span>
+      </div></div>
+
+      <div class="row row-between mb-md" role="group" aria-label="Lane filter">
+        <span class="hint">Lanes:</span>
+        <button type="button" class="btn btn-sm" data-lane="mine" id="laneMine">My lane</button>
+        <button type="button" class="btn btn-sm" data-lane="all" id="laneAll">Show all lanes</button>
+        <span class="chip">Terminator: rounded</span><span class="chip">Process: box</span>
+        <span class="chip">Decision: orange</span><span class="chip">Data store: green</span>
+        <span class="chip"><span class="live-dot inline"></span> green glow = state currently live in the app</span>
+      </div>
+
+      <div class="flowmap" id="lanes"></div>
+
+      <!-- edges -->
+      <div class="sec-title mt"><h2>Connectors</h2>
+        <span class="hint"><input id="edgeQ" class="mini-input" placeholder="filter edges..." aria-label="Filter connectors"></span>
+      </div>
+      <div class="card">
+        <table class="table edges-table">
+          <thead><tr><th>#</th><th>From</th><th>To</th><th>Label / condition</th></tr></thead>
+          <tbody id="edgeBody"></tbody>
+        </table>
+      </div>
+
+      <!-- coverage -->
+      <div class="sec-title mt"><h2>Coverage proof -- flowchart node to working behaviour</h2>
+        <span class="hint" id="covCount"> -- </span></div>
+      <div class="card">
+        <table class="cov">
+          <thead><tr><th>Flowchart node (verbatim)</th><th>Lane</th><th>Implemented where</th><th>Behaviour</th><th></th></tr></thead>
+          <tbody id="covBody"></tbody>
+        </table>
+      </div>
+
+      <div class="note mt"><span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg></span><div>
+        <b>Verification:</b> every node and every connector of the source diagram appears above; the
+        legend box is a viewer artifact and is not process flow, so it is not rendered.
+        Every row of the coverage table is a real, guarded code path, asserted by
+        <span class="mono">server/tests.py</span> and <span class="mono">tools/smoke.js</span>.
+        Coverage of the node and edge lists is checked by
+        <span class="mono">tools/appendix_c_check.py</span>.
+      </div></div>
+    </main>
+
+    <nav class="bottomnav" id="chromeBottom"></nav>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/flowdata.js"></script>
+<script src="js/flow.js"></script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/time.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/live.js"></script>
+<script>
+UI.mountChrome({ title: 'Workflow Guide', sub: 'Four lanes, every node and connector, live state' });
+
+var FD = window.FlowData;
+
+/* Where each documented node is implemented (page + guarded behaviour). */
+var IMPL = {
+  N00: ['maintenance.html / confirm.html', 'office agrees a new maintenance date; the reschedule is recorded'],
+  N01: ['request.html', 'the office lane starts here'],
+  N02: ['request.html', 'the office raises the need for IT assistance'],
+  N03: ['request.html', 'creates a real ticket with Status: Submitted'],
+  N04: ['request.html?respond=', 'supply-missing-info mode updates the same ticket'],
+  N05: ['confirm.html', 'service result review on the confirmation screen'],
+  N06: ['confirm.html', 'Accept / Reject / No-response buttons'],
+  N07: ['confirm.html', 'confirmation recorded with person and date'],
+  N08: ['confirm.html', 'feedback modal, ticket returns to diagnosis'],
+  N09: ['confirm.html', 'creates the linked recurrence ticket'],
+  N10: ['maintenance.html', 'the maintenance lane starts here'],
+  N11: ['maintenance.html', 'New maintenance schedule modal'],
+  N12: ['request.html', 'telephone, email, walk-in and on-site sources selectable'],
+  N13: ['maintenance.html', 'office availability and visit coordination'],
+  N14: ['review.html', 'Details complete decision buttons'],
+  N15: ['review.html', 'Request missing details modal'],
+  N16: ['review.html', 'assess versus request-info branch'],
+  N17: ['review.html / actions.js', 'impact and urgency form (guarded)'],
+  N18: ['review.html / actions.js', 'priority and target date fields'],
+  N19: ['review.html / actions.js', 'Assign technician modal, notifications sent'],
+  N20: ['review.html', 'Dependency follow-up in the worklist'],
+  N21: ['review.html / ticket.html', 'three-way dependency outcome'],
+  N22: ['review.html', 'updates listed with timestamps'],
+  N23: ['review.html', 'Cannot proceed, cancellation reason recorded'],
+  N24: ['technician.html / maintenance.html', 'checklist execution with per-item record'],
+  N25: ['technician.html', 'result, finding, technician, date and evidence per item'],
+  N26: ['technician.html', 'Additional fault yes or no, then the linked ticket'],
+  N27: ['technician.html', 'verification continues after no fault'],
+  N28: ['technician.html', 'shows previous office and asset history count'],
+  N29: ['technician.html / review.html', 'Coordinate service schedule modal (IT Technician lane)'],
+  N30: ['technician.html / actions.js', 'diagnosis modal (findings, actions, parts, cost, labor)'],
+  N31: ['technician.html / actions.js', 'Yes routes to On Hold, No routes to the repair actions'],
+  N32: ['technician.html / actions.js', 'Record repair and actions modal, a distinct step from diagnosis'],
+  N33: ['technician.html / actions.js', 'On Hold dependency modal with three required fields'],
+  N34: ['technician.html', 'diagnosis card with all required fields'],
+  N35: ['technician.html / ticket.html', 'test results list with pass and fail notes'],
+  N36: ['technician.html / actions.js', 'test pass and fail buttons with guards'],
+  N37: ['technician.html / actions.js', 'failed test loops back to diagnosis'],
+  N38: ['maintenance.html', 'reschedule writes the new date and keeps the cadence anchor'],
+  N39: ['maintenance.html', 'schedule record fields (all seven)'],
+  N40: ['js/live.js + maintenance.html', 'automatic schedule check every tick plus a manual button'],
+  N41: ['js/live.js', 'due No, keep active, next check logged'],
+  N42: ['js/flow.js', 'next due date computed from the configured frequency'],
+  N43: ['js/live.js', 'date comparison on each tick'],
+  N44: ['js/flow.js', 'occurrence lookup before generating'],
+  N45: ['js/flow.js', 'existing job detection'],
+  N46: ['js/flow.js', 'generates the linked job and notifies the technician'],
+  N47: ['js/flow.js', 'reuses the existing job, never duplicated'],
+  N48: ['maintenance.html', 'job table and detail panel'],
+  N49: ['confirm.html / maintenance.html', 'office confirms availability or requests a reschedule'],
+  N50: ['technician.html / js/flow.js', 'additional fault Yes, linked corrective ticket following Section 1'],
+  N51: ['js/flow.js', 'createTicket captures every required intake field'],
+  N52: ['js/flow.js', 'status constant and guarded transition'],
+  N53: ['ticket.html', 'Status and audit history timeline'],
+  N54: ['js/flow.js', 'submitInfo updates the same ticket'],
+  N55: ['js/flow.js', 'requestInfo transition (guarded)'],
+  N56: ['js/flow.js', 'assign transition (assessment required)'],
+  N57: ['js/live.js', 'role-targeted notifications plus the bell badge'],
+  N58: ['js/flow.js', 'startWork transition'],
+  N59: ['js/flow.js', 'placeHold transition'],
+  N60: ['js/flow.js', 'recordTest with pass sets Status: Resolved'],
+  N61: ['js/flow.js', 'resolved transition notifies the office that confirmation is required'],
+  N62: ['js/flow.js', 'cancel and cancelFromDependency'],
+  N63: ['js/flow.js', 'cancellation notifies the requester'],
+  N64: ['js/store.js', 'cancelled tickets kept with full history'],
+  N65: ['js/live.js', 'status kept Resolved while the reminder loop runs'],
+  N66: ['js/live.js', 'automatic follow-up reminder to the office'],
+  N67: ['js/flow.js', 'close after confirmation or authorized closure'],
+  N68: ['reports.html', 'closed tickets feed the office service history'],
+  N69: ['maintenance.html / technician.html', 'Successful, Incomplete or Cancelled, recorded by the system when the visit closes'],
+  N70: ['confirm.html', 'Issue recurs, linked ticket'],
+  N71: ['js/flow.js', 'success blocked unless the checklist is complete'],
+  N72: ['reports.html', 'asset and office history updated on success'],
+  N73: ['ticket.html', 'terminal state reached'],
+  N74: ['reports.html', 'the Office IT Service Register is the report source'],
+  N76: ['reports.html', 'report computed from live data'],
+  N77: ['reports.html', 'six working filters'],
+  N78: ['reports.html', 'rules note and role-based access'],
+  N79: ['reports.html', 'all eight report outputs'],
+  N80: ['reports.html', 'service record retained in the reports']
+};
+
+/* Next action owner per status (specification 4A.3). */
+var NEXT_OWNER = {
+  submitted: 'IT Coordinator',
+  needs_info: 'Office Requester',
+  assigned: 'IT Technician',
+  in_progress: 'IT Technician',
+  on_hold: 'IT Coordinator',
+  resolved: 'Office Requester',
+  closed: 'Nobody, record retained',
+  cancelled: 'Nobody, record retained'
+};
+
+var LANE_FOR_ROLE = { requester: 'office', coordinator: 'coordinator', technician: 'technician' };
+var myLane = LANE_FOR_ROLE[Store.db.role] || null;
+var showAll = !myLane;
+
+/* ---------------- live predicates ---------------- */
+function anyTicket(fn) { return Store.db.tickets.some(fn); }
+function anyJob(fn) { return Store.db.jobs.some(fn); }
+var LIVE = {
+  always: true,
+  never: false,
+  hasTickets: function () { return Store.db.tickets.length > 0; },
+  hasSchedules: function () { return Store.db.schedules.length > 0; },
+  hasSubmitted: function () { return anyTicket(function (t) { return t.status === 'submitted'; }); },
+  hasNeedsInfo: function () { return anyTicket(function (t) { return t.status === 'needs_info'; }); },
+  hasAssessed: function () { return anyTicket(function (t) { return t.status === 'submitted' && t.reviewed; }); },
+  hasAssigned: function () { return anyTicket(function (t) { return t.status === 'assigned'; }); },
+  hasInProgress: function () { return anyTicket(function (t) { return t.status === 'in_progress'; }); },
+  hasOnHold: function () { return anyTicket(function (t) { return t.status === 'on_hold'; }); },
+  hasResolved: function () { return anyTicket(function (t) { return t.status === 'resolved'; }); },
+  hasConfirm: function () { return anyTicket(function (t) { return t.confirmation.state === 'accepted'; }); },
+  hasRejected: function () { return anyTicket(function (t) { return t.confirmation.state === 'rejected'; }); },
+  hasReminders: function () { return anyTicket(function (t) { return t.reminders && t.reminders.length > 0; }); },
+  hasCancelled: function () { return anyTicket(function (t) { return t.status === 'cancelled'; }); },
+  hasCancellable: function () { return anyTicket(function (t) { return ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved'].indexOf(t.status) > -1; }); },
+  hasClosed: function () { return anyTicket(function (t) { return t.status === 'closed'; }); },
+  hasRecurring: function () { return anyTicket(function (t) { return t.recurring || (t.linkedTo && t.linkedTo.indexOf('IT-') === 0); }); },
+  hasDiagnosis: function () { return anyTicket(function (t) { return !!t.diagnosis.findings; }); },
+  hasTests: function () { return anyTicket(function (t) { return t.tests.length > 0; }); },
+  hasFailedTests: function () { return anyTicket(function (t) { return t.tests.some(function (x) { return x.result === 'fail'; }); }); },
+  hasJobs: function () { return Store.db.jobs.length > 0; },
+  hasOpenJob: function () { return anyJob(function (j) { return ['submitted', 'assigned', 'on_hold'].indexOf(j.status) > -1; }); },
+  hasRunJob: function () { return anyJob(function (j) { return j.status === 'in_progress'; }); },
+  hasDoneJob: function () { return anyJob(function (j) { return !!j.nextDue || j.outcome === 'success'; }); },
+  hasAwaitJob: function () { return anyJob(function (j) { return j.status === 'resolved'; }); },
+  hasDueSchedule: function () {
+    var now = Date.now();
+    return Store.db.schedules.some(function (s) { return s.active && new Date(s.dueDate).getTime() <= now; });
+  },
+  hasFutureSchedule: function () {
+    var now = Date.now();
+    return Store.db.schedules.some(function (s) { return s.active && new Date(s.dueDate).getTime() > now; });
+  },
+  hasDupSchedule: function () {
+    var now = Date.now();
+    return Store.db.schedules.some(function (s) {
+      if (!s.active || new Date(s.dueDate).getTime() > now) return false;
+      return Store.db.jobs.some(function (j) { return j.scheduleId === s.id && j.occurrence === s.dueDate; });
+    });
+  },
+  hasResched: function () { return anyJob(function (j) { return j.status === 'on_hold' || (j.reschedules && j.reschedules.length); }); }
+};
+
+/* ---------------- render ---------------- */
+function laneName(id) {
+  var l = FD.LANES.filter(function (x) { return x.id === id; })[0];
+  return l ? l.name : id;
+}
+
+function render() {
+  var nodes = FD.implementedNodes();
+  document.getElementById('lanes').innerHTML = FD.LANES.map(function (lane) {
+    var dim = !showAll && myLane && lane.id !== myLane;
+    var mine = !showAll && myLane && lane.id === myLane;
+    var laneNodes = nodes.filter(function (n) { return n.lane === lane.id; });
+    return '<div class="lane' + (dim ? ' lane-dim' : '') + (mine ? ' lane-mine' : '') + '">' +
+      '<div class="lane-head"><b>' + UI.esc(lane.name) + '</b><span>' + UI.esc(lane.sub) +
+      (mine ? ' <span class="chip">your lane</span>' : '') + '</span></div>' +
+      '<div class="lane-body">' + laneNodes.map(function (n) {
+        var on = n.live === 'always' || (LIVE[n.live] && LIVE[n.live]());
+        var kind = {
+          start: 'Start/End', end: 'Start/End', decision: 'Decision',
+          store: 'Data store', annotation: 'Annotation', action: 'Action', proc: ''
+        }[n.type] || '';
+        return '<div class="node n-' + n.type + (on ? ' active-node' : '') + '" data-node="' + n.id + '">' +
+          (kind ? '<span class="kind">' + kind + '</span>' : '') + UI.esc(n.label) + '</div>';
+      }).join('') + '</div></div>';
+  }).join('');
+
+  var q = (document.getElementById('edgeQ').value || '').toLowerCase();
+  var rows = FD.implementedEdges().filter(function (e) {
+    if (!q) return true;
+    return (FD.labelOf(e[0]) + ' ' + FD.labelOf(e[1]) + ' ' + (e[2] || '')).toLowerCase().indexOf(q) > -1;
+  });
+  document.getElementById('edgeBody').innerHTML = rows.map(function (e, i) {
+    return '<tr><td data-label="#">' + (i + 1) + '</td>' +
+      '<td data-label="From">' + UI.esc(FD.labelOf(e[0])) + '</td>' +
+      '<td data-label="To">' + UI.esc(FD.labelOf(e[1])) + '</td>' +
+      '<td data-label="Label">' + (e[2] ? '<b>' + UI.esc(e[2]) + '</b>' : '<span class="muted"> -- </span>') + '</td></tr>';
+  }).join('');
+
+  /* coverage */
+  var cov = [];
+  nodes.forEach(function (n) {
+    if (n.type === 'start' || n.type === 'end') return;
+    var im = IMPL[n.id];
+    cov.push({ id: n.id, label: n.label, lane: laneName(n.lane), where: im ? im[0] : '', what: im ? im[1] : '' });
+  });
+  var done = cov.filter(function (c) { return c.where; }).length;
+  document.getElementById('covCount').textContent = done + ' / ' + cov.length + ' nodes implemented';
+  document.getElementById('covBody').innerHTML = cov.map(function (c) {
+    return '<tr><td class="node-cell" data-label="Node"><span class="mono">' + c.id + '</span> ' + UI.esc(c.label) + '</td>' +
+      '<td data-label="Lane">' + UI.esc(c.lane) + '</td>' +
+      '<td class="mono" data-label="Implemented where">' + UI.esc(c.where || ' -- ') + '</td>' +
+      '<td data-label="Behaviour">' + UI.esc(c.what || ' -- ') + '</td>' +
+      '<td class="ok-mark" data-label="Status">' + (c.where ? UI.icon('check') : UI.icon('x')) + '</td></tr>';
+  }).join('');
+
+  /* lane filter buttons */
+  var mineBtn = document.getElementById('laneMine');
+  var allBtn = document.getElementById('laneAll');
+  if (mineBtn) {
+    mineBtn.disabled = !myLane;
+    mineBtn.className = 'btn btn-sm' + (!showAll && myLane ? ' btn-primary' : '');
+  }
+  if (allBtn) allBtn.className = 'btn btn-sm' + (showAll ? ' btn-primary' : '');
+
+  var owner = document.getElementById('nextOwnerText');
+  if (owner) {
+    owner.innerHTML = Object.keys(NEXT_OWNER).map(function (k) {
+      return '<b>' + UI.esc(k.replace(/_/g, ' ')) + '</b>: ' + UI.esc(NEXT_OWNER[k]);
+    }).join(' &middot; ');
+  }
+}
+
+document.getElementById('edgeQ').addEventListener('input', render);
+var laneMine = document.getElementById('laneMine');
+if (laneMine) laneMine.addEventListener('click', function () { showAll = false; render(); });
+var laneAll = document.getElementById('laneAll');
+if (laneAll) laneAll.addEventListener('click', function () { showAll = true; render(); });
+Store.subscribe(render);
+render();
+Live.start();
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

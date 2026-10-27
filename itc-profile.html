@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ITC - Profile - ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- Theme before first paint (?theme=dark|light, else the saved choice), so an
+     import or a direct link never flashes the wrong palette.
+     Defaults to light (no auto-OS-dark). -->
+<script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1E3A5F">
+<script>(function(){var P="itc",R="technician",F="profile.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="chromeSide"></aside>
+  <div class="main">
+    <header class="appbar" id="chromeAppbar"></header>
+    <header class="topbar" id="chromeTopbar"></header>
+
+    <main class="content">
+      <div class="sec-title">
+        <h2>Profile &amp; account settings</h2>
+        <span class="hint">Your contact details, password, theme and session</span>
+      </div>
+
+      <section class="grid grid-2">
+        <div class="stack">
+          <div class="card card-pad" id="pCard"></div>
+
+          <div class="card">
+            <div class="card-head"><h3>Contact details</h3><span class="hint">e-mail &amp; phone on your record</span></div>
+            <div class="card-pad">
+              <div class="grid grid-form">
+                <div class="field span-2"><label for="pEmail">E-mail</label><input type="email" id="pEmail" placeholder="name@upcebu.edu.ph"></div>
+                <div class="field span-2"><label for="pPhone">Phone</label><input type="text" id="pPhone" placeholder="+63 917 …"></div>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-primary" id="saveContact">Save contact details</button></div>
+              <p class="card-sub mt">Your <b>name</b> is the identity written on service records, so it is changed by a System Administrator through Users.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card">
+            <div class="card-head"><h3>Change password</h3><span class="hint">the backend owns the hash</span></div>
+            <div class="card-pad">
+              <div class="grid grid-form">
+                <div class="field"><label for="pwCurrent">Current password</label><input type="password" id="pwCurrent" autocomplete="current-password"></div>
+                <div class="field"><label for="pwNew">New password</label><input type="password" id="pwNew" autocomplete="new-password" minlength="4"></div>
+                <div class="field"><label for="pwConfirm">Confirm new password</label><input type="password" id="pwConfirm" autocomplete="new-password"></div>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-primary" id="savePw">Change password</button></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3>Appearance &amp; session</h3></div>
+            <div class="card-pad"><div id="pPrefs"></div></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottomnav" id="chromeBottom"></nav>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/flow.js"></script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/time.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/live.js"></script>
+<script>
+UI.mountChrome({ title: 'Profile & account settings', sub: 'Your details, password, theme and session' });
+
+function me() {
+  var a = UI.auth(), role = UI.roleKey();
+  var people = Store.db.people || [];
+  var rec = null;
+  people.forEach(function (p) { if (p.name === a.name) rec = p; });
+  return { auth: a, role: role, rec: rec };
+}
+
+function render() {
+  var m = me(), a = m.auth, r = UI.ROLES[m.role];
+  document.getElementById('pCard').innerHTML =
+    '<div class="row row-wide row-center">' +
+    '<span class="avatar lg">' + UI.initials(a.name) + '</span>' +
+    '<div><h3 class="record-subject">' + UI.esc(a.name) + '</h3>' +
+    '<div class="chip-row mt-xs"><span class="chip">' + UI.esc(r.title) + '</span>' +
+    '<span class="chip">' + UI.esc(a.office || r.office) + '</span></div></div></div>' +
+    '<div class="info mt">' +
+    '<div><div class="k">Username</div><div class="v mono">' + UI.esc((m.rec && m.rec.username) || ' -- ') + '</div></div>' +
+    '<div><div class="k">Role</div><div class="v">' + UI.esc(r.title) + '</div></div>' +
+    '<div><div class="k">Session</div><div class="v">' + UI.esc(a.demo ? 'demo (not signed in)' : 'signed in') + '</div></div>' +
+    '<div><div class="k">Theme</div><div class="v">' + UI.esc(UI.theme()) + '</div></div>' +
+    '</div>';
+
+  document.getElementById('pEmail').value = (m.rec && m.rec.email) || a.email || '';
+  document.getElementById('pPhone').value = (m.rec && m.rec.phone) || '';
+
+  document.getElementById('pPrefs').innerHTML =
+    '<div class="seg" id="themeSeg">' +
+    '<button type="button" class="' + (UI.theme() !== 'dark' ? 'on' : '') + '" data-th="light">Light</button>' +
+    '<button type="button" class="' + (UI.theme() === 'dark' ? 'on' : '') + '" data-th="dark">Dark</button></div>' +
+    '<div class="row row-between mt-md">' +
+    '<span class="hint">Signed in as <b>' + UI.esc(a.name) + '</b></span>' +
+    '<a class="btn btn-ghost btn-sm" href="login.html">Switch account</a></div>';
+
+  document.querySelectorAll('#themeSeg button').forEach(function (b) {
+    b.onclick = function () { UI.applyTheme(b.dataset.th); render(); };
+  });
+}
+
+function saveContact() {
+  var email = document.getElementById('pEmail').value.trim();
+  var phone = document.getElementById('pPhone').value.trim();
+  if (email && !UI.VALIDATORS.email(email)) { UI.toast('Please enter a valid email address.', 'err'); return; }
+  if (window.ApiMode && window.Api) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'api/profile', false);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    try { xhr.send(JSON.stringify({ email: email, phone: phone })); } catch (e) { /* offline */ }
+    if (xhr.status === 200) {
+      try { var res = JSON.parse(xhr.responseText); UI.toast(res.msg || 'Profile updated.', res.ok ? 'ok' : 'err'); } catch (e) { }
+      Api.pull(); render(); return;
+    }
+  }
+  /* local demo: edit the matching person record */
+  Store.update(function (db) {
+    var a = UI.auth(), p = null;
+    (db.people || []).forEach(function (x) { if (x.name === a.name) p = x; });
+    if (p) { p.email = email; p.phone = phone; }
+    if (db.auth) { db.auth.email = email; }
+  });
+  UI.toast('Profile updated.', 'ok');
+  render();
+}
+
+function savePassword() {
+  var cur = document.getElementById('pwCurrent').value;
+  var nw = document.getElementById('pwNew').value;
+  var cf = document.getElementById('pwConfirm').value;
+  if (nw.length < 4) { UI.toast('New password must be at least 4 characters.', 'err'); return; }
+  if (nw !== cf) { UI.toast('The new passwords do not match.', 'err'); return; }
+  if (window.ApiMode && window.Api) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'api/profile', false);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    try { xhr.send(JSON.stringify({ currentPassword: cur, newPassword: nw })); } catch (e) { /* offline */ }
+    if (xhr.status === 200) {
+      try { var res = JSON.parse(xhr.responseText); UI.toast(res.msg || 'Password changed.', res.ok ? 'ok' : 'err'); } catch (e) { }
+    } else {
+      try { var err = JSON.parse(xhr.responseText); UI.toast(err.msg || 'Password change failed.', 'err'); } catch (e) { UI.toast('Password change failed.', 'err'); }
+      return;
+    }
+  } else {
+    UI.toast('Password change is applied by the backend; demo mode keeps the initial password.', 'ok');
+  }
+  ['pwCurrent', 'pwNew', 'pwConfirm'].forEach(function (id) { document.getElementById(id).value = ''; });
+}
+
+document.getElementById('saveContact').addEventListener('click', saveContact);
+document.getElementById('savePw').addEventListener('click', savePassword);
+
+Store.subscribe(render);
+render();
+Live.start();
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

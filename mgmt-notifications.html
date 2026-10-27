@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MGMT - Notifications - ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- Theme before first paint (?theme=dark|light, else the saved choice), so an
+     import or a direct link never flashes the wrong palette.
+     Defaults to light (no auto-OS-dark). -->
+<script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1E3A5F">
+<script>(function(){var P="mgmt",R="management",F="notifications.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="chromeSide"></aside>
+  <div class="main">
+    <header class="appbar" id="chromeAppbar"></header>
+    <header class="topbar" id="chromeTopbar"></header>
+
+    <main class="content">
+      <div class="sec-title">
+        <h2>Notification centre</h2>
+        <span class="hint">Every message addressed to your role  --  read state is kept per user</span>
+      </div>
+
+      <div class="card">
+        <div class="filters">
+          <div class="field"><label for="nQ">Search</label>
+            <input type="search" id="nQ" placeholder="Filter by text or ticket…"></div>
+          <div class="field"><label for="nKind">Type</label>
+            <select id="nKind"><option value="">All types</option></select></div>
+          <div class="field"><label for="nRead">Status</label>
+            <select id="nRead"><option value="">All</option><option value="unread">Unread only</option><option value="read">Read only</option></select></div>
+          <div class="field filter-action">
+            <button class="btn btn-soft" id="nMarkAll">Mark all read</button></div>
+        </div>
+      </div>
+
+      <div class="card mt">
+        <div class="card-head"><h3>Messages for you</h3>
+          <span class="chip" id="nCount"> -- </span>
+          <span class="hint" id="nUnread"></span></div>
+        <ul class="list" id="nBody"></ul>
+        <div id="nPagination"></div>
+      </div>
+    </main>
+
+    <nav class="bottomnav" id="chromeBottom"></nav>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/flow.js"></script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/time.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/live.js"></script>
+<script>
+UI.mountChrome({ title: 'Notification centre', sub: 'Role-addressed inbox, per-user read state' });
+
+var N_F = { q: '', kind: '', read: '' };
+var nPage = 1;
+var N_PER = 12;
+
+function all() {
+  var db = Store.db, role = db.role;
+  /* A notification is visible when addressed to this role (or "any") and, when
+     it names an office, to that office's people. */
+  return db.notifications.filter(function (n) {
+    if (n.role !== role && n.role !== 'any') return false;
+    if (n.office && role === 'requester') {
+      var office = (db.auth && db.auth.office) || window.ROLES[role].office;
+      if (n.office !== office) return false;
+    }
+    return true;
+  });
+}
+
+function filtered() {
+  return all().filter(function (n) {
+    if (N_F.kind && n.kind !== N_F.kind) return false;
+    if (N_F.read === 'unread' && UI.notifRead(n)) return false;
+    if (N_F.read === 'read' && !UI.notifRead(n)) return false;
+    if (N_F.q) {
+      var hay = (n.text + ' ' + (n.ticketId || '') + ' ' + (n.jobId || '')).toLowerCase();
+      if (hay.indexOf(N_F.q.toLowerCase()) === -1) return false;
+    }
+    return true;
+  });
+}
+
+function fillKinds() {
+  var sel = document.getElementById('nKind');
+  if (sel.dataset.filled) return;
+  sel.dataset.filled = '1';
+  var kinds = {};
+  all().forEach(function (n) { kinds[n.kind] = 1; });
+  var labels = { intake: 'New intake', assign: 'Assignment', confirm: 'Confirmation', remind: 'Reminder',
+    cancel: 'Cancellation', dep: 'Dependency', job: 'Maintenance job', sched: 'Schedule', test: 'Testing',
+    comment: 'Message', attachment: 'Attachment' };
+  sel.innerHTML = '<option value="">All types</option>' + Object.keys(kinds).map(function (k) {
+    return '<option value="' + UI.attr(k) + '">' + UI.esc(labels[k] || k) + '</option>';
+  }).join('');
+  sel.value = N_F.kind;
+}
+
+function render() {
+  fillKinds();
+  var list = filtered();
+  var unread = list.filter(function (n) { return !UI.notifRead(n); }).length;
+  document.getElementById('nCount').textContent = list.length + ' of ' + all().length;
+  document.getElementById('nUnread').textContent = unread ? unread + ' unread' : 'all read';
+
+  var pg = UI.paginate(list, nPage, N_PER);
+  document.getElementById('nBody').innerHTML = pg.items.length ? pg.items.map(function (n) {
+    var read = UI.notifRead(n);
+    var link = n.ticketId ? 'ticket.html?id=' + encodeURIComponent(n.ticketId)
+      : n.jobId ? 'maintenance.html?job=' + encodeURIComponent(n.jobId) : '';
+    return '<li class="notif-item' + (read ? '' : ' unread') + '">' +
+      '<span class="nico">' + UI.icon('bell') + '</span>' +
+      '<div class="body"><strong>' + UI.esc(n.text) + '</strong>' +
+      '<span>' + UI.clock(n.at) + ' · ' + UI.esc(n.kind) + (n.ticketId ? ' · ' + UI.esc(n.ticketId) : '') + '</span>' +
+      (link ? '<a class="btn btn-ghost btn-sm mt" href="' + link + '">Open record</a>' : '') + '</div>' +
+      '<span class="when">' + (read ? 'read' : 'unread') + '</span></li>';
+  }).join('') : '<li class="empty t-sm">No notifications match these filters.</li>';
+
+  UI.renderPagination(document.getElementById('nPagination'), pg, function (p) { nPage = p; render(); });
+}
+
+document.getElementById('nQ').addEventListener('input', UI.debounce(function (e) {
+  N_F.q = e.target.value; nPage = 1; render();
+}, 200));
+document.getElementById('nKind').addEventListener('change', function (e) { N_F.kind = e.target.value; nPage = 1; render(); });
+document.getElementById('nRead').addEventListener('change', function (e) { N_F.read = e.target.value; nPage = 1; render(); });
+document.getElementById('nMarkAll').addEventListener('click', function () {
+  var ids = filtered().map(function (n) { return n.id; });
+  var r = window.Admin.markNotificationsRead(ids);
+  UI.toast(r.msg, r.ok ? 'ok' : 'err');
+  if (r.ok) { UI.renderBell(); render(); }
+});
+
+Store.subscribe(render);
+render();
+Live.start();
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

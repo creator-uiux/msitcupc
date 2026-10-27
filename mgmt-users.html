@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MGMT - Users - ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- Theme before first paint (?theme=dark|light, else the saved choice), so an
+     import or a direct link never flashes the wrong palette.
+     Defaults to light (no auto-OS-dark). -->
+<script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1E3A5F">
+<script>(function(){var P="mgmt",R="management",F="users.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="chromeSide"></aside>
+  <div class="main">
+    <header class="appbar" id="chromeAppbar"></header>
+    <header class="topbar" id="chromeTopbar"></header>
+
+    <main class="content">
+      <div class="sec-title">
+        <h2>Users &amp; roles</h2>
+        <span class="hint">Accounts, roles and office assignment  --  the identity written on service records</span>
+      </div>
+
+      <div class="card">
+        <div class="filters">
+          <div class="field"><label for="uQ">Search</label>
+            <input type="search" id="uQ" placeholder="Name, username or e-mail…"></div>
+          <div class="field"><label for="uRole">Role</label>
+            <select id="uRole"><option value="">All roles</option></select></div>
+          <div class="field"><label for="uOffice">Office</label>
+            <select id="uOffice"><option value="">All offices</option></select></div>
+          <div class="field"><label for="uActive">State</label>
+            <select id="uActive"><option value="">All</option><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+          <div class="field filter-action">
+            <button class="btn btn-primary" id="btnNewUser">New user</button></div>
+        </div>
+      </div>
+
+      <section class="grid grid-kpi mt" id="uKpi"></section>
+
+      <div class="card mt">
+        <div class="card-head"><h3>Accounts</h3><span class="chip" id="uCount"> -- </span>
+          <span class="hint">new accounts sign in with the initial password <code>itc</code></span></div>
+        <table class="table">
+          <thead><tr><th>Person</th><th>Role</th><th>Office</th><th>Contact</th><th>State</th><th>Actions</th></tr></thead>
+          <tbody id="uBody"></tbody>
+        </table>
+        <div class="empty" id="uEmpty" hidden><img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No users match these filters.</div>
+      </div>
+    </main>
+
+    <nav class="bottomnav" id="chromeBottom"></nav>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/flow.js"></script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/time.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/live.js"></script>
+<script>
+UI.mountChrome({ title: 'Users & roles', sub: 'Create accounts and assign roles (RBAC)' });
+
+var U_F = { q: '', role: '', office: '', active: '' };
+var SERVER_USERS = null;   /* GET /api/users result when the backend is live */
+
+function people() {
+  if (SERVER_USERS) return SERVER_USERS;
+  return Store.db.people || [];
+}
+
+function fill() {
+  var roleSel = document.getElementById('uRole');
+  if (!roleSel.dataset.filled) {
+    roleSel.dataset.filled = '1';
+    roleSel.innerHTML = '<option value="">All roles</option>' + UI.ROLE_ORDER.map(function (r) {
+      return '<option value="' + r + '">' + UI.esc(UI.ROLES[r].title) + '</option>';
+    }).join('');
+  }
+  var offSel = document.getElementById('uOffice');
+  if (!offSel.dataset.filled) {
+    offSel.dataset.filled = '1';
+    var names = {};
+    (Store.db.offices || []).forEach(function (o) { names[o.name] = 1; });
+    people().forEach(function (p) { if (p.office) names[p.office] = 1; });
+    offSel.innerHTML = '<option value="">All offices</option>' + Object.keys(names).sort().map(function (n) {
+      return '<option value="' + UI.attr(n) + '">' + UI.esc(n) + '</option>';
+    }).join('');
+  }
+  roleSel.value = U_F.role; offSel.value = U_F.office;
+}
+
+function filtered() {
+  return people().filter(function (p) {
+    if (U_F.role && p.role !== U_F.role) return false;
+    if (U_F.office && p.office !== U_F.office) return false;
+    if (U_F.active === 'active' && p.active === false) return false;
+    if (U_F.active === 'inactive' && p.active !== false) return false;
+    if (U_F.q) {
+      var hay = [p.name, p.username, p.email].join(' ').toLowerCase();
+      if (hay.indexOf(U_F.q.toLowerCase()) === -1) return false;
+    }
+    return true;
+  });
+}
+
+function render() {
+  fill();
+  var rows = filtered();
+  var counts = { requester: 0, technician: 0, coordinator: 0, management: 0 };
+  people().forEach(function (p) { if (counts[p.role] != null) counts[p.role]++; });
+  document.getElementById('uKpi').innerHTML =
+    kpi('Requester', counts.requester, 'office staff', 'k-brand', UI.icon('id')) +
+    kpi('Technician', counts.technician, 'service delivery', 'k-ok', UI.icon('wrench')) +
+    kpi('Coordinator', counts.coordinator, 'workflow control', 'k-hold', UI.icon('compass')) +
+    kpi('System Administrator', counts.management, 'administration & audit', 'k-warn', UI.icon('shield'));
+  function kpi(l, v, d, c, dot) {
+    return '<div class="card kpi ' + c + '"><div class="dot">' + dot + '</div><div class="label">' + l +
+      '</div><div class="value">' + v + '</div><div class="delta">' + d + '</div></div>';
+  }
+
+  document.getElementById('uCount').textContent = rows.length + ' of ' + people().length;
+  document.getElementById('uEmpty').hidden = rows.length > 0;
+
+  document.getElementById('uBody').innerHTML = rows.map(function (p, i) {
+    var off = p.active === false;
+    return '<tr style="--row-index:' + i + '">' +
+      '<td data-label="Person"><div class="row row-tight"><span class="avatar sm">' + UI.initials(p.name) + '</span>' +
+      '<div><div class="t-title">' + UI.esc(p.name) + '</div><div class="t-sub mono">' + UI.esc(p.username || p.id || ' -- ') + '</div></div></div></td>' +
+      '<td data-label="Role"><span class="chip">' + UI.esc((UI.ROLES[p.role] || {}).title || p.role) + '</span></td>' +
+      '<td data-label="Office"><div class="t-title">' + UI.esc(p.office || ' -- ') + '</div></td>' +
+      '<td data-label="Contact"><div class="t-title">' + UI.esc(p.email || ' -- ') + '</div><div class="t-sub">' + UI.esc(p.phone || '') + '</div></td>' +
+      '<td data-label="State"><span class="badge ' + (off ? 'b-cancelled' : 'b-resolved') + '">' + (off ? 'Inactive' : 'Active') + '</span></td>' +
+      '<td data-label="Actions"><div class="chip-row">' +
+      '<button class="btn btn-ghost btn-sm" data-uedit="' + UI.attr(p.id != null ? p.id : p.username) + '">Edit</button>' +
+      '<button class="btn ' + (off ? 'btn-soft' : 'btn-danger-soft') + ' btn-sm" data-utoggle="' + UI.attr(p.id != null ? p.id : p.username) + '" data-on="' + (off ? '1' : '0') + '">' + (off ? 'Activate' : 'Deactivate') + '</button>' +
+      '</div></td></tr>';
+  }).join('');
+
+  document.querySelectorAll('[data-uedit]').forEach(function (b) { b.onclick = function () { editUser(b.dataset.uedit); }; });
+  document.querySelectorAll('[data-utoggle]').forEach(function (b) {
+    b.onclick = function () {
+      var r = window.Admin.setPersonActive(b.dataset.utoggle, b.dataset.on === '1');
+      UI.toast(r.msg, r.ok ? 'ok' : 'err');
+    };
+  });
+}
+
+function findPerson(key) {
+  var hit = null;
+  people().forEach(function (p) { if (String(p.id) === String(key) || String(p.username) === String(key)) hit = p; });
+  return hit;
+}
+
+function officesFor() {
+  var names = {};
+  (Store.db.offices || []).forEach(function (o) { names[o.name] = 1; });
+  people().forEach(function (p) { if (p.office) names[p.office] = 1; });
+  return Object.keys(names).sort();
+}
+
+function userModal(p) {
+  p = p || {};
+  var isNew = p.id == null && !p.username;
+  UI.openModal(isNew ? 'New user account' : 'Edit user  --  ' + p.name,
+    '<div class="grid grid-form">' +
+    UI.field('Full name', UI.input('name', 'e.g. J. Dela Cruz', p.name || '', { required: true })) +
+    UI.field('Role', UI.select('role', UI.ROLE_ORDER.map(function (r) { return [r, UI.ROLES[r].title]; }), p.role || 'requester', true)) +
+    UI.field('Office', UI.select('office', officesFor(), p.office || '', false)) +
+    UI.field('E-mail', UI.input('email', 'name@upcebu.edu.ph', p.email || '', { type: 'email' })) +
+    UI.field('Phone', UI.input('phone', '+63 917 …', p.phone || '')) + '</div>' +
+    (isNew ? '<p class="card-sub mt">A username is generated from the name; the account starts with the password <code>itc</code>.</p>'
+           : '<p class="card-sub mt">Renaming a person updates every service record that names them.</p>'),
+    '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">' + (isNew ? 'Create account' : 'Save user') + '</button>');
+  document.getElementById('mGo').onclick = function () {
+    var body = {
+      name: UI.modalValue('name'), role: UI.modalValue('role'), office: UI.modalValue('office'),
+      email: UI.modalValue('email'), phone: UI.modalValue('phone')
+    };
+    if (!isNew) body.id = p.id != null ? p.id : p.username;
+    var r = window.Admin.savePerson(body);
+    UI.toast(r.msg, r.ok ? 'ok' : 'err');
+    if (r.ok) { UI.closeModal(); refreshServer(); }
+  };
+}
+function editUser(key) { userModal(findPerson(key) || {}); }
+
+/* Live mode: GET /api/users is the authoritative, office/role-filtered listing. */
+function refreshServer() {
+  if (!window.ApiMode || !window.Api) return;
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', 'api/users', false);
+  try { xhr.send(null); } catch (e) { return; }
+  if (xhr.status === 200) {
+    try { SERVER_USERS = JSON.parse(xhr.responseText).users || null; } catch (e) { SERVER_USERS = null; }
+    render();
+  }
+}
+
+document.getElementById('uQ').addEventListener('input', UI.debounce(function (e) { U_F.q = e.target.value; render(); }, 200));
+['uRole', 'uOffice', 'uActive'].forEach(function (id) {
+  document.getElementById(id).addEventListener('change', function () {
+    U_F = { q: document.getElementById('uQ').value, role: document.getElementById('uRole').value,
+      office: document.getElementById('uOffice').value, active: document.getElementById('uActive').value };
+    render();
+  });
+});
+document.getElementById('btnNewUser').addEventListener('click', function () { userModal(null); });
+
+Store.subscribe(render);
+render();
+refreshServer();
+Live.start();
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

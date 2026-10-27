@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OR - Reports - ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- Theme before first paint (?theme=dark|light, else the saved choice), so an
+     import or a direct link never flashes the wrong palette.
+     Defaults to light (no auto-OS-dark). -->
+<script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1E3A5F">
+<script>(function(){var P="or",R="requester",F="reports.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="chromeSide"></aside>
+  <div class="main">
+    <header class="appbar" id="chromeAppbar"></header>
+    <header class="topbar" id="chromeTopbar"></header>
+
+    <main class="content">
+      <div class="sec-title">
+        <h2>Office IT Service Reports</h2>
+        <span class="hint">Generate → filter by office, date range, category, technician, status</span>
+      </div>
+
+      <!-- filters -->
+      <div class="card">
+        <div class="filters">
+          <div class="field"><label for="fOffice">Office</label>
+            <select id="fOffice"><option value="">All offices</option></select></div>
+          <div class="field"><label for="fFrom">Date from</label><input type="date" id="fFrom" value=""></div>
+          <div class="field"><label for="fTo">Date to</label><input type="date" id="fTo" value=""></div>
+          <div class="field"><label for="fCat">Category</label>
+            <select id="fCat"><option value="">All categories</option></select></div>
+          <div class="field"><label for="fTech">Technician</label>
+            <select id="fTech"><option value="">All technicians</option></select></div>
+          <div class="field"><label for="fStatus">Status</label>
+            <select id="fStatus"><option value="">All statuses</option></select></div>
+          <div class="field filter-action"><button class="btn btn-ghost" id="fReset">Reset filters</button></div>
+<div class="field filter-action"><button class="btn btn-primary" id="fRefresh">Refresh</button></div>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <section class="grid grid-kpi mt" id="rKpi"></section>
+
+      <section class="grid grid-2 mt">
+        <div class="stack">
+          <!-- ticket table -->
+          <div class="card">
+            <div class="card-head"><h3>Service history</h3><span class="chip" id="rCount"> -- </span>
+              <span class="hint">cancelled kept separate from completed totals</span></div>
+            <table class="table">
+              <thead><tr><th>Ticket</th><th>Office</th><th>Status</th><th>Turnaround</th><th class="cost-col">Cost</th></tr></thead>
+              <tbody id="rBody"></tbody>
+            </table>
+            <div id="rPagination"></div>
+            <div class="empty" id="rEmpty" hidden><img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No tickets match these filters.</div>
+          </div>
+
+          <!-- recurring -->
+          <div class="card">
+            <div class="card-head"><h3>Recurring issues</h3><span class="hint">linked tickets = repeat faults</span></div>
+            <ul class="list" id="rRecur"></ul>
+          </div>
+        </div>
+
+        <div class="stack">
+          <!-- status distribution -->
+          <div class="card card-pad">
+            <div class="card-head-row">
+              <b class="card-title">Status distribution</b><span class="hint">live</span>
+            </div>
+            <div class="bars hbar-list" id="rStatus"></div>
+          </div>
+
+          <!-- workload -->
+          <div class="card card-pad">
+            <b class="card-title">Workload by technician</b>
+            <div class="bars hbar-list" id="rWork"></div>
+            <div class="legend-line mt-sm"><span><i></i>Assigned / active</span><span><i class="alt"></i>Completed</span></div>
+          </div>
+
+          <!-- turnaround + costs -->
+          <div class="card card-pad">
+            <b class="card-title">Turnaround &amp; costs</b>
+            <div class="info mt" id="rTurn"></div>
+          </div>
+
+          <div class="note"><span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3l7 3v5c0 4.4-3 8.2-7 10-4-1.8-7-5.6-7-10V6z"/><path d="M9.3 12l1.9 1.9 3.6-3.7"/></svg></span><div><b>Reporting rules:</b> cancelled separate from completed totals; authorized office access; role-based IT access; completed records and audit history preserved; services stay linked to their office.</div></div>
+
+          <div class="note"><span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m15 5 4 4"/><path d="M13 7 3 17a2.1 2.1 0 0 0 3 3l10-10"/><path d="m9 11 2 2"/><path d="m11 9 2 2"/></svg></span><div><b>Metric definitions:</b> <b>turnaround</b> = resolved − created; <b>overdue</b> = active ticket past its target date (or, with no target, past intake + <span id="rSla">5</span> days). Both are computed in one place (<code>js/query.js</code> / <code>server/query.py</code>).</div></div>
+        </div>
+      </section>
+
+      <!-- the eight standard office IT service reports -->
+      <section class="mt">
+        <div class="sec-title"><h2>The eight standard reports</h2>
+          <span class="hint">every figure follows the filters above</span></div>
+        <div class="card">
+          <div class="card-head"><h3>Report catalogue</h3><span class="chip" id="rCatCount">8 reports</span>
+            <span class="hint">CSV export per report</span></div>
+          <table class="table">
+            <thead><tr><th>#</th><th>Report</th><th>Definition</th><th>Result</th><th></th></tr></thead>
+            <tbody id="rCatBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottomnav" id="chromeBottom"></nav>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/flow.js"></script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/time.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/query.js"></script>
+<script src="js/live.js"></script>
+<script>
+UI.mountChrome({ title: 'Office IT Service Reports', sub: 'Service history, totals, workload, turnaround, costs, recurring issues' });
+
+var F_ = { office: '', from: '', to: '', cat: '', tech: '', status: '' };
+var reportPage = 1;
+const REPORTS_PER_PAGE = 15;
+
+function fillFilters() {
+  var db = Store.db, offices = {}, cats = {}, techs = {}, sts = {};
+  db.tickets.forEach(function (t) {
+    offices[t.office] = 1; cats[t.category] = 1;
+    if (t.technician) techs[t.technician] = 1;
+    sts[t.status] = 1;
+  });
+  db.jobs.forEach(function (j) { techs[j.technician] = 1; });
+  fill('fOffice', 'All offices', Object.keys(offices), F_.office);
+  fill('fCat', 'All categories', Object.keys(cats), F_.cat);
+  fill('fTech', 'All technicians', Object.keys(techs), F_.tech);
+  fill('fStatus', 'All statuses', Object.keys(sts), F_.status, function (s) { return UI.STATUS[s] ? UI.STATUS[s][0] : s; });
+  function fill(id, all, arr, cur, label) {
+    var el = document.getElementById(id);
+    if (el.dataset.filled) { el.value = cur; return; }
+    el.dataset.filled = '1';
+    el.innerHTML = '<option value="">' + all + '</option>' + arr.map(function (v) {
+      return '<option value="' + UI.attr(v) + '">' + UI.esc(label ? label(v) : v) + '</option>';
+    }).join('');
+    el.value = cur;
+  }
+}
+['fOffice', 'fFrom', 'fTo', 'fCat', 'fTech', 'fStatus'].forEach(function (id) {
+  document.addEventListener('change', function (e) {
+    if (!e.target || e.target.id !== id) return;
+    F_ = {
+      office: document.getElementById('fOffice').value, from: document.getElementById('fFrom').value,
+      to: document.getElementById('fTo').value, cat: document.getElementById('fCat').value,
+      tech: document.getElementById('fTech').value, status: document.getElementById('fStatus').value
+    };
+    render();
+  });
+});
+document.getElementById('fReset').addEventListener('click', function () {
+  F_ = { office: '', from: '', to: '', cat: '', tech: '', status: '' };
+  ['fOffice', 'fFrom', 'fTo', 'fCat', 'fTech', 'fStatus'].forEach(function (id) { document.getElementById(id).value = ''; });
+  render();
+});
+document.getElementById('fRefresh').addEventListener('click', function () {
+  render();
+});
+
+function filtered() {
+  return Store.db.tickets.filter(function (t) {
+    if (F_.office && t.office !== F_.office) return false;
+    if (F_.cat && t.category !== F_.cat) return false;
+    if (F_.tech && t.technician !== F_.tech) return false;
+    if (F_.status && t.status !== F_.status) return false;
+    if (F_.from && String(t.createdAt).slice(0, 10) < F_.from) return false;
+    if (F_.to && String(t.createdAt).slice(0, 10) > F_.to) return false;
+    return true;
+  });
+}
+
+function render() {
+  fillFilters();
+  var db = Store.db, rows = filtered();
+  var showCost = UI.roleKey() !== 'requester';
+  var completed = rows.filter(function (t) { return t.status === 'closed'; });
+  var cancelled = rows.filter(function (t) { return t.status === 'cancelled'; });
+  var active = rows.filter(function (t) { return ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved'].indexOf(t.status) > -1; });
+  var overdue = active.filter(function (t) { return t.target && String(t.target).slice(0, 10) < Store.NOW().slice(0, 10); });
+  var turns = completed.filter(function (t) { return t.closedAt; }).map(function (t) {
+    return (new Date(t.closedAt) - new Date(t.createdAt)) / 864e5;
+  });
+  var avgTurn = turns.length ? (turns.reduce(function (a, b) { return a + b; }, 0) / turns.length) : 0;
+  var costs = rows.reduce(function (a, t) { return a + (t.diagnosis.cost || 0); }, 0);
+  var labor = rows.reduce(function (a, t) { return a + (t.diagnosis.labor || 0); }, 0);
+
+  document.getElementById('rKpi').innerHTML =
+    kpi('Completed (closed)', completed.length, 'confirmed or authorized closure', 'k-ok', UI.icon('checkCircle')) +
+    kpi('Cancelled', cancelled.length, 'separate from completed totals', 'k-warn', UI.icon('ban')) +
+    kpi('Still active', active.length, 'submitted → resolved', 'k-brand', UI.icon('ticket')) +
+    kpi('Overdue vs target', overdue.length, 'past target completion date', 'k-hold', UI.icon('clock'));
+  function kpi(l, v, d, c, dot) {
+    return '<div class="card kpi ' + c + '"><div class="dot">' + dot + '</div><div class="label">' + l +
+      '</div><div class="value">' + v + '</div><div class="delta">' + d + '</div></div>';
+  }
+
+  /* table */
+  document.getElementById('rCount').textContent = rows.length + ' of ' + db.tickets.length;
+  document.getElementById('rEmpty').hidden = rows.length > 0;
+
+  var pg = UI.paginate(rows, reportPage, REPORTS_PER_PAGE);
+  document.getElementById('rBody').innerHTML = pg.items.map(function (t, i) {
+    var days = t.closedAt ? ((new Date(t.closedAt) - new Date(t.createdAt)) / 864e5).toFixed(1) + 'd' : 'ongoing';
+    return '<tr style="--row-index:' + i + '"' + (t.status === 'cancelled' ? ' class="row-cancelled"' : '') + '>' +
+      '<td class="td-main" data-label="Ticket"><div class="t-id">' + UI.esc(t.id) + '</div>' +
+      '<div class="t-title">' + UI.esc(t.issue.slice(0, 44)) + '</div>' +
+      '<div class="t-sub">' + UI.esc(t.category) + (t.linkedTo ? ' · linked ' + UI.esc(t.linkedTo) : '') + '</div></td>' +
+      '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div><div class="t-sub">' + UI.esc(t.requester) + '</div></td>' +
+      '<td data-label="Status">' + UI.badge(t.status) + '</td>' +
+      '<td data-label="Turnaround">' + days + '</td>' +
+      '<td data-label="Cost" class="cost-col">₱' + (t.diagnosis.cost || 0).toFixed(2) + '</td></tr>';
+  }).join('');
+
+  UI.renderPagination(document.getElementById('rPagination'), pg, function (p) { reportPage = p; render(); });
+  document.querySelectorAll('.cost-col').forEach(function (el) { el.hidden = !showCost; });
+
+  /* recurring */
+  var recur = {};
+  db.tickets.forEach(function (t) {
+    if (t.linkedTo && t.linkedTo.indexOf('IT-') === 0) {
+      (recur[t.linkedTo] = recur[t.linkedTo] || []).push(t);
+    }
+  });
+  var keys = Object.keys(recur);
+  document.getElementById('rRecur').innerHTML = keys.length ? keys.map(function (k) {
+    return '<li><span class="ico warn">' + UI.icon('refresh') + '</span><div class="body"><strong>' + UI.esc(k) + ' → ' +
+      recur[k].map(function (t) { return UI.esc(t.id); }).join(', ') + '</strong>' +
+      '<span>' + UI.esc((Store.getTicket(k) || {}).issue || '') + '</span></div>' +
+      '<span class="when">' + recur[k].length + ' recurrence(s)</span></li>';
+  }).join('') : '<li><div class="body"><strong>No recurring issues in this period</strong><span>Recurrence appears when a closed ticket is reopened through a linked corrective ticket.</span></div></li>';
+
+  /* status distribution */
+  var order = ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved', 'closed', 'cancelled'];
+  var sc = {}; order.forEach(function (s) { sc[s] = 0; });
+  rows.forEach(function (t) { sc[t.status] = (sc[t.status] || 0) + 1; });
+  var maxS = Math.max.apply(null, order.map(function (s) { return sc[s]; }).concat([1]));
+  /* The status distribution is a horizontal list rather than eight columns:
+     the exact status names need more room than a narrow card allows, and a
+     row per status reads cleanly at any width. */
+  document.getElementById('rStatus').innerHTML = order.map(function (s) {
+    var h = Math.round(sc[s] / maxS * 100);
+    return '<div class="hbar' + (s === 'closed' || s === 'cancelled' ? ' alt' : '') + '">' +
+      '<span class="hbar-lbl">' + UI.esc(UI.STATUS[s][0]) + '</span>' +
+      '<span class="hbar-track"><span class="hbar-fill" style="width:' + Math.max(h, 2) + '%"></span></span>' +
+      '<span class="hbar-num">' + sc[s] + '</span></div>';
+  }).join('');
+
+  /* workload */
+  var techs = {};
+  rows.forEach(function (t) {
+    if (!t.technician) return;
+    techs[t.technician] = techs[t.technician] || { active: 0, done: 0 };
+    if (t.status === 'closed') techs[t.technician].done++; else techs[t.technician].active++;
+  });
+  db.jobs.forEach(function (j) {
+    if (F_.tech && j.technician !== F_.tech) return;
+    techs[j.technician] = techs[j.technician] || { active: 0, done: 0 };
+    if (j.status === 'closed') techs[j.technician].done++; else techs[j.technician].active++;
+  });
+  var names = Object.keys(techs);
+  var maxW = Math.max.apply(null, names.map(function (n) { return techs[n].active + techs[n].done; }).concat([1]));
+  document.getElementById('rWork').innerHTML = names.length ? names.map(function (n) {
+    var d = techs[n];
+    var total = d.active + d.done;
+    var activePct = Math.round(d.active / maxW * 100);
+    var donePct = Math.round(d.done / maxW * 100);
+    /* A row per technician, like the status distribution: a technician name
+       needs more room than a narrow chart column allows. */
+    return '<div class="hbar">' +
+      '<span class="hbar-lbl">' + UI.esc(n) + '</span>' +
+      '<span class="hbar-track"><span class="hbar-fill" style="width:' + Math.max(activePct, 2) + '%"></span>' +
+      '<span class="hbar-fill alt" style="width:' + Math.max(donePct, 0) + '%"></span></span>' +
+      '<span class="hbar-num">' + total + '</span></div>';
+  }).join('') : '<div class="empty"> <img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No workload data for these filters.</div>';
+
+  /* turnaround & costs */
+  var jobsFiltered = db.jobs.filter(function (j) {
+    if (F_.office && j.office !== F_.office) return false;
+    if (F_.tech && j.technician !== F_.tech) return false;
+    return true;
+  });
+  var jobDone = jobsFiltered.filter(function (j) { return j.status === 'closed'; }).length;
+  document.getElementById('rTurn').innerHTML =
+    '<div><div class="k">Avg turnaround (closed)</div><div class="v">' + avgTurn.toFixed(1) + ' days</div></div>' +
+    (showCost ? '<div><div class="k">Total recorded cost</div><div class="v">₱' + costs.toFixed(2) + '</div></div>' +
+      '<div><div class="k">Total labor</div><div class="v">' + labor.toFixed(1) + ' h</div></div>' : '') +
+    '<div><div class="k">Maintenance jobs closed</div><div class="v">' + jobDone + ' / ' + jobsFiltered.length + '</div></div>' +
+    '<div><div class="k">Compliance  --  confirmations</div><div class="v">' +
+    (completed.filter(function (t) { return t.closure === 'confirmation'; }).length + ' of ' + completed.length + ' closed by confirmation') + '</div></div>' +
+    '<div><div class="k">Audit history</div><div class="v">preserved on ' + rows.length + ' record(s)</div></div>';
+
+  renderCatalogue(rows, jobsFiltered);
+}
+
+/* ---------- the eight standard reports ---------- */
+function renderCatalogue(rows, jobsFiltered) {
+  var db = Store.db;
+  var completed = rows.filter(function (t) { return t.status === 'closed'; });
+  var cancelled = rows.filter(function (t) { return t.status === 'cancelled'; });
+  var active = rows.filter(function (t) { return Query.OPEN_STATES.indexOf(t.status) > -1; });
+  var overdue = active.filter(function (t) { return Query.isOverdue(t); });
+  var summary = Query.summarize(rows);
+
+  var byOffice = {}, byCat = {}, byTech = {}, bySource = {};
+  rows.forEach(function (t) {
+    byOffice[t.office] = (byOffice[t.office] || 0) + 1;
+    byCat[t.category] = (byCat[t.category] || 0) + 1;
+    if (t.technician) byTech[t.technician] = (byTech[t.technician] || 0) + 1;
+    bySource[t.source] = (bySource[t.source] || 0) + 1;
+  });
+  function top(o) {
+    var k = Object.keys(o).sort(function (a, b) { return o[b] - o[a]; })[0];
+    return k ? (UI.esc(k) + ' (' + o[k] + ')') : ' -- ';
+  }
+
+  function topTurnaroundByCategory(rows) {
+    var byCat = {};
+    rows.forEach(function (t) {
+      if (t.status === 'closed' && t.resolvedAt && t.category) {
+        var h = (new Date(t.resolvedAt) - new Date(t.createdAt)) / 3600000;
+        byCat[t.category] = byCat[t.category] || { sum: 0, count: 0 };
+        byCat[t.category].sum += h;
+        byCat[t.category].count += 1;
+      }
+    });
+    var best = null, bestAvg = -1;
+    Object.keys(byCat).forEach(function (cat) {
+      var avg = byCat[cat].sum / byCat[cat].count;
+      if (avg > bestAvg) { bestAvg = avg; best = cat; }
+    });
+    return best ? (UI.esc(best) + ' (' + bestAvg.toFixed(1) + ' h avg)') : ' -- ';
+  }
+
+  function topStatus(rows) {
+    var order = ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved', 'closed', 'cancelled'];
+    var sc = {}; order.forEach(function (s) { sc[s] = 0; });
+    rows.forEach(function (t) { sc[t.status] = (sc[t.status] || 0) + 1; });
+    var best = null, bestCount = -1;
+    order.forEach(function (s) { if (sc[s] > bestCount) { bestCount = sc[s]; best = s; } });
+    return best ? (UI.STATUS[best][0] + ' (' + bestCount + ')') : ' -- ';
+  }
+
+  function topPriority(rows) {
+    var pr = {}; rows.forEach(function (t) { if (t.priority) pr[t.priority] = (pr[t.priority] || 0) + 1; });
+    var best = null, bestCount = -1;
+    Object.keys(pr).forEach(function (p) { if (pr[p] > bestCount) { bestCount = pr[p]; best = p; } });
+    return best ? (best + ' (' + bestCount + ')') : ' -- ';
+  }
+
+  var jobsClosed = jobsFiltered.filter(function (j) { return j.status === 'closed'; }).length;
+  var withinPct = summary.resolved_with_target
+    ? Math.round(summary.resolved_within_target / summary.resolved_with_target * 100) + '%' : 'no samples';
+  var recur = rows.filter(function (t) { return t.linkedTo && String(t.linkedTo).indexOf('IT-') === 0; }).length;
+
+  var jobsDue = jobsFiltered.length;
+  var jobsCompliant = jobsFiltered.filter(function (j) {
+    return j.status === 'closed' && j.outcome === 'success';
+  }).length;
+  var compliancePct = jobsDue ? Math.round(jobsCompliant / jobsDue * 100) : 0;
+
+  var reports = [
+    ['Ticket volume by office', 'Count of tickets grouped by office.', top(byOffice)],
+    ['Ticket volume by category', 'Count of tickets grouped by category.', top(byCat)],
+    ['Ticket volume by source', 'Count of tickets grouped by source.', top(bySource)],
+    ['Turnaround by category', 'Average turnaround hours grouped by category.', topTurnaroundByCategory(rows)],
+    ['Overdue tickets', 'List of open tickets past due point.', overdue.length + ' overdue of ' + active.length + ' open'],
+    ['Status distribution', 'Count of tickets grouped by the eight statuses.', topStatus(rows)],
+    ['Priority distribution', 'Count of tickets grouped by priority.', topPriority(rows)],
+    ['Preventive compliance', 'Closed jobs with outcome Successful divided by maintenance occurrences that came due. Incomplete and cancelled jobs count as non-compliant.',
+      jobsCompliant + ' / ' + jobsDue + ' occurrences compliant (' + compliancePct + '%)']
+  ];
+
+  document.getElementById('rCatBody').innerHTML = reports.map(function (r, i) {
+    return '<tr style="--row-index:' + i + '"><td data-label="#">' + (i + 1) + '</td>' +
+      '<td data-label="Report"><div class="t-title">' + UI.esc(r[0]) + '</div></td>' +
+      '<td data-label="Definition"><div class="t-sub">' + UI.esc(r[1]) + '</div></td>' +
+      '<td data-label="Result"><div class="t-title">' + UI.esc(r[2]) + '</div></td>' +
+      '<td data-label="Export"><button class="btn btn-ghost btn-sm" data-rcat="' + i + '">CSV</button></td></tr>';
+  }).join('');
+
+  var sla = document.getElementById('rSla');
+  if (sla) sla.textContent = Query.DEFAULT_SLA_DAYS;
+
+  document.querySelectorAll('[data-rcat]').forEach(function (b) {
+    b.onclick = function () {
+      var idx = parseInt(b.dataset.rcat, 10);
+      exportReport(idx, reports, rows, jobsFiltered, byOffice, byCat, byTech, bySource);
+    };
+  });
+}
+function techLine(byTech, jobs) {
+  var t = {};
+  Object.keys(byTech).forEach(function (k) { t[k] = byTech[k]; });
+  jobs.forEach(function (j) { t[j.technician] = (t[j.technician] || 0) + 1; });
+  var k = Object.keys(t).sort(function (a, b) { return t[b] - t[a]; })[0];
+  return k ? UI.esc(k) + ' (' + t[k] + ')' : ' -- ';
+}
+function exportReport(idx, reports, rows, jobs, byOffice, byCat, byTech, bySource) {
+  var out = [[reports[idx][0]], ['definition', reports[idx][1]], ['result', reports[idx][2]], []];
+  if (idx === 0 || idx === 1) {
+    var withCost = UI.roleKey() !== 'requester';
+    out.push(withCost ? ['ticket', 'office', 'status', 'category', 'technician', 'created', 'resolved', 'cost']
+                      : ['ticket', 'office', 'status', 'category', 'technician', 'created', 'resolved']);
+    (idx === 1 ? rows.filter(function (t) { return t.status === 'closed' || t.status === 'cancelled'; }) : rows)
+      .forEach(function (t) {
+        var row = [t.id, t.office, t.status, t.category, t.technician || '', t.createdAt, t.resolvedAt || ''];
+        if (withCost) row.push(t.diagnosis.cost || 0);
+        out.push(row);
+      });
+  } else if (idx === 4) {
+    out.push(['technician', 'count']);
+    var t = {};
+    Object.keys(byTech).forEach(function (k) { t[k] = byTech[k]; });
+    jobs.forEach(function (j) { t[j.technician] = (t[j.technician] || 0) + 1; });
+    Object.keys(t).forEach(function (k) { out.push([k, t[k]]); });
+  } else {
+    out.push(['key', 'count']);
+    var src = idx === 5 ? byOffice : idx === 6 ? byCat : bySource;
+    Object.keys(src).forEach(function (k) { out.push([k, src[k]]); });
+  }
+  UI.downloadCSV('report-' + (idx + 1) + '.csv', out);
+}
+
+Store.subscribe(render);
+render();
+Live.start();
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

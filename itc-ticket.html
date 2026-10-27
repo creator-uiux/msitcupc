@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ITC - Ticket - ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- Theme before first paint (?theme=dark|light, else the saved choice), so an
+     import or a direct link never flashes the wrong palette.
+     Defaults to light (no auto-OS-dark). -->
+<script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1E3A5F">
+<script>(function(){var P="itc",R="technician",F="ticket.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="chromeSide"></aside>
+  <div class="main">
+    <header class="appbar" id="chromeAppbar"></header>
+    <header class="topbar" id="chromeTopbar"></header>
+
+    <main class="content">
+      <div class="sec-title">
+        <h2 id="tTitle">Ticket</h2>
+        <span class="hint">Service record and audit trail</span>
+      </div>
+
+      <div class="toolbar mb-md">
+        <label class="field-inline pick"><span>Open ticket</span>
+          <select id="tPick"></select>
+        </label>
+        <label class="field-inline grow"><span>Search</span>
+          <input type="search" id="tSearch" placeholder="Filter tickets…">
+        </label>
+      </div>
+
+      <section class="grid grid-2">
+        <div class="stack">
+          <!-- identity + status -->
+          <div class="card card-pad" id="tHead"></div>
+
+          <!-- the tabbed record -->
+          <div class="tabs" role="tablist" id="tTabs" aria-label="Service record sections">
+            <button type="button" class="tab" role="tab" id="tab-conv" aria-controls="panel-conv" aria-selected="true" data-tab="conv">Conversation</button>
+            <button type="button" class="tab" role="tab" id="tab-work" aria-controls="panel-work" aria-selected="false" data-tab="work">Service record</button>
+            <button type="button" class="tab" role="tab" id="tab-dep" aria-controls="panel-dep" aria-selected="false" data-tab="dep">Dependencies</button>
+            <button type="button" class="tab" role="tab" id="tab-hist" aria-controls="panel-hist" aria-selected="false" data-tab="hist">History</button>
+            <button type="button" class="tab" role="tab" id="tab-rel" aria-controls="panel-rel" aria-selected="false" data-tab="rel">Related</button>
+          </div>
+
+          <!-- conversation: reply composer + merged feed -->
+          <div class="tab-panel" id="panel-conv" role="tabpanel" aria-labelledby="tab-conv">
+            <div class="card card-pad" id="tReplyCard">
+              <div class="card-head-row">
+                <h3 class="card-title">Conversation</h3>
+                <span class="chip" id="tReplyMode">message</span>
+              </div>
+              <div id="tComposer"></div>
+              <div class="mt" id="tAttachmentList"></div>
+            </div>
+            <div class="card card-pad mt">
+              <div class="card-head-row">
+                <h3 class="card-title">Thread</h3>
+                <span class="chip">conversation and system events</span>
+              </div>
+              <div id="tThread"></div>
+            </div>
+          </div>
+
+          <!-- diagnosis / work / tests / confirmation -->
+          <div class="tab-panel" id="panel-work" role="tabpanel" aria-labelledby="tab-work" hidden>
+            <div class="card" id="tWorkCard"></div>
+            <div class="card mt" id="tTests"></div>
+            <div id="tConfirm"></div>
+          </div>
+
+          <!-- dependency -->
+          <div class="tab-panel" id="panel-dep" role="tabpanel" aria-labelledby="tab-dep" hidden>
+            <div id="tDep"></div>
+          </div>
+
+          <!-- history: the status changes and the audit events -->
+          <div class="tab-panel" id="panel-hist" role="tabpanel" aria-labelledby="tab-hist" hidden>
+            <div class="card card-pad">
+              <div class="card-head-row">
+                <h3 class="card-title">Status &amp; audit history</h3>
+                <span class="chip">preserved</span>
+              </div>
+              <div id="tHistory"></div>
+            </div>
+          </div>
+
+          <!-- linked records -->
+          <div class="tab-panel" id="panel-rel" role="tabpanel" aria-labelledby="tab-rel" hidden>
+            <div id="tLinked"></div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <!-- where to act -->
+          <div class="card card-pad" id="tActions"></div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottomnav" id="chromeBottom"></nav>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/flow.js"></script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/time.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/query.js"></script>
+<script src="js/actions.js"></script>
+<script src="js/live.js"></script>
+<script>
+UI.mountChrome({ title: 'Ticket Detail', sub: 'Submit → Review → Assign → Diagnose → Test → Confirm → Close' });
+
+var currentId = UI.qs('id') || '';
+var replyVisibility = 'public';
+/* The attachment records of the record on screen, in the order the chips
+   are drawn.  The chip carries the index, the viewer carries the details. */
+var attachRecords = [], attachTicketId = '';
+
+function pickList() {
+  var sel = document.getElementById('tPick');
+  var search = document.getElementById('tSearch').value.toLowerCase();
+  var tickets = Store.db.tickets.filter(function (t) {
+    return t.id.toLowerCase().includes(search) || t.office.toLowerCase().includes(search) || t.requester.toLowerCase().includes(search) || t.issue.toLowerCase().includes(search);
+  });
+  sel.innerHTML = tickets.map(function (t) {
+    return '<option value="' + t.id + '">' + t.id + '  --  ' + UI.esc(t.office) + ' (' + UI.STATUS[t.status][0] + ')</option>';
+  }).join('');
+  if (!currentId || !Store.getTicket(currentId)) {
+    var first = tickets.filter(function (t) { return t.status !== 'closed'; })[0] || tickets[0];
+    currentId = first ? first.id : '';
+  }
+  sel.value = currentId;
+}
+document.addEventListener('input', function (e) {
+  if (e.target && e.target.id === 'tSearch') { pickList(); }
+});
+document.addEventListener('change', function (e) {
+  if (e.target && e.target.id === 'tPick') { currentId = e.target.value; render(); }
+  if (e.target && e.target.id === 'tMove' && e.target.value) {
+    var href = e.target.value;
+    var id = e.target.dataset.ticket;
+    e.target.value = '';
+    location.href = (href.indexOf('?') > -1 ? href + '&' : href + '?') + 'id=' + encodeURIComponent(id);
+  }
+});
+
+/* Where does each valid transition live?  The selector below only ever offers
+   a move the signed-in role may make, and sends the person to the screen
+   that carries out that step with its required fields. */
+var TRANSITION_TARGETS = {
+  needs_info: { label: 'Request missing details', href: 'review.html' },
+  assigned: { label: 'Assign a technician', href: 'review.html' },
+  submitted: { label: 'Supply the missing information', href: 'request.html' },
+  in_progress: { label: 'Return to work', href: 'technician.html' },
+  on_hold: { label: 'Place on hold for a dependency', href: 'technician.html' },
+  resolved: { label: 'Record the test result', href: 'technician.html' },
+  closed: { label: 'Accept the result and close', href: 'confirm.html' },
+  cancelled: { label: 'Record the cancellation reason', href: 'review.html' }
+};
+
+function validMoves(t) {
+  var role = Store.db.role;
+  var out = [];
+  var row = (window.PermissionMap && window.PermissionMap.transitions[t.status]) || {};
+  Object.keys(row).forEach(function (next) {
+    if (row[next].indexOf(role) === -1) return;
+    /* a technician may only move a ticket that is assigned to them */
+    if (role === 'technician' && t.technician !== UI.viewerName()) return;
+    if (next === 'closed' && role === 'coordinator') return;  /* the office closes it */
+    if (next === 'in_progress' && t.status === 'resolved') {
+      out.push({ next: next, label: 'Reject the result and return to diagnosis', href: 'confirm.html' });
+      return;
+    }
+    var target = TRANSITION_TARGETS[next] || { label: 'Move to ' + UI.STATUS[next][0], href: 'ticket.html' };
+    out.push({ next: next, label: target.label, href: target.href });
+  });
+  return out;
+}
+
+/* Where the current status is actioned  --  the record itself is read-only. */
+function whereCard(t) {
+  var role = Store.db.role;
+  var rows = [];
+  function link(href, label, sub) {
+    rows.push('<a class="btn btn-soft btn-block" href="' + href + '">' +
+      '<span><b>' + label + '</b><br><small class="muted">' + sub + '</small></span></a>');
+  }
+  function readOnly() {
+    var owner = UI.nextOwner(t.status);
+    rows.push('<div class="note"><span>' + UI.icon('eye') + '</span><div>Read-only for your role. This step is actioned by <b>' +
+      UI.esc(owner.label) + '</b>.</div></div>');
+  }
+  var canReview = UI.can('review.html'), canConfirm = UI.can('confirm.html'),
+    canWork = UI.can('technician.html'), canRequest = UI.can('request.html');
+  if (['submitted', 'needs_info', 'assigned', 'on_hold'].indexOf(t.status) > -1) {
+    if (role === 'requester' && canRequest) link('request.html?respond=' + encodeURIComponent(t.id), 'Reply / update your request', 'Office requester intake');
+    else if (canReview) link('review.html?id=' + encodeURIComponent(t.id), 'Open in Review &amp; Assign', 'Coordinator review, assessment and assignment');
+    else readOnly();
+  } else if (t.status === 'in_progress') {
+    if (role === 'technician' && canWork) link('technician.html', 'Open in My Work', 'Diagnosis, parts and testing');
+    else if (canReview) link('review.html?id=' + encodeURIComponent(t.id), 'Open in Review &amp; Assign', 'Coordinator monitoring');
+    else readOnly();
+  } else if (t.status === 'resolved' || t.status === 'closed') {
+    if (canConfirm) link('confirm.html?id=' + encodeURIComponent(t.id), 'Open in Confirmation &amp; Closure', 'Office confirmation, closure and recurrence');
+    else readOnly();
+  } else if (t.status === 'cancelled') {
+    rows.push('<div class="note danger"><span>' + UI.icon('ban') + '</span><div>Cancelled requests are closed for action. The record and its history are retained.</div></div>');
+  }
+
+  /* the valid transitions for this role, and only those */
+  var moves = validMoves(t);
+  var selector = '';
+  if (moves.length) {
+    selector = '<div class="field mt">' +
+      '<label for="tMove">Change status</label>' +
+      '<select id="tMove" data-ticket="' + UI.attr(t.id) + '">' +
+      '<option value="">Choose the next step…</option>' +
+      moves.map(function (m) {
+        return '<option value="' + m.href + '">' + UI.esc(m.label) + '</option>';
+      }).join('') + '</select>' +
+      '<span class="help">Only the moves your role may make are listed. Each one opens the screen that records it with the fields it needs.</span>' +
+      '</div>';
+  }
+
+  return '<div class="card-head-row">' +
+    '<h3 class="card-title">Where this is actioned</h3>' +
+    '<span class="chip">' + UI.esc(window.ROLES[role].title) + '</span></div>' +
+    '<div class="btn-stack">' + rows.join('') + '</div>' + selector +
+    '<div class="card-foot">' + UI.waitingOn(t.status) +
+    '<span class="hint">Who must act next on this record.</span></div>';
+}
+
+function render() {
+  pickList();
+  var t = Store.getTicket(currentId);
+  if (!t) { document.getElementById('tTitle').textContent = 'No tickets'; return; }
+  document.getElementById('tTitle').innerHTML = UI.esc(t.issue.slice(0, 54)) + (t.issue.length > 54 ? '…' : '');
+  document.getElementById('tPick').value = t.id;
+
+  /* head */
+  document.getElementById('tHead').innerHTML =
+    '<div class="card-head-row">' +
+    '<div class="row"><span class="t-id">' + UI.esc(t.id) + '</span>' + UI.badge(t.status) + UI.prio(t.priority) +
+    (t.linkedTo ? '<span class="chip">linked → ' + UI.esc(t.linkedTo) + '</span>' : '') +
+    (t.recurring ? '<span class="chip">recurring issue</span>' : '') + '</div>' +
+    '<span class="hint">updated ' + UI.timeAgo(t.updatedAt) + '</span></div>' +
+    '<div class="mt-sm">' + UI.stepper(t.status) + '</div>' +
+    '<h3 class="record-subject">' + UI.esc(t.issue) + '</h3>' +
+    '<div class="info mt">' +
+    '<div><div class="k">Office</div><div class="v">' + UI.esc(t.office) + '</div></div>' +
+    '<div><div class="k">Requester</div><div class="v">' + UI.esc(t.requester) + '</div></div>' +
+    '<div><div class="k">Category / source</div><div class="v">' + UI.esc(t.category) + ' · ' + UI.esc(t.source) + '</div></div>' +
+    '<div><div class="k">Asset</div><div class="v mono">' + UI.esc(t.asset || ' -- ') + '</div></div>' +
+    '<div><div class="k">Impact / urgency</div><div class="v">' + UI.esc(t.impact || ' -- ') + ' / ' + UI.esc(t.urgency || ' -- ') + '</div></div>' +
+    '<div><div class="k">Target completion</div><div class="v">' + (t.target ? UI.dateOnly(t.target) : ' -- ') + '</div></div>' +
+    '<div><div class="k">Technician</div><div class="v">' + UI.esc(t.technician || ' -- ') + '</div></div>' +
+    '<div><div class="k">Attachments</div><div class="v">' + (t.attachments.length ? UI.esc(t.attachments.join(', ')) : ' -- ') + '</div></div>' +
+    '</div>';
+
+  /* dependency */
+  var dep = document.getElementById('tDep');
+  if (t.status === 'on_hold' && t.dependency) {
+    dep.innerHTML = '<div class="card card-pad"><div class="card-head-row">' +
+      '<h3 class="card-title">Dependency (parts, approval or external support)</h3>' +
+      '<span class="badge b-hold">On Hold</span></div><div class="info mt">' +
+      '<div><div class="k">Reason</div><div class="v">' + UI.esc(t.dependency.reason) + '</div></div>' +
+      '<div><div class="k">Responsible</div><div class="v">' + UI.esc(t.dependency.responsible) + '</div></div>' +
+      '<div><div class="k">Next action</div><div class="v">' + UI.esc(t.dependency.nextAction) + '</div></div>' +
+      '<div><div class="k">State</div><div class="v">' + UI.esc(t.dependency.state) + ' · due ' + UI.timeAgo(t.dependency.dueAt) + '</div></div></div>' +
+      (t.dependency.updates.length ? '<ul class="list list-divided">' +
+        t.dependency.updates.slice().reverse().map(function (u) {
+          return '<li><span class="ico">' + UI.icon('message') + '</span><div class="body"><strong>' + UI.esc(u.text) + '</strong><span>' + UI.clock(u.at) + '</span></div></li>';
+        }).join('') + '</ul>' : '') + '</div>';
+  } else dep.innerHTML = '';
+
+  /* work / diagnosis */
+  var d = t.diagnosis;
+  document.getElementById('tWorkCard').innerHTML =
+    '<div class="card-head"><h3>Diagnosis &amp; service record</h3></div>' +
+    (d.findings
+      ? '<div class="card-pad"><div class="info">' +
+        '<div><div class="k">Findings</div><div class="v">' + UI.esc(d.findings) + '</div></div>' +
+        '<div><div class="k">Actions performed</div><div class="v">' + UI.esc(d.actions || ' -- ') + '</div></div>' +
+        '<div><div class="k">Parts</div><div class="v">' + UI.esc(d.parts || ' -- ') + '</div></div>' +
+        (UI.roleKey() === 'requester' ? '' : '<div><div class="k">Cost / labor</div><div class="v">₱' + (d.cost || 0).toFixed(2) + ' · ' + (d.labor || 0) + 'h</div></div>') +
+        '<div><div class="k">Dates</div><div class="v">' + UI.esc(d.dates || ' -- ') + '</div></div>' +
+        '<div><div class="k">Evidence</div><div class="v">' + (d.evidence && d.evidence.length ? UI.esc(d.evidence.join(', ')) : ' -- ') + '</div></div>' +
+        '</div></div>'
+      : '<div class="empty"> <img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No diagnosis recorded yet.</div>');
+
+  /* tests */
+  var tests = t.tests.slice().reverse();
+  document.getElementById('tTests').innerHTML =
+    '<div class="card-head"><h3>Test results</h3></div>' +
+    (tests.length
+      ? '<ul class="list">' + tests.map(function (x) {
+        return '<li><span class="ico ' + (x.result === 'pass' ? 'ok' : 'warn') + '">' + (x.result === 'pass' ? UI.icon('check') : UI.icon('x')) + '</span>' +
+          '<div class="body"><strong>' + (x.result === 'pass' ? 'Service passed testing' : 'Failed test  --  returned to diagnosis') + '</strong>' +
+          '<span>' + UI.esc(x.note || 'no notes') + ' · ' + UI.esc(x.by) + '</span></div>' +
+          '<span class="when">' + UI.timeAgo(x.at) + '</span></li>';
+      }).join('') + '</ul>'
+      : '<div class="empty"> <img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No tests recorded.</div>');
+
+  /* confirmation */
+  var cf = document.getElementById('tConfirm');
+  if (t.status === 'resolved' || (t.status === 'closed' && t.confirmation.state !== 'none')) {
+    var s = t.confirmation.state;
+    cf.innerHTML = '<div class="card card-pad"><div class="card-head-row">' +
+      '<h3 class="card-title">Office confirmation &amp; closure</h3>' +
+      '<span class="badge ' + (s === 'accepted' ? 'b-resolved' : s === 'rejected' ? 'b-cancelled' : s === 'no_response' ? 'b-needs-info' : 'b-assigned') + '">' +
+      UI.esc(s === 'none' ? 'not requested' : s) + '</span></div>' +
+      '<div class="info mt">' +
+      '<div><div class="k">Review &amp; verify</div><div class="v">' + (s === 'accepted' ? 'Office accepts result' : s === 'rejected' ? 'Office rejected  --  feedback recorded' : s === 'no_response' ? 'No response  --  reminder loop' : 'Waiting for office decision') + '</div></div>' +
+      '<div><div class="k">Confirming person</div><div class="v">' + UI.esc(t.confirmation.person || ' -- ') + '</div></div>' +
+      '<div><div class="k">Confirmed on</div><div class="v">' + (t.confirmation.date ? UI.clock(t.confirmation.date) : ' -- ') + '</div></div>' +
+      '<div><div class="k">Feedback</div><div class="v">' + UI.esc(t.confirmation.feedback || ' -- ') + '</div></div>' +
+      '<div><div class="k">Reminders sent</div><div class="v">' + t.reminders.length + '</div></div>' +
+      '</div></div>';
+  } else cf.innerHTML = '';
+
+  /* linked record */
+  var lk = document.getElementById('tLinked');
+  var linkedJob = t.linkedTo && t.linkedTo.indexOf('MNT') === 0 ? Store.getJob(t.linkedTo) : null;
+  var linkedTkt = t.linkedTo && t.linkedTo.indexOf('IT-') === 0 ? Store.getTicket(t.linkedTo) : null;
+  var previousRecord = t.previousRecord && t.previousRecord.indexOf('IT-') === 0 ? Store.getTicket(t.previousRecord) : null;
+  lk.innerHTML = linkedJob
+    ? '<div class="card card-pad"><h3 class="card-title">Linked maintenance job</h3>' +
+    '<div class="info mt"><div><div class="k">Job</div><div class="v mono">' + UI.esc(linkedJob.id) + '</div></div>' +
+    '<div><div class="k">Schedule</div><div class="v mono">' + UI.esc(linkedJob.scheduleId) + '</div></div>' +
+    '<div><div class="k">Status</div><div class="v">' + UI.esc(linkedJob.status) + '</div></div></div>' +
+    '<a class="btn btn-soft mt" href="maintenance.html?job=' + encodeURIComponent(linkedJob.id) + '">Open in maintenance</a></div>'
+    : linkedTkt
+      ? '<div class="card card-pad"><h3 class="card-title">Linked service record</h3>' +
+      '<div class="info mt"><div><div class="k">Ticket</div><div class="v mono">' + UI.esc(linkedTkt.id) + '</div></div>' +
+      '<div><div class="k">Status</div><div class="v">' + UI.STATUS[linkedTkt.status][0] + '</div></div></div>' +
+      '<a class="btn btn-soft mt" href="ticket.html?id=' + encodeURIComponent(linkedTkt.id) + '">Open linked ticket</a></div>'
+      : previousRecord
+        ? '<div class="card card-pad"><h3 class="card-title">Previous service record</h3>' +
+        '<div class="info mt"><div><div class="k">Ticket</div><div class="v mono">' + UI.esc(previousRecord.id) + '</div></div>' +
+        '<div><div class="k">Status</div><div class="v">' + UI.STATUS[previousRecord.status][0] + '</div></div></div>' +
+        '<a class="btn btn-soft mt" href="ticket.html?id=' + encodeURIComponent(previousRecord.id) + '">Open previous record</a></div>'
+        : '';
+
+  /* where to act */
+  document.getElementById('tActions').innerHTML = whereCard(t);
+
+  /* conversation: reply composer + attachments + merged timeline */
+  renderComposer(t);
+
+  /* the thread: the conversation and the system events, one feed */
+  document.getElementById('tThread').innerHTML = UI.timelineMerged(t);
+
+  /* history: the status changes and the audit events */
+  document.getElementById('tHistory').innerHTML = UI.timelineHistory(t);
+}
+
+/* ---------- the tabs of the record ---------- */
+var TABS = ['conv', 'work', 'dep', 'hist', 'rel'];
+function showTab(name) {
+  if (TABS.indexOf(name) === -1) name = 'conv';
+  TABS.forEach(function (k) {
+    var btn = document.getElementById('tab-' + k);
+    var panel = document.getElementById('panel-' + k);
+    var on = k === name;
+    if (btn) btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    if (panel) panel.hidden = !on;
+  });
+}
+document.querySelectorAll('#tTabs .tab').forEach(function (btn) {
+  btn.addEventListener('click', function () { showTab(btn.dataset.tab); });
+});
+
+/* ---------- reply composer (public message / internal note) ---------- */
+function renderComposer(t) {
+  var role = Store.db.role;
+  var canPost = UI.can(Store.db.role === 'requester' ? 'request.html' : 'ticket.html') &&
+    (role !== 'requester' || t.requester === (Store.db.auth && Store.db.auth.name) || t.requester === window.ROLES.requester.name);
+  var closed = ['closed', 'cancelled'].indexOf(t.status) > -1;
+
+  var mode = '<div class="seg" id="tReplySeg">' +
+    '<button type="button" class="' + (replyVisibility === 'public' ? 'on' : '') + '" data-vis="public">Reply to office</button>' +
+    (UI.canSeeInternal(role) ? '<button type="button" class="' + (replyVisibility === 'internal' ? 'on' : '') + '" data-vis="internal">Internal note</button>' : '') +
+    '</div>';
+
+  document.getElementById('tReplyMode').textContent = replyVisibility === 'internal' ? 'internal note' : 'message';
+
+  if (!canPost) {
+    document.getElementById('tComposer').innerHTML = '<div class="note"><span>' + UI.icon('eye') + '</span><div>' +
+      'Read-only for your role. The office requester and the IT team carry the conversation here.</div></div>';
+  } else if (closed) {
+    document.getElementById('tComposer').innerHTML = '<div class="note"><span>' + UI.icon('lock') + '</span><div>' +
+      'This record is ' + UI.esc(UI.STATUS[t.status][0]) + '. The conversation and its history are retained and remain readable.</div></div>';
+  } else {
+    document.getElementById('tComposer').innerHTML = mode +
+      '<textarea id="tReplyText" rows="3" placeholder="' + (replyVisibility === 'internal' ? 'Internal note visible to IT staff only…' : 'Write a reply or update…') + '" class="mt-sm w-full"></textarea>' +
+      '<div class="row row-between mt-sm">' +
+      '<label class="file-btn"><input type="file" id="tFile" hidden accept="image/jpeg,image/png,image/webp,application/pdf,text/plain,text/csv,.docx,.xlsx" capture="environment">' + UI.icon('paperclip') + ' Attach a file</label>' +
+      '<button class="btn btn-primary" id="tSend">' + (replyVisibility === 'internal' ? 'Record internal note' : 'Send reply') + '</button></div>';
+  }
+
+  /* attachment list (metadata only in state; bytes streamed from the backend) */
+  var files = (Store.db.files || []).filter(function (f) { return f.ticketId === t.id; });
+  var named = (t.attachments || []);
+  /* Each chip opens the attachment in place.  The bytes are only there when
+     the server holds them, so the chip is the entry point and the viewer
+     says plainly when there is nothing to show. */
+  attachRecords = named.map(function (n) {
+    var rec = files.filter(function (f) { return f.name === n; })[0];
+    return { name: n, mime: rec ? rec.mime : '', size: rec ? rec.size : 0,
+             by: rec ? rec.by : '', at: rec ? rec.at : '' };
+  });
+  attachTicketId = t.id;
+  var items = named.map(function (n, i) {
+    var rec = files.filter(function (f) { return f.name === n; })[0];
+    var href = (window.ApiMode && rec) ? Api.attachmentURL(rec.id) : '';
+    return '<button type="button" class="chip chip-file" data-att="' + i + '"' +
+      (href ? '' : ' title="The name is on record; the file itself is not kept here"') + '>' +
+      UI.icon('paperclip') + ' ' + UI.esc(n) + '</button>' +
+      (href ? '<a class="att-open" href="' + UI.attr(href) + '" target="_blank" rel="noopener" ' +
+        'title="Open the file in a new tab">open</a>' : '');
+  }).join(' ');
+  document.getElementById('tAttachmentList').innerHTML = named.length
+    ? '<div class="chip-row">' + items + '</div>' : '';
+
+  /* bind */
+  document.querySelectorAll('#tReplySeg button').forEach(function (b) {
+    b.onclick = function () { replyVisibility = b.dataset.vis; render(); };
+  });
+  /* a chip opens the file in place */
+  document.querySelectorAll('#tAttachmentList [data-att]').forEach(function (b) {
+    b.onclick = function () {
+      var rec = attachRecords[Number(b.dataset.att)] || { name: b.textContent };
+      var files2 = (Store.db.files || []).filter(function (f) { return f.ticketId === attachTicketId && f.name === rec.name; })[0];
+      var url = (window.ApiMode && files2) ? Api.attachmentURL(files2.id) : '';
+      UI.openAttachment(rec, url);
+    };
+  });
+  var send = document.getElementById('tSend');
+  if (send) send.onclick = doReply;
+  var file = document.getElementById('tFile');
+  if (file) file.onchange = doUpload;
+}
+
+function doReply() {
+  var text = (document.getElementById('tReplyText') || {}).value || '';
+  if (!text.trim()) { UI.toast('Write a message before sending.', 'err'); return; }
+  var r = Flow.addComment(currentId, { text: text, visibility: replyVisibility });
+  UI.toast(r.msg, r.ok ? 'ok' : 'err');
+  if (r.ok) UI.renderBell();
+}
+
+function doUpload(e) {
+  var f = e.target.files && e.target.files[0];
+  if (!f) return;
+  if (!window.ApiMode || !window.Api) {
+    /* local demo: record metadata only (no bytes off-disk) */
+    Store.update(function (db) {
+      db.files = db.files || [];
+      db.files.push({ id: 'att-' + Date.now(), ticketId: currentId, jobId: null, name: f.name, mime: f.type, size: f.size, by: UI.viewerName(), at: Store.NOW() });
+      var t = Store.getTicket(currentId);
+      if (t) { t.attachments.push(f.name); }
+    });
+    UI.toast('Attached ' + f.name + ' (demo mode keeps metadata only).', 'ok');
+    return;
+  }
+  /* the upload is the one place the app really waits, so the attachment
+     list shows the loading skeleton while the bytes travel */
+  var list = document.getElementById('tAttachmentList');
+  if (list) list.innerHTML = UI.skeleton(2);
+  Api.upload(f, { ticketId: currentId }).then(function () {
+    UI.toast('Attached ' + f.name + '.', 'ok');
+    Api.pull();
+    render();
+  }).catch(function (err) {
+    UI.toast(err.message, 'err');
+    if (list) list.innerHTML = '';
+  });
+}
+
+Store.subscribe(render);
+render();
+Live.start();
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

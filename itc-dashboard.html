@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ITC - Dashboard - ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- Theme before first paint (?theme=dark|light, else the saved choice), so an
+     import or a direct link never flashes the wrong palette.
+     Defaults to light (no auto-OS-dark). -->
+<script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1E3A5F">
+<script>(function(){var P="itc",R="technician",F="dashboard.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="chromeSide"></aside>
+  <div class="main">
+    <header class="appbar" id="chromeAppbar"></header>
+    <header class="topbar" id="chromeTopbar"></header>
+
+    <main class="content">
+
+      <div class="sec-title">
+        <h2>Service dashboard</h2>
+        <span class="hint">Office IT Service Request, Maintenance &amp; Closure workflow</span>
+      </div>
+
+      <!-- KPIs (computed live) -->
+      <section class="grid grid-kpi" id="kpiGrid"></section>
+
+      <!-- the records that wait on the signed-in role -->
+      <section class="mt">
+        <div class="card">
+          <div class="card-head">
+            <h3>Needs my action</h3>
+            <span class="chip" id="mineCount"> -- </span>
+            <span class="hint" id="mineHint">the records waiting on your role</span>
+          </div>
+          <ul class="list" id="mineList"></ul>
+          <div class="empty" id="mineEmpty" hidden><img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">Nothing is waiting on you right now.</div>
+        </div>
+      </section>
+
+      <!-- ticket queue: the full width, because the record has six columns -->
+      <section class="mt">
+        <div class="card">
+          <div class="card-head">
+            <h3>Active ticket queue</h3>
+            <span class="chip" id="queueCount"> -- </span>
+            <span class="hint">Sorted by target completion date · click a row</span>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Ticket</th><th>Office / Requester</th><th>Status</th>
+                <th>Priority</th><th>Target</th><th>Technician</th>
+              </tr>
+            </thead>
+            <tbody id="queueBody"></tbody>
+          </table>
+          <div id="queuePagination"></div>
+          <div class="empty" id="queueEmpty" hidden><img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No active tickets  --  every request has reached a terminal state.</div>
+        </div>
+      </section>
+
+      <!-- supporting panels -->
+      <section class="grid grid-2 mt">
+        <div class="stack">
+          <!-- dependency follow-up (live) -->
+          <div id="depMount"></div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Maintenance due</h3>
+              <span class="hint">Auto schedule check</span>
+            </div>
+            <ul class="list" id="maintDue"></ul>
+            <div class="card-foot">
+              <a class="btn btn-soft btn-block" href="maintenance.html">Open maintenance schedule</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card">
+            <div class="card-head">
+              <h3>Status &amp; audit history</h3>
+            </div>
+            <ul class="list" id="activity"></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ticket activity over the selected period -->
+      <section class="mt">
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-head">
+              <h3>Ticket activity</h3>
+              <span class="hint" id="actUpdated"> -- </span>
+            </div>
+            <div class="card-pad">
+              <div class="row row-between">
+                <div class="row row-tight">
+                  <label class="field-inline"><span>Period</span>
+                    <select id="actRange">
+                      <option value="7">Last 7 days</option>
+                      <option value="30" selected>Last 30 days</option>
+                      <option value="90">Last 90 days</option>
+                      <option value="month">This month</option>
+                      <option value="custom">Custom range</option>
+                    </select>
+                  </label>
+                  <label class="field-inline" id="actFromWrap" hidden><span>From</span>
+                    <input type="date" id="actFrom"></label>
+                  <label class="field-inline" id="actToWrap" hidden><span>To</span>
+                    <input type="date" id="actTo"></label>
+                </div>
+                <div class="row row-tight">
+                  <button class="btn btn-ghost btn-sm" id="actRefresh">Refresh</button>
+                  <button class="btn btn-soft btn-sm" id="actExport">Export CSV</button>
+                  <button class="btn btn-ghost btn-sm" id="actTable">Show the data</button>
+                </div>
+              </div>
+              <div class="chart mt" id="actChart"></div>
+              <div id="actTableWrap" hidden class="mt"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Status breakdown</h3>
+              <span class="hint">every record the role may see</span>
+            </div>
+            <div class="card-pad">
+              <div class="bars hbar-list" id="statusBars"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- costs, recurrence and preventive compliance -->
+      <section class="mt">
+        <div class="card">
+          <div class="card-head">
+            <h3>Service costs, recurring issues and preventive maintenance</h3>
+            <span class="hint">from the same records the reports use</span>
+          </div>
+          <div class="card-pad">
+            <div class="info" id="costInfo"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- the breakdown tables -->
+      <section class="mt">
+        <div class="card">
+          <div class="card-head">
+            <h3>Service breakdown</h3>
+            <span class="hint">by office, by category and by technician</span>
+          </div>
+          <div class="tabs" role="tablist" id="bdTabs" aria-label="Service breakdown">
+            <button type="button" class="tab" role="tab" id="tab-office" aria-controls="panel-office" aria-selected="true" data-bd="office">Offices</button>
+            <button type="button" class="tab" role="tab" id="tab-category" aria-controls="panel-category" aria-selected="false" data-bd="category">Categories</button>
+            <button type="button" class="tab" role="tab" id="tab-technician" aria-controls="panel-technician" aria-selected="false" data-bd="technician">Technicians</button>
+          </div>
+          <div class="card-pad">
+            <div class="tab-panel" id="panel-office" role="tabpanel" aria-labelledby="tab-office"></div>
+            <div class="tab-panel" id="panel-category" role="tabpanel" aria-labelledby="tab-category" hidden></div>
+            <div class="tab-panel" id="panel-technician" role="tabpanel" aria-labelledby="tab-technician" hidden></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottomnav" id="chromeBottom"></nav>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/flow.js"></script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/time.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/live.js"></script>
+<script>
+UI.mountChrome({ title: 'Service Dashboard', sub: 'Office IT Service Request, Maintenance & Closure workflow' });
+
+var LIVE = ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved', 'closed', 'cancelled'];
+var queuePage = 1;
+const QUEUE_PER_PAGE = 10;
+
+function kpi(label, value, delta, cls, dot) {
+  return '<div class="card kpi ' + cls + '"><div class="dot">' + dot + '</div>' +
+    '<div class="label">' + label + '</div><div class="value">' + value + '</div>' +
+    '<div class="delta">' + delta + '</div></div>';
+}
+
+function statusLabel(st) {
+  return UI.badge(st).replace(/<[^>]+>/g, '');
+}
+
+function render() {
+  var db = Store.db;
+
+  /* ---- KPIs ---- */
+  var counts = { submitted: 0, needs_info: 0, assigned: 0, in_progress: 0, on_hold: 0, resolved: 0, closed: 0, cancelled: 0 };
+  db.tickets.forEach(function (t) { if (counts[t.status] !== undefined) counts[t.status]++; });
+  var open = db.tickets.filter(function (t) { return t.status !== 'closed' && t.status !== 'cancelled'; }).length;
+  var dueMaint = db.schedules.filter(function (s) { return s.active && new Date(s.dueDate) <= new Date(Date.now() + 7 * 864e5); }).length;
+  var overdue = db.tickets.filter(function (t) {
+    if (t.status === 'closed' || t.status === 'cancelled' || t.status === 'resolved') return false;
+    return t.target && new Date(t.target).getTime() < UI.nowMs();
+  }).length;
+  document.getElementById('kpiGrid').innerHTML =
+    kpi('Submitted', counts.submitted, '', 'k-brand', UI.icon('inbox')) +
+    kpi('Needs Information', counts.needs_info, 'Awaiting office reply  --  same ticket, no duplicates', 'k-warn', UI.icon('pen')) +
+    kpi('Assigned', counts.assigned, 'Technician assigned  --  Section 7', 'k-brand', UI.icon('wrench')) +
+    kpi('In Progress', counts['in_progress'], 'Work in progress  --  Section 8', 'k-brand', UI.icon('refresh')) +
+    kpi('On Hold · dependency', counts.on_hold, 'Parts / approval / external support', 'k-hold', UI.icon('pause')) +
+    kpi('Resolved awaiting confirmation', counts.resolved, 'Testing passed · closure pending', 'k-ok', UI.icon('checkCircle')) +
+    kpi('Closed', counts.closed, 'Service record retained', 'k-brand', UI.icon('check')) +
+    kpi('Cancelled', counts.cancelled, 'Preserved separate from completed', 'k-warn', UI.icon('ban')) +
+    kpi('Overdue', overdue, 'Past the target completion date', 'k-warn', UI.icon('alert'));
+
+  /* ---- the records that wait on the signed-in role (specification 4A.3) ---- */
+  var role = UI.roleKey();
+  var mine = [];
+  db.tickets.forEach(function (t) {
+    if (UI.waitsOnMe(t.status, false, role)) {
+      mine.push({ kind: 'Ticket', id: t.id, title: t.issue, where: t.office,
+                  status: t.status, href: 'ticket.html?id=' + encodeURIComponent(t.id) });
+    }
+  });
+  db.jobs.forEach(function (j) {
+    if (UI.waitsOnMe(j.status, true, role)) {
+      mine.push({ kind: 'Maintenance', id: j.id, title: j.category + ' visit', where: j.office,
+                  status: j.status, href: 'maintenance.html?job=' + encodeURIComponent(j.id) });
+    }
+  });
+  document.getElementById('mineCount').textContent = mine.length + (mine.length === 1 ? ' record' : ' records');
+  document.getElementById('mineHint').textContent = 'the records waiting on ' + UI.currentRole().title;
+  document.getElementById('mineEmpty').hidden = mine.length > 0;
+  document.getElementById('mineList').innerHTML = mine.map(function (m) {
+    return '<li><span class="ico ok">' + UI.icon(m.kind === 'Ticket' ? 'ticket' : 'toolbox') + '</span>' +
+      '<a class="body" href="' + m.href + '"><strong>' + UI.esc(m.id) + '  --  ' + UI.esc(m.title) + '</strong>' +
+      '<span>' + UI.esc(m.kind) + ' · ' + UI.esc(m.where) + ' · ' + statusLabel(m.status) + '</span>' +
+      UI.waitingOn(m.status, m.kind === 'Maintenance') + '</a></li>';
+  }).join('');
+
+  /* ---- queue ---- */
+  var allRows = db.tickets.slice().filter(function (t) { return t.status !== 'closed' && t.status !== 'cancelled'; }).sort(function (a, b) {
+    return String(a.target || '9999').localeCompare(String(b.target || '9999'));
+  });
+  document.getElementById('queueCount').textContent = allRows.length + ' active';
+  document.getElementById('queueEmpty').hidden = allRows.length > 0;
+
+  var pg = UI.paginate(allRows, queuePage, QUEUE_PER_PAGE);
+  document.getElementById('queueBody').innerHTML = pg.items.map(function (t, i) {
+    return '<tr data-href="ticket.html?id=' + encodeURIComponent(t.id) + '" style="--row-index:' + i + '"' + (t.status === 'cancelled' ? ' class="row-cancelled"' : '') + '>' +
+      '<td class="td-main" data-label="Ticket"><div class="t-id">' + UI.esc(t.id) + '</div>' +
+      '<div class="t-title">' + UI.esc(t.issue.slice(0, 58)) + (t.issue.length > 58 ? '…' : '') + '</div>' +
+      '<div class="t-sub">' + UI.esc(t.category) + (t.asset ? ' · Asset ' + UI.esc(t.asset) : '') + (t.linkedTo ? ' · linked to ' + UI.esc(t.linkedTo) : '') + '</div></td>' +
+      '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div><div class="t-sub">' + UI.esc(t.requester) + '</div></td>' +
+      '<td data-label="Status">' + UI.badge(t.status) + UI.waitingOn(t.status) + '</td>' +
+      '<td data-label="Priority">' + UI.prio(t.priority) + '</td>' +
+      '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : ' -- ') + '</td>' +
+      '<td data-label="Technician"><div class="t-title">' + UI.esc(t.technician || ' -- ') + '</div></td></tr>';
+  }).join('');
+  document.querySelectorAll('#queueBody tr[data-href]').forEach(function (tr) {
+    tr.addEventListener('click', function () { location.href = tr.dataset.href; });
+  });
+
+  UI.renderPagination(document.getElementById('queuePagination'), pg, function (p) { queuePage = p; render(); });
+
+  /* ---- on-hold summary (actioned in Review & Assign) ---- */
+  var holds = db.tickets.filter(function (t) { return t.status === 'on_hold' && t.dependency; });
+  var depMount = document.getElementById('depMount');
+  depMount.innerHTML = '<div class="card card-pad"><div class="card-head-row">' +
+    '<h3 class="card-title">On hold · dependency</h3>' +
+    '<span class="badge ' + (holds.length ? 'b-hold' : 'b-progress') + '">' + holds.length + '</span></div>' +
+    '<p class="card-sub">' +
+    (holds.length
+      ? holds.map(function (t) { return '<span class="mono">' + UI.esc(t.id) + '</span> · ' + UI.esc(t.office); }).join('<br>') + ' await a dependency decision.'
+      : 'No tickets are waiting on a dependency.') +
+    '</p>' + (UI.can('review.html')
+      ? '<a class="btn btn-soft btn-block mt" href="review.html">Open Review &amp; Assign</a>'
+      : '<div class="note flush mt"><span>' + UI.icon('eye') + '</span><div>Dependency decisions are taken by the IT Coordinator in Review &amp; Assign.</div></div>') +
+    '</div>';
+
+  /* ---- maintenance due ---- */
+  var soon = db.schedules.filter(function (s) { return s.active; }).sort(function (a, b) {
+    return String(a.dueDate).localeCompare(String(b.dueDate));
+  }).slice(0, 4);
+  var jobBySched = {};
+  db.jobs.forEach(function (j) { if (j.status !== 'closed') jobBySched[j.scheduleId] = j; });
+  document.getElementById('maintDue').innerHTML = soon.map(function (s) {
+    var overdue = new Date(s.dueDate).getTime() < UI.nowMs();
+    var j = jobBySched[s.id];
+    return '<li><span class="ico ' + (overdue ? 'warn' : '') + '">' + (j ? UI.icon('toolbox') : UI.icon('cal')) + '</span>' +
+      '<div class="body"><strong>' + UI.esc(s.office) + '  --  ' + UI.esc(s.category) + ' PM</strong>' +
+      '<span>' + UI.esc(s.frequency) + ' · ' + s.assets.length + ' asset(s) · ' + UI.esc(s.technician) +
+      (j ? ' · job <span class="mono">' + UI.esc(j.id) + '</span> exists  --  not duplicated' : '') + '</span></div>' +
+      '<span class="when">' + UI.dateOnly(s.dueDate).slice(5) + (overdue ? ' · due' : '') + '</span></li>';
+  }).join('') || '<li><div class="body"><strong>No active schedules</strong></div></li>';
+
+  /* ---- live audit feed ---- */
+  var feed = [];
+  db.tickets.forEach(function (t) {
+    t.history.forEach(function (h) { feed.push({ at: h.at, text: h.text, by: h.by, role: h.role, kind: h.kind, id: t.id }); });
+  });
+  feed.sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
+  var kindIco = { status: UI.icon('check'), note: UI.icon('user'), test: UI.icon('flask'), confirm: UI.icon('checkCircle'), dep: UI.icon('pause'), cancel: UI.icon('ban'), remind: UI.icon('mail'), link: UI.icon('repeat') };
+  var kindCls = { confirm: 'ok', test: 'warn', dep: 'warn', cancel: 'warn', remind: 'warn' };
+  document.getElementById('activity').innerHTML = feed.slice(0, 8).map(function (h) {
+    return '<li><span class="ico ' + (kindCls[h.kind] || '') + '">' + (kindIco[h.kind] || '•') + '</span>' +
+      '<div class="body"><strong>' + UI.esc(h.text) + '</strong>' +
+      '<span><span class="mono">' + UI.esc(h.id) + '</span> · ' + UI.esc(h.by) + '</span></div>' +
+      '<span class="when">' + UI.timeAgo(h.at) + '</span></li>';
+  }).join('') || '<li><div class="body"><strong>No activity yet</strong></div></li>';
+
+  renderActivity();
+  renderBreakdown();
+  renderStatusBars();
+  renderCosts();
+}
+
+/* ---------- the status breakdown ---------- */
+function renderStatusBars() {
+  var db = Store.db;
+  var counts = {};
+  LIVE.forEach(function (s) { counts[s] = 0; });
+  db.tickets.forEach(function (t) { if (counts[t.status] !== undefined) counts[t.status]++; });
+  var max = 1;
+  LIVE.forEach(function (s) { if (counts[s] > max) max = counts[s]; });
+  document.getElementById('statusBars').innerHTML = LIVE.map(function (s) {
+    var pct = Math.round(counts[s] / max * 100);
+    return '<div class="hbar"><span class="hbar-lbl">' + UI.esc(UI.STATUS[s][0]) + '</span>' +
+      '<span class="hbar-track"><span class="hbar-fill" style="width:' + Math.max(pct, counts[s] ? 3 : 0) + '%"></span></span>' +
+      '<span class="hbar-num">' + counts[s] + '</span></div>';
+  }).join('');
+}
+
+/* ---------- costs, recurrence and preventive compliance ---------- */
+function renderCosts() {
+  var db = Store.db;
+  var cost = 0;
+  db.tickets.forEach(function (t) {
+    cost += (t.diagnosis && t.diagnosis.cost) ? Number(t.diagnosis.cost) : 0;
+  });
+  var recurring = db.tickets.filter(function (t) { return t.recurring; }).length;
+  var jobsDue = db.jobs.length;
+  var jobsOk = db.jobs.filter(function (j) { return j.status === 'closed' && j.outcome === 'success'; }).length;
+  var compliance = jobsDue ? Math.round(jobsOk / jobsDue * 1000) / 10 : 0;
+  var openJobs = db.jobs.filter(function (j) { return j.status !== 'closed' && j.status !== 'cancelled'; }).length;
+  document.getElementById('costInfo').innerHTML =
+    (UI.roleKey() === 'requester' ? '' : '<div><div class="k">Service cost recorded</div><div class="v">₱' + cost.toLocaleString('en-PH', { minimumFractionDigits: 2 }) + '</div></div>') +
+    '<div><div class="k">Recurring issues</div><div class="v">' + recurring + '</div></div>' +
+    '<div><div class="k">Preventive compliance</div><div class="v">' + compliance + '%</div></div>' +
+    '<div><div class="k">Successful visits</div><div class="v">' + jobsOk + ' of ' + jobsDue + '</div></div>' +
+    '<div><div class="k">Open maintenance visits</div><div class="v">' + openJobs + '</div></div>' +
+    '<div><div class="k">Completed services</div><div class="v">' + counts_closed(db) + '</div></div>';
+}
+function counts_closed(db) {
+  return db.tickets.filter(function (t) { return t.status === 'closed'; }).length;
+}
+
+/* ---------- ticket activity over the selected period ---------- */
+var actRange = '30';
+var actShowTable = false;
+var actUpdated = null;
+
+function actWindow() {
+  var now = new Date(UI.nowMs());
+  var from, to = new Date(now.getTime());
+  if (actRange === 'custom') {
+    var f = document.getElementById('actFrom').value;
+    var t2 = document.getElementById('actTo').value;
+    from = f ? new Date(f + 'T00:00:00') : new Date(now.getTime() - 30 * 864e5);
+    to = t2 ? new Date(t2 + 'T23:59:59') : now;
+  } else if (actRange === 'month') {
+    from = new Date(now.getFullYear(), now.getMonth(), 1);
+  } else {
+    from = new Date(now.getTime() - parseInt(actRange, 10) * 864e5);
+  }
+  if (isNaN(from.getTime())) from = new Date(now.getTime() - 30 * 864e5);
+  if (isNaN(to.getTime())) to = now;
+  if (to < from) to = from;
+  return { from: from, to: to };
+}
+
+/* The instant a ticket reached a status, taken from the preserved history. */
+function reachedAt(t, status) {
+  var h = (t.history || []).filter(function (x) { return x.status === status; })[0];
+  return h ? h.at : null;
+}
+function actInstant(t, kind) {
+  if (kind === 'submitted') return t.createdAt;
+  if (kind === 'resolved') return t.resolvedAt;
+  if (kind === 'closed') return t.closedAt;
+  if (kind === 'cancelled') return reachedAt(t, 'cancelled');
+  return null;
+}
+
+var ACT_KINDS = [
+  { key: 'submitted', label: 'Submitted', cls: 'c-submitted' },
+  { key: 'resolved', label: 'Resolved', cls: 'c-resolved' },
+  { key: 'closed', label: 'Closed', cls: 'c-closed' },
+  { key: 'cancelled', label: 'Cancelled', cls: 'c-cancelled' }
+];
+
+function renderActivity() {
+  var db = Store.db;
+  var win = actWindow();
+  var days = [], seen = {};
+  var dayMs = 864e5;
+  var start = new Date(win.from.getTime());
+  start.setHours(0, 0, 0, 0);
+  for (var d = start.getTime(); d <= win.to.getTime(); d += dayMs) {
+    var key = Time.day(new Date(d).toISOString());
+    days.push({ key: key, label: Time.date(new Date(d).toISOString()), counts: { submitted: 0, resolved: 0, closed: 0, cancelled: 0 } });
+    seen[key] = days.length - 1;
+  }
+  db.tickets.forEach(function (t) {
+    ACT_KINDS.forEach(function (k) {
+      var at = actInstant(t, k.key);
+      if (!at) return;
+      var ms = new Date(at).getTime();
+      if (ms < win.from.getTime() || ms > win.to.getTime()) return;
+      var key = Time.day(at);
+      if (seen[key] === undefined) return;
+      days[seen[key]].counts[k.key]++;
+    });
+  });
+
+  var max = 1;
+  days.forEach(function (row) {
+    ACT_KINDS.forEach(function (k) { if (row.counts[k.key] > max) max = row.counts[k.key]; });
+  });
+
+  var chart = '<div class="cols" role="img" aria-label="Submitted, resolved, closed and cancelled tickets per day">' +
+    days.map(function (row) {
+      return '<div class="col-day" title="' + UI.esc(row.label) + '">' +
+        ACT_KINDS.map(function (k) {
+          var h = Math.round(row.counts[k.key] / max * 100);
+          return '<span class="col ' + k.cls + '" style="height:' + (row.counts[k.key] ? Math.max(h, 2) : 0) + '%"></span>';
+        }).join('') + '</div>';
+    }).join('') + '</div>' +
+    '<div class="legend-line mt-sm">' +
+    ACT_KINDS.map(function (k) {
+      return '<span><i class="' + k.cls + '"></i>' + k.label + '</span>';
+    }).join('') + '</div>';
+  document.getElementById('actChart').innerHTML = days.length ? chart :
+    '<div class="empty"> <img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No activity in this period.</div>';
+
+  var rows = days.map(function (row) {
+    return '<tr><td data-label="Day">' + UI.esc(row.label) + '</td>' +
+      ACT_KINDS.map(function (k) {
+        return '<td data-label="' + k.label + '">' + row.counts[k.key] + '</td>';
+      }).join('') + '</tr>';
+  }).join('');
+  document.getElementById('actTableWrap').innerHTML =
+    '<table class="table"><caption class="sr-only">Ticket activity per day</caption>' +
+    '<thead><tr><th>Day</th>' + ACT_KINDS.map(function (k) { return '<th>' + k.label + '</th>'; }).join('') + '</tr></thead>' +
+    '<tbody>' + rows + '</tbody></table>';
+
+  actUpdated = new Date();
+  document.getElementById('actUpdated').textContent = 'updated ' + UI.timeAgo(actUpdated.toISOString());
+}
+
+/* ---------- the breakdown tables ---------- */
+function breakdownRows(key) {
+  var db = Store.db;
+  var groups = {};
+  db.tickets.forEach(function (t) {
+    var name = key === 'office' ? t.office : key === 'category' ? t.category : (t.technician || 'Unassigned');
+    var g = groups[name] || (groups[name] = { name: name, submitted: 0, assigned: 0, overdue: 0, resolved: 0, closed: 0, cancelled: 0, recurring: 0, turn: [], assign: [] });
+    g.submitted++;
+    if (t.technician) g.assigned++;
+    if (t.status === 'resolved') g.resolved++;
+    if (t.status === 'closed') g.closed++;
+    if (t.status === 'cancelled') g.cancelled++;
+    if (t.recurring) g.recurring++;
+    if (t.status !== 'closed' && t.status !== 'cancelled' && t.status !== 'resolved' && isOverdue(t)) g.overdue++;
+    if (t.resolvedAt && t.createdAt) g.turn.push((new Date(t.resolvedAt) - new Date(t.createdAt)) / 36e5);
+    var at = reachedAt(t, 'assigned');
+    if (at && t.createdAt) g.assign.push((new Date(at) - new Date(t.createdAt)) / 36e5);
+  });
+  return Object.keys(groups).map(function (k) { return groups[k]; })
+    .sort(function (a, b) { return b.submitted - a.submitted || a.name.localeCompare(b.name); });
+}
+function avg(list) {
+  if (!list.length) return null;
+  var sum = 0;
+  list.forEach(function (v) { sum += v; });
+  return sum / list.length;
+}
+function fmtHours(h) {
+  if (h === null) return ' -- ';
+  if (h < 24) return Math.round(h) + 'h';
+  return (h / 24).toFixed(1) + 'd';
+}
+function isOverdue(t) {
+  if (!t.target) return false;
+  return new Date(t.target).getTime() < UI.nowMs();
+}
+function renderBreakdown() {
+  var labels = { office: 'Office', category: 'Category', technician: 'Technician' };
+  ['office', 'category', 'technician'].forEach(function (key) {
+    var rows = breakdownRows(key);
+    var head = '<tr><th>' + labels[key] + '</th><th>Submitted</th><th>Assigned</th><th>Overdue</th>' +
+      '<th>Resolved</th><th>Closed</th><th>Cancelled</th><th>Recurring</th>' +
+      '<th>Avg turnaround</th><th>Avg time to assignment</th></tr>';
+    var body = rows.map(function (g) {
+      return '<tr><td class="td-main" data-label="' + labels[key] + '"><div class="t-title">' + UI.esc(g.name) + '</div></td>' +
+        '<td data-label="Submitted">' + g.submitted + '</td>' +
+        '<td data-label="Assigned">' + g.assigned + '</td>' +
+        '<td data-label="Overdue">' + g.overdue + '</td>' +
+        '<td data-label="Resolved">' + g.resolved + '</td>' +
+        '<td data-label="Closed">' + g.closed + '</td>' +
+        '<td data-label="Cancelled">' + g.cancelled + '</td>' +
+        '<td data-label="Recurring">' + g.recurring + '</td>' +
+        '<td data-label="Avg turnaround">' + fmtHours(avg(g.turn)) + '</td>' +
+        '<td data-label="Avg time to assignment">' + fmtHours(avg(g.assign)) + '</td></tr>';
+    }).join('');
+    document.getElementById('panel-' + key).innerHTML = rows.length
+      ? '<table class="table"><thead>' + head + '</thead><tbody>' + body + '</tbody></table>'
+      : '<div class="empty"> <img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No records to break down yet.</div>';
+  });
+}
+
+/* the breakdown tabs */
+document.querySelectorAll('#bdTabs .tab').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    ['office', 'category', 'technician'].forEach(function (k) {
+      var b = document.getElementById('tab-' + k);
+      var p = document.getElementById('panel-' + k);
+      var on = k === btn.dataset.bd;
+      if (b) b.setAttribute('aria-selected', on ? 'true' : 'false');
+      if (p) p.hidden = !on;
+    });
+  });
+});
+
+/* the activity controls */
+document.getElementById('actRange').addEventListener('change', function (e) {
+  actRange = e.target.value;
+  var custom = actRange === 'custom';
+  document.getElementById('actFromWrap').hidden = !custom;
+  document.getElementById('actToWrap').hidden = !custom;
+  renderActivity();
+});
+['actFrom', 'actTo'].forEach(function (id) {
+  document.getElementById(id).addEventListener('change', function () { renderActivity(); });
+});
+document.getElementById('actRefresh').addEventListener('click', function () {
+  renderActivity();
+  UI.toast('Activity refreshed.', 'ok');
+});
+document.getElementById('actTable').addEventListener('click', function () {
+  actShowTable = !actShowTable;
+  document.getElementById('actTableWrap').hidden = !actShowTable;
+  this.textContent = actShowTable ? 'Hide the data' : 'Show the data';
+});
+document.getElementById('actExport').addEventListener('click', function () {
+  var win = actWindow();
+  var rows = [['Date', 'Submitted', 'Resolved', 'Closed', 'Cancelled']];
+  db_activity().forEach(function (r) { rows.push(r); });
+  UI.downloadCSV('ticket-activity.csv', rows);
+  function db_activity() {
+    var out = [];
+    var days = {};
+    Store.db.tickets.forEach(function (t) {
+      ACT_KINDS.forEach(function (k) {
+        var at = actInstant(t, k.key);
+        if (!at) return;
+        var ms = new Date(at).getTime();
+        if (ms < win.from.getTime() || ms > win.to.getTime()) return;
+        var key = Time.day(at);
+        days[key] = days[key] || { d: key, submitted: 0, resolved: 0, closed: 0, cancelled: 0 };
+        days[key][k.key]++;
+      });
+    });
+    Object.keys(days).sort().forEach(function (key) {
+      var d = days[key];
+      out.push([d.d, d.submitted, d.resolved, d.closed, d.cancelled]);
+    });
+    return out;
+  }
+});
+
+Store.subscribe(render);
+render();
+Live.start();
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

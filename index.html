@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- Theme before first paint (?theme=dark|light, else the saved choice), so an
+     import or a direct link never flashes the wrong palette.
+     Defaults to light (no auto-OS-dark). -->
+<script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1E3A5F">
+</head>
+<body>
+<main class="content">
+
+  <div class="hero">
+    <div class="row row-between vp">
+      <h1>IT Service &amp; Maintenance Management System</h1>
+      <span class="badge b-resolved">Functional · real-time · v2</span>
+    </div>
+    <p>
+      A working, real-time implementation of <b>Maintenance System.pdf</b>  --  the Office IT Service Request,
+      Maintenance and Closure workflow (29-step SOP + 4-lane swimlane). Every screen runs the actual
+      workflow engine in the browser (<b>js/flow.js</b>): guarded transitions, role-based access, live
+      notifications, automatic reminders and schedule checks, persisted in <span class="mono">localStorage</span>
+      and synced across tabs. Layout switches at <b>1024 px</b> and exports to Figma with
+      <span class="mono">python tools/shots.py</span> (deterministic <span class="mono">?demo=1</span> frames).
+    </p>
+    <p>
+      A <b>zero-dependency Python&nbsp;+&nbsp;SQLite backend</b> (<span class="mono">server/</span>) runs the
+      same engine with server-enforced RBAC, background workers and Server-Sent Events. Start it with
+      <span class="mono">python server/app.py</span> and open <span class="mono">http://127.0.0.1:8787/</span>  -- 
+      every page is then live against the backend. See <span class="mono">server/README.md</span> and
+      <span class="mono">BACKEND.md</span>.
+    </p>
+    <p>
+      The published site runs the same engine in the browser, so the whole workflow works with no
+      server: the records live in the browser and the role still decides what each person may do.
+      Point the site at a running backend and it switches to the live service on its own.
+    </p>
+    <div class="row vp">
+      <span class="badge"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.5" y="3.5" width="19" height="13" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg> Desktop  --  1440 × 900</span>
+      <span class="badge"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 18h.01"/></svg> Mobile  --  390 × 844</span>
+      <span class="badge">5 viewports · PNG export → shots/</span>
+      <span class="badge">No build step · vanilla JS + css/app.css</span>
+      <span class="badge">Google-only sign-in · 4 roles</span>
+      <span class="badge b-assigned">Live site · maintenancesystemitc.web.app</span>
+    </div>
+    <div class="row mt">
+      <a class="btn btn-primary" href="login.html">Sign in with Google</a>
+      <a class="btn btn-soft" href="roles.html">Roles &amp; access matrix</a>
+    </div>
+  </div>
+
+  <!-- live previews -->
+  <div class="preview">
+    <div class="frame">
+      <div class="bar"><i></i><i></i><i></i><span>dashboard.html  --  desktop preview (1440 px)</span></div>
+      <div class="shell"><iframe src="dashboard.html" data-design="1440"></iframe></div>
+      <div class="cap"><span>Scale shown ~60%  --  click through below</span><a class="btn btn-soft" href="dashboard.html" target="_blank">Open</a></div>
+    </div>
+    <div class="frame phone">
+      <div class="bar"><i></i><i></i><i></i><span>dashboard.html  --  mobile preview (390 px)</span></div>
+      <div class="shell"><iframe src="dashboard.html" data-design="390"></iframe></div>
+      <div class="cap"><span>Bottom nav + stacked cards</span><a class="btn btn-soft" href="dashboard.html" target="_blank">Open</a></div>
+    </div>
+  </div>
+
+  <!-- gallery -->
+  <div class="sec-title mt"><h2>All screens</h2>
+    <span class="hint">every screen of the workflow</span></div>
+  <div class="gallery">
+
+    <a class="g-card" href="dashboard.html">
+      <div class="g-thumb"><div class="win">
+        <b>Service Dashboard</b>
+        <div class="ln"></div><div class="ln w60"></div><div class="ln"></div><div class="ln w40"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Dashboard</strong>
+        <p>Role-aware KPIs, the active ticket queue with all statuses, maintenance due and the audit feed.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="ticket.html">
+      <div class="g-thumb"><div class="win">
+        <b>IT-2026-000142 · detail</b>
+        <div class="ln w60"></div><div class="ln"></div><div class="ln"></div><div class="ln w40"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Ticket detail</strong>
+        <p>Read-only service record: status &amp; audit timeline, dependency hold, diagnosis/parts/costs, testing and confirmation  --  with links into the section screens.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="review.html">
+      <div class="g-thumb"><div class="win">
+        <b>Review &amp; Assign</b>
+        <div class="ln"></div><div class="ln w60"></div><div class="ln"></div><div class="ln w40"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Review &amp; Assign (coordinator)</strong>
+        <p>Intake review: request missing details, assess impact/urgency, set priority and target, assign the technician, monitor dependency holds.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="request.html">
+      <div class="g-thumb"><div class="win">
+        <b>New service request</b>
+        <div class="ln"></div><div class="ln"></div><div class="ln w60"></div><div class="ln w40"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>New request (requester)</strong>
+        <p>Intake form: office, category, asset, 4 channels (telephone/email/walk-in/on-site), attachments, reply to missing information, withdraw a request.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="technician.html">
+      <div class="g-thumb"><div class="win">
+        <b>My Work  --  J. Tan</b>
+        <div class="ln w60"></div><div class="ln"></div><div class="ln"></div><div class="ln w40"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Technician workbench</strong>
+        <p>Assigned queue, diagnosis/parts/labor entry, test pass <svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg> failed states, dependency hold, checklist execution.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="maintenance.html">
+      <div class="g-thumb"><div class="win">
+        <b>Maintenance schedule</b>
+        <div class="ln"></div><div class="ln w40"></div><div class="ln w60"></div><div class="ln"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Maintenance schedule &amp; job</strong>
+        <p>Schedule table, linked job (no duplicates), reschedule, checklist progress, additional-fault branch, next due date.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="confirm.html">
+      <div class="g-thumb"><div class="win">
+        <b>Confirmation &amp; Closure</b>
+        <div class="ln w40"></div><div class="ln"></div><div class="ln w60"></div><div class="ln"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Confirmation &amp; Closure</strong>
+        <p>Office accepts/rejects a result, reminders and no-response handling, authorized closure, recurrence into a new linked ticket, and maintenance visit confirmation.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="reports.html">
+      <div class="g-thumb"><div class="win">
+        <b>Office IT Service Reports</b>
+        <div class="ln w60"></div><div class="ln"></div><div class="ln w40"></div><div class="ln"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Reports</strong>
+        <p>Filters (office, date, category, technician, status), completed totals, workload, turnaround, recurring issues, compliance.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="flow.html">
+      <div class="g-thumb"><div class="win">
+        <b>Swimlane flowchart  --  live</b>
+        <div class="ln w40"></div><div class="ln"></div><div class="ln w60"></div><div class="ln"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Flowchart fidelity</strong>
+        <p>Every node of the source PDF rebuilt in 4 lanes, connector table with all Yes/No branches, and a node-by-node coverage proof.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="login.html">
+      <div class="g-thumb"><div class="win">
+        <b>Sign in with Google</b>
+        <div class="ln w60"></div><div class="ln"></div><div class="ln w40"></div><div class="ln"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Sign in (Google-only)</strong>
+        <p>Google Workspace sign-in with per-role account chooser  --  no passwords. The chosen account scopes the whole workspace.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="tickets.html">
+      <div class="g-thumb"><div class="win">
+        <b>Ticket register</b>
+        <div class="ln"></div><div class="ln w60"></div><div class="ln w40"></div><div class="ln"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Service Ticket list</strong>
+        <p>Every record the role may see, filtered / sorted / paged server-side  --  open / mine / closed / cancelled / overdue chips, bulk assign, CSV, and stacked cards on phones.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="register.html">
+      <div class="g-thumb"><div class="win">
+        <b>Office IT Service Register</b>
+        <div class="ln w60"></div><div class="ln"></div><div class="ln w40"></div><div class="ln"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Central Service Register</strong>
+        <p>One audit-proof list of every corrective ticket <i>and</i> preventive job across all offices, with kind / office / status / date filters and CSV.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="notifications.html">
+      <div class="g-thumb"><div class="win">
+        <b>Notification centre</b>
+        <div class="ln"></div><div class="ln w40"></div><div class="ln w60"></div><div class="ln"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Notifications</strong>
+        <p>The full role-addressed inbox behind the bell preview: kind / read filters, per-user read state and mark-all-read.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="audit.html">
+      <div class="g-thumb"><div class="win">
+        <b>Audit log</b>
+        <div class="ln w40"></div><div class="ln"></div><div class="ln w60"></div><div class="ln"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Audit log</strong>
+        <p>Tamper-evident “who did what, when” history with actor / subject / event / date filters and CSV export.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="users.html">
+      <div class="g-thumb"><div class="win">
+        <b>Users</b>
+        <div class="ln"></div><div class="ln w60"></div><div class="ln w40"></div><div class="ln"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Accounts (System Administrator)</strong>
+        <p>Create and edit people, set role / office / active state; a rename cascades to every record they own.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="offices.html">
+      <div class="g-thumb"><div class="win">
+        <b>Offices</b>
+        <div class="ln w60"></div><div class="ln"></div><div class="ln w40"></div><div class="ln"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Offices (System Administrator)</strong>
+        <p>Office records, codes, contacts and active state with service stats; renaming an office cascades everywhere.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="settings.html">
+      <div class="g-thumb"><div class="win">
+        <b>Settings &amp; reference data</b>
+        <div class="ln"></div><div class="ln w40"></div><div class="ln"></div><div class="ln w60"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Settings (System Administrator)</strong>
+        <p>Categories, priorities, sources and maintenance frequencies (with day counts that drive the next-due rule), plus the reminder interval.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="profile.html">
+      <div class="g-thumb"><div class="win">
+        <b>My profile</b>
+        <div class="ln"></div><div class="ln w60"></div><div class="ln w40"></div><div class="ln"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Profile &amp; account</strong>
+        <p>Contact details, password change and appearance / session preferences.</p>
+      </div>
+    </a>
+
+    <a class="g-card" href="roles.html">
+      <div class="g-thumb"><div class="win">
+        <b>Roles &amp; access</b>
+        <div class="ln"></div><div class="ln w60"></div><div class="ln"></div><div class="ln w40"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Roles &amp; feature matrix</strong>
+        <p>Requester, Technician, Coordinator and System Administrator  --  every role’s screens and actions, mapped to the SOP 28.2 access rules.</p>
+      </div>
+    </a>
+
+    <a class="g-card is-static" href="README.md">
+      <div class="g-thumb"><div class="win">
+        <b>README.md</b>
+        <div class="ln"></div><div class="ln w60"></div><div class="ln"></div><div class="ln w40"></div>
+      </div></div>
+      <div class="g-meta">
+        <strong>Notes &amp; Figma export steps</strong>
+        <p>SOP mapping per screen, roles &amp; sign-in notes, breakpoints, and <span class="mono">python tools/shots.py</span> to export deterministic PNG frames for Figma.</p>
+      </div>
+    </a>
+  </div>
+
+  <script>
+  (function () {
+    function fit() {
+      document.querySelectorAll('iframe[data-design]').forEach(function (f) {
+        var dw = parseFloat(f.getAttribute('data-design')) || 1440;
+        var shell = f.parentElement;
+        var s = Math.min(1, shell.clientWidth / dw);
+        f.style.transform = 'scale(' + s + ')';
+      });
+    }
+    window.addEventListener('resize', fit);
+    window.addEventListener('load', fit);
+    fit();
+  })();
+  </script>
+</main>
+<script src="js/pwa.js"></script>
+</body>
+</html>

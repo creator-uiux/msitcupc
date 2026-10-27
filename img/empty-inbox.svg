@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150" role="img" aria-label="Nothing waiting">
+  <title>Nothing waiting</title>
+  <g fill="none" stroke="#C9DCD2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M56 52h88l-10 62a8 8 0 0 1-8 7H74a8 8 0 0 1-8-7z"/>
+    <path d="M88 52V38a12 12 0 0 1 24 0v14"/>
+  </g>
+  <circle cx="100" cy="86" r="22" fill="#E6F3EC" stroke="#9FC7B2" stroke-width="3"/>
+  <path d="M93 86l5 5 10-11" fill="none" stroke="#0E6B43" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150" role="img" aria-label="No maintenance scheduled">
+  <title>No maintenance scheduled</title>
+  <g fill="none" stroke="#C9DCD2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="38" y="34" width="124" height="92" rx="8"/>
+    <path d="M38 62h124M72 22v22M128 22v22"/>
+    <path d="M66 88h30M66 106h52"/>
+  </g>
+  <circle cx="128" cy="94" r="20" fill="#E6F3EC" stroke="#9FC7B2" stroke-width="3"/>
+  <path d="M128 84v11l7 5" fill="none" stroke="#0E6B43" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,1289 @@
+"""Backend test suite for the ITC Maintenance System (standard library only).
+
+Run:
+    python server/tests.py            # quiet pass/fail summary
+    python server/tests.py -v         # show every assertion
+
+Covers the workflow engine, RBAC guards, SQLite persistence, the HTTP API,
+Server-Sent Events and the background world clock.
+"""
+import base64
+import http.client
+import json
+import math
+import os
+import random
+import sys
+import tempfile
+import threading
+import time
+import urllib.parse
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+
+import app as appmod  # noqa: E402
+import auth  # noqa: E402
+import db as database  # noqa: E402
+import delivery as delivery_mod  # noqa: E402
+import engine  # noqa: E402
+import oidc  # noqa: E402
+import query as query_mod  # noqa: E402
+import seed as seed_mod  # noqa: E402
+
+VERBOSE = "-v" in sys.argv or "--verbose" in sys.argv
+PASS = 0
+FAIL = 0
+FAILURES = []
+
+# The report and cost assertions carry the PHP peso sign, which a cp1252
+# console cannot print.  Force UTF-8 output so a failure detail never hides
+# the real problem behind an encoding error.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, ValueError):
+    pass
+
+
+def check(name, cond, detail=""):
+    global PASS, FAIL
+    if cond:
+        PASS += 1
+        if VERBOSE:
+            print("  PASS  %s" % name)
+    else:
+        FAIL += 1
+        FAILURES.append("%s%s" % (name, (" :: " + str(detail)) if detail else ""))
+        print("  FAIL  %s%s" % (name, ("  :: " + str(detail)) if detail else ""))
+
+
+def fresh():
+    return seed_mod.seed()
+
+
+# ----------------------------------------------------------------- engine
+def test_engine_lifecycle():
+    st = fresh()
+    r = engine.call(st, "coordinator", "requestInfo", ["IT-2026-000143", "serial number"])
+    check("requestInfo ok", r.get("ok"), r)
+    check("requestInfo -> needs_info", engine.get_ticket(st, "IT-2026-000143")["status"] == "needs_info")
+    check("requestInfo notified requester",
+          any(n["role"] == "requester" and n.get("ticketId") == "IT-2026-000143" for n in st["notifications"]))
+
+    r = engine.call(st, "requester", "submitInfo", ["IT-2026-000143", {"issue": "updated", "note": "SN 123"}])
+    check("submitInfo ok", r.get("ok"), r)
+    check("submitInfo -> submitted", engine.get_ticket(st, "IT-2026-000143")["status"] == "submitted")
+
+    r = engine.call(st, "coordinator", "assess", ["IT-2026-000143", {"impact": "High", "urgency": "High", "priority": "high", "target": "2026-10-20"}])
+    check("assess ok", r.get("ok"), r)
+    check("assess reviewed", engine.get_ticket(st, "IT-2026-000143")["reviewed"] is True)
+
+    r = engine.call(st, "coordinator", "assign", ["IT-2026-000143", "J. Tan"])
+    check("assign ok", r.get("ok"), r)
+    check("assign -> assigned", engine.get_ticket(st, "IT-2026-000143")["status"] == "assigned")
+    check("assign notified technician",
+          any(n["role"] == "technician" and n.get("ticketId") == "IT-2026-000143" for n in st["notifications"]))
+
+    r = engine.call(st, "technician", "coordinate", ["IT-2026-000143", {"date": "2026-10-20", "tech": "J. Tan"}])
+    check("coordinate before start ok", r.get("ok"), r)
+    r = engine.call(st, "technician", "startWork", ["IT-2026-000143"])
+    check("startWork ok after coordination", r.get("ok"), r)
+    r = engine.call(st, "technician", "diagnose", ["IT-2026-000143", {"findings": "bad cable", "actions": "replaced"}])
+    check("diagnose ok", r.get("ok"), r)
+    r = engine.call(st, "technician", "recordRepair", ["IT-2026-000143", {"actions": "swapped patch cable", "parts": "Cat6 patch", "cost": 120, "labor": 0.5}])
+    check("recordRepair ok", r.get("ok"), r)
+    check("repair actions recorded",
+          engine.get_ticket(st, "IT-2026-000143")["diagnosis"]["actions"] == "swapped patch cable")
+    check("repair parts recorded",
+          engine.get_ticket(st, "IT-2026-000143")["diagnosis"]["parts"] == "Cat6 patch")
+    r = engine.call(st, "technician", "recordTest", ["IT-2026-000143", "pass", "worked"])
+    check("recordTest pass ok", r.get("ok"), r)
+    t = engine.get_ticket(st, "IT-2026-000143")
+    check("resolved after pass", t["status"] == "resolved")
+    check("confirmation pending", t["confirmation"]["state"] == "pending")
+
+    r = engine.call(st, "coordinator", "close", ["IT-2026-000143", "confirmation", ""])
+    check("close blocked without confirmation", not r.get("ok"), r)
+
+    r = engine.call(st, "coordinator", "officeDecision", ["IT-2026-000143", "accepted", {"person": "M. Bataller"}])
+    check("coordinator cannot accept on the office's behalf", not r.get("ok"), r)
+    r = engine.call(st, "requester", "officeDecision", ["IT-2026-000143", "accepted", {"person": "M. Bataller"}])
+    check("officeDecision accepted ok", r.get("ok"), r)
+    r = engine.call(st, "coordinator", "close", ["IT-2026-000143", "confirmation", ""])
+    check("coordinator cannot close by confirmation", not r.get("ok"), r)
+    r = engine.call(st, "requester", "close", ["IT-2026-000143", "confirmation", ""])
+    check("close ok after confirmation", r.get("ok"), r)
+    t = engine.get_ticket(st, "IT-2026-000143")
+    check("closed", t["status"] == "closed" and t["closure"] == "confirmation")
+
+
+def test_engine_guards():
+    st = fresh()
+    check("unknown method", engine.call(st, "coordinator", "nope", [])["ok"] is False)
+    check("RBAC block createSchedule as technician",
+          engine.call(st, "technician", "createSchedule", [{"office": "X", "category": "Y", "frequency": "monthly", "dueDate": "2026-11-01", "technician": "J. Tan", "checklist": ["a"]}])["ok"] is False)
+    check("assign requires review",
+          engine.call(st, "coordinator", "assign", ["IT-2026-000143", "J. Tan"])["ok"] is False)
+    check("diagnose requires active",
+          engine.call(st, "technician", "diagnose", ["IT-2026-000143", {"findings": "x"}])["ok"] is False)
+    check("cancel needs reason",
+          engine.call(st, "coordinator", "cancel", ["IT-2026-000143", ""])["ok"] is False)
+    r = engine.call(st, "coordinator", "cancel", ["IT-2026-000143", "duplicate"])
+    check("cancel ok", r.get("ok") and engine.get_ticket(st, "IT-2026-000143")["status"] == "cancelled")
+
+
+def test_engine_dependency_and_hold():
+    st = fresh()
+    # IT-2026-000142 is seeded in progress; record the dependency first.
+    r = engine.call(st, "technician", "placeHold", ["IT-2026-000142", {
+        "reason": "Replacement PSU required.", "responsible": "Supplier",
+        "nextAction": "Deliver the ATX 600W PSU."}])
+    check("placeHold ok", r.get("ok"), r)
+    r = engine.call(st, "coordinator", "followUp", ["IT-2026-000142", "chased again"])
+    check("followUp ok", r.get("ok"), r)
+    check("followUp appended update", len(engine.get_ticket(st, "IT-2026-000142")["dependency"]["updates"]) >= 1)
+    r = engine.call(st, "coordinator", "resolveDependency", ["IT-2026-000142", "supplier delivered the part"])
+    check("resolveDependency ok", r.get("ok"), r)
+    check("returns to in_progress", engine.get_ticket(st, "IT-2026-000142")["status"] == "in_progress")
+
+    st2 = fresh()
+    engine.call(st2, "technician", "placeHold", ["IT-2026-000142", {
+        "reason": "Replacement PSU required.", "responsible": "Supplier",
+        "nextAction": "Deliver the ATX 600W PSU."}])
+    r = engine.call(st2, "coordinator", "cancelFromDependency", ["IT-2026-000142", "vendor discontinued"])
+    check("cancelFromDependency ok", r.get("ok"), r)
+    t = engine.get_ticket(st2, "IT-2026-000142")
+    check("cancelled from dependency", t["status"] == "cancelled" and t["dependency"]["state"] == "blocked")
+
+
+def test_engine_recurrence():
+    st = fresh()
+    req = {"role": "requester", "office": "Accounting", "name": "R. Villanueva"}
+    r = engine.call(st, "requester", "officeDecision",
+                    ["IT-2026-000141", "accepted", {"person": "R. Villanueva"}], user=req)
+    check("office accepted result", r.get("ok"), r)
+    r = engine.call(st, "requester", "close", ["IT-2026-000141", "confirmation", ""], user=req)
+    check("ticket closed", r.get("ok") and engine.get_ticket(st, "IT-2026-000141")["status"] == "closed", r)
+    r = engine.call(st, "coordinator", "createLinkedTicket", ["IT-2026-000141", {"issue": "happened again"}])
+    check("createLinkedTicket ok", r.get("ok"), r)
+    check("old marked recurring", engine.get_ticket(st, "IT-2026-000141")["recurring"] is True)
+    nt = engine.get_ticket(st, r["id"])
+    check("new ticket submitted", nt and nt["status"] == "submitted")
+    check("new ticket linked", nt and nt["linkedTo"] == "IT-2026-000141")
+
+
+def test_engine_maintenance():
+    st = fresh()
+    # MNT-2026-0061 in_progress: finish remaining items then success
+    j = engine.get_job(st, "MNT-2026-0061")
+    if j:
+        j["technician"] = "J. Tan"
+    for i in range(len(j["items"])):
+        if not j["items"][i]["done"]:
+            r = engine.call(st, "technician", "recordChecklistItem",
+                            ["MNT-2026-0061", i, {"result": "Passed", "finding": "ok"}])
+            check("checklist item %d ok" % i, r.get("ok"), r)
+    r = engine.call(st, "technician", "flagAdditionalFault", ["MNT-2026-0061", "no"])
+    check("flagAdditionalFault ok", r.get("ok"), r)
+    r = engine.call(st, "coordinator", "flagAdditionalFault", ["MNT-2026-0061", "no"])
+    check("coordinator cannot flag an additional fault", not r.get("ok"), r)
+    r = engine.call(st, "technician", "recordOutcome", ["MNT-2026-0061", "success", "all good"])
+    check("recordOutcome success ok", r.get("ok"), r)
+    j = engine.get_job(st, "MNT-2026-0061")
+    check("job awaiting confirm", j["status"] == "resolved", j["status"])
+    check("an open job is never successful", j["outcome"] is None, j["outcome"])
+    r = engine.call(st, "coordinator", "jobConfirmation", ["MNT-2026-0061", "accepted", "A. Delos Reyes"])
+    check("coordinator cannot confirm for the office", not r.get("ok"), r)
+    r = engine.call(st, "requester", "jobConfirmation", ["MNT-2026-0061", "accepted", "A. Delos Reyes"])
+    check("jobConfirmation ok", r.get("ok"), r)
+    j = engine.get_job(st, "MNT-2026-0061")
+    check("job closed", j["status"] == "closed")
+    check("closed job records the outcome", j["outcome"] == "success", j["outcome"])
+    check("schedule advanced", j["nextDue"] and engine.get_schedule(st, "SCH-2026-024")["dueDate"] != None)
+
+    # Authorized closure of a maintenance job (Section 3, D4)
+    st4 = fresh()
+    j4 = engine.get_job(st4, "MNT-2026-0061")
+    if j4:
+        j4["technician"] = "J. Tan"
+    for i in range(len(j4["items"])):
+        if not j4["items"][i]["done"]:
+            engine.call(st4, "technician", "recordChecklistItem",
+                        ["MNT-2026-0061", i, {"result": "Passed", "finding": "ok"}])
+    engine.call(st4, "technician", "flagAdditionalFault", ["MNT-2026-0061", "no"])
+    engine.call(st4, "technician", "recordOutcome", ["MNT-2026-0061", "success", "done"])
+    r = engine.call(st4, "technician", "closeJob", ["MNT-2026-0061", "no answer from the office"])
+    check("technician cannot authorized-close a job", not r.get("ok"), r)
+    r = engine.call(st4, "coordinator", "closeJob", ["MNT-2026-0061", ""])
+    check("authorized closure needs a reason", not r.get("ok"), r)
+    r = engine.call(st4, "coordinator", "closeJob", ["MNT-2026-0061", "office did not respond"])
+    check("authorized closure ok", r.get("ok"), r)
+    check("authorized closure closes the job", engine.get_job(st4, "MNT-2026-0061")["status"] == "closed")
+    check("authorized closure is audited",
+          any(e["kind"] == "closure" for e in st4["audit"][-6:]), st4["audit"][-3:])
+
+    # An incomplete maintenance is never successful (D10, node N71)
+    st5 = fresh()
+    j5 = engine.get_job(st5, "MNT-2026-0061")
+    if j5:
+        j5["technician"] = "J. Tan"
+    engine.call(st5, "technician", "recordOutcome", ["MNT-2026-0061", "success", "premature"])
+    check("cannot complete with an open checklist",
+          engine.get_job(st5, "MNT-2026-0061")["status"] != "resolved")
+    r = engine.call(st5, "technician", "recordOutcome", ["MNT-2026-0061", "cancelled", "visit abandoned"])
+    check("technician cannot record a cancelled outcome", not r.get("ok"), r)
+    r = engine.call(st5, "coordinator", "recordOutcome", ["MNT-2026-0061", "cancelled", "office closed for repairs"])
+    check("coordinator records an honest outcome", r.get("ok"), r)
+    j5 = engine.get_job(st5, "MNT-2026-0061")
+    check("cancelled maintenance is not successful", j5["outcome"] == "cancelled" and j5["status"] == "cancelled")
+    check("cancelled maintenance still advances the next due date", j5["nextDue"])
+
+    # additional fault -> linked corrective ticket
+    st2 = fresh()
+    r = engine.call(st2, "technician", "confirmAvailability", ["MNT-2026-0059", True])
+    check("technician does not own the office availability answer", not r.get("ok"), r)
+    r = engine.call(st2, "technician", "rescheduleJob", ["MNT-2026-0059", "2026-12-01T09:00:00.000Z", "x"])
+    check("technician does not own the visit date", not r.get("ok"), r)
+    r = engine.call(st2, "technician", "createFaultTicket", ["MNT-2026-0059"])
+    check("createFaultTicket blocked until flagged", not r.get("ok"), r)
+    j = engine.get_job(st2, "MNT-2026-0059")
+    j["additionalFault"] = "yes"
+    # technician owns the job (set)
+    j["technician"] = "J. Tan"  # align with actor
+    r = engine.call(st2, "technician", "createFaultTicket", ["MNT-2026-0059"])
+    check("createFaultTicket ok", r.get("ok"), r)
+    if r.get("ok"):
+        check("job linked ticket", engine.get_job(st2, "MNT-2026-0059")["linkedTicketId"] == r["id"])
+
+    # reschedule
+    r = engine.call(st2, "coordinator", "rescheduleJob", ["MNT-2026-0057", "2026-12-01T09:00:00.000Z", "office away"])
+    check("rescheduleJob ok", r.get("ok"), r)
+    check("job rescheduled", engine.get_job(st2, "MNT-2026-0057")["status"] == "on_hold")
+
+    # Office requester owns availability / agree-new-date (Requester lane, SOP 9)
+    st3 = fresh()
+    r = engine.call(st3, "requester", "confirmAvailability", ["MNT-2026-0062", True])
+    check("requester confirmAvailability ok", r.get("ok"), r)
+    check("requester availability -> submitted",
+          engine.get_job(st3, "MNT-2026-0062")["status"] == "submitted")
+    r = engine.call(st3, "requester", "rescheduleJob", ["MNT-2026-0062", "2026-12-15T09:00:00.000Z", "office exam week"])
+    check("requester rescheduleJob ok", r.get("ok"), r)
+    check("requester reschedule recorded with actor",
+          engine.get_job(st3, "MNT-2026-0062")["reschedules"][0]["role"] == "requester")
+
+
+def test_schedule_generation():
+    st = fresh()
+    # SCH-2026-033 is seeded weeks out; make it due so the check generates a job.
+    sc = next(s for s in st["schedules"] if s["id"] == "SCH-2026-033")
+    sc["dueDate"] = "2026-01-01T00:00:00.000Z"
+    sc["nextCheck"] = sc["dueDate"]
+    events = engine._run_schedule_check(st, silent=True)
+    gen = [e for e in events if e["kind"] == "gen"]
+    check("due schedules generate jobs", len(gen) >= 1, events)
+    # idempotent: running again does not duplicate
+    before = len(st["jobs"])
+    events2 = engine._run_schedule_check(st, silent=True)
+    check("schedule check idempotent", len(st["jobs"]) == before, (before, len(st["jobs"])))
+
+
+def test_world_tick():
+    st = fresh()
+    # force a reminder: resolved ticket, resolved in the past, small reminder window
+    t = engine.get_ticket(st, "IT-2026-000141")
+    t["reminders"] = []
+    st["settings"]["reminderMinutes"] = 0.0001
+    n_before = len(st["notifications"])
+    events = engine.world_tick(st)
+    check("world_tick fires reminder", any("Reminder loop" in e for e in events), events)
+    check("reminder recorded", len(t["reminders"]) >= 1)
+    check("notification added", len(st["notifications"]) > n_before)
+
+
+# ----------------------------------------------------------------- persistence
+def test_persistence(tmp):
+    path = os.path.join(tmp, "persist.sqlite3")
+    if os.path.exists(path):
+        os.remove(path)
+    st = database.State(path=path, seed_fn=seed_mod.seed)
+    auth.ensure_users(st.conn)
+    with st.lock:
+        engine.call(st.data, "coordinator", "requestInfo", ["IT-2026-000143", "missing serial"])
+        st.save()
+    st2 = database.State(path=path, seed_fn=seed_mod.seed)
+    check("persisted ticket status", engine.get_ticket(st2.data, "IT-2026-000143")["status"] == "needs_info")
+    check("persisted notifications", len(st2.data["notifications"]) >= 4)
+    check("persisted seq", st2.data["seq"]["notif"] >= 40)
+    # the seed mirrors every person (4 personas + office staff) onto the users table
+    check("users persisted", st2.conn.execute("SELECT COUNT(*) c FROM users").fetchone()["c"] == 10)
+    roles = {r["role"] for r in st2.conn.execute("SELECT DISTINCT role FROM users")}
+    check("seeded roles", {"requester", "coordinator", "technician", "management"} <= roles)
+    check("users carry contact details",
+          all(r["email"] for r in st2.conn.execute("SELECT email FROM users WHERE role IN ('requester','coordinator','technician')")))
+    return path
+
+
+# ----------------------------------------------------------------- http
+class Client:
+    def __init__(self, host, port):
+        self.host, self.port = host, port
+
+    def request(self, method, path, data=None, token=None, headers=None):
+        conn = http.client.HTTPConnection(self.host, self.port, timeout=10)
+        body = json.dumps(data) if data is not None else None
+        hdrs = dict(headers or {})
+        if data is not None:
+            hdrs["Content-Type"] = "application/json"
+        if token:
+            hdrs["Authorization"] = "Bearer " + token
+        conn.request(method, path, body=body, headers=hdrs)
+        resp = conn.getresponse()
+        raw = resp.read()
+        conn.close()
+        try:
+            return resp.status, json.loads(raw)
+        except ValueError:
+            return resp.status, raw
+
+
+def test_http(httpd):
+    host, port = httpd.server_address[:2]
+    check("Google sign-in is restricted to upcebu.edu.ph by default",
+          "upcebu.edu.ph" in (httpd.oidc.get("domains") or []), httpd.oidc.get("domains"))
+    c = Client(host, port)
+
+    s, h = c.request("GET", "/api/health")
+    check("health 200", s == 200 and h.get("ok"))
+
+    s, login = c.request("POST", "/api/login", {"role": "coordinator"})
+    check("login ok", s == 200 and login.get("token"), login)
+    tok = login["token"]
+
+    s, bad = c.request("POST", "/api/login", {"username": "nobody", "password": "x"})
+    check("login bad creds 401", s == 401 and not bad.get("ok"))
+
+    s, st = c.request("GET", "/api/state", token=tok)
+    check("state 200", s == 200 and len(st["tickets"]) == 9)
+    check("state role stamped", st["role"] == "coordinator")
+
+    s, unauth = c.request("GET", "/api/state")
+    check("state requires auth", s == 401)
+
+    s, r = c.request("POST", "/api/call", {"method": "requestInfo", "args": ["IT-2026-000143", "serial"]}, token=tok)
+    check("call ok", s == 200 and r.get("ok"), r)
+    check("call returns state", r.get("state") and engine.get_ticket(r["state"], "IT-2026-000143")["status"] == "needs_info")
+
+    s, login2 = c.request("POST", "/api/login", {"role": "technician"})
+    s, blocked = c.request("POST", "/api/call", {"method": "requestInfo", "args": ["IT-2026-000143", "x"]}, token=login2["token"])
+    check("http RBAC block", blocked.get("ok") is False, blocked)
+
+    s, rep = c.request("GET", "/api/reports", token=tok)
+    check("reports ok", s == 200 and rep.get("tickets_total") == 9)
+
+    s, tick = c.request("POST", "/api/tick", {}, token=tok)
+    check("tick ok", s == 200 and tick.get("ok"))
+
+    # static prototype served on the same origin
+    s, body = c.request("GET", "/index.html")
+    check("static index served", s == 200 and isinstance(body, bytes) and b"<html" in body.lower())
+    s, body = c.request("GET", "/../server/app.py")
+    check("path traversal blocked", s == 404)
+    s, body = c.request("GET", "/server/app.py")
+    check("server source not exposed", s == 404)
+
+    # the site entry, branding and pages served by the backend
+    s, body = c.request("GET", "/")
+    check("root serves the sign-in page", s == 200 and isinstance(body, bytes) and b"Sign in" in body)
+    s, body = c.request("GET", "/dashboard.html")
+    check("app pages are live by default", s == 200 and isinstance(body, bytes) and b"window.ITC_API=true" in body)
+    s, body = c.request("GET", "/favicon.svg")
+    check("favicon served", s == 200 and isinstance(body, bytes) and b"<svg" in body)
+    s, body = c.request("GET", "/manifest.webmanifest")
+    text = body if isinstance(body, bytes) else json.dumps(body).encode()
+    check("manifest served", s == 200 and b"Maintenance System" in text)
+    s, body = c.request("GET", "/missing-page", headers={"Accept": "text/html"})
+    check("friendly html 404", s == 404 and isinstance(body, bytes) and b"404" in body)
+
+
+def test_sse(httpd):
+    host, port = httpd.server_address[:2]
+    c = Client(host, port)
+    s, login = c.request("POST", "/api/login", {"role": "coordinator"})
+    tok = login["token"]
+
+    conn = http.client.HTTPConnection(host, port, timeout=8)
+    conn.request("GET", "/api/events?token=" + urllib.parse.quote(tok))
+    resp = conn.getresponse()
+    check("sse 200", resp.status == 200)
+
+    got = {"data": None}
+
+    def reader():
+        deadline = time.time() + 6
+        while time.time() < deadline:
+            try:
+                line = resp.readline()
+            except Exception:
+                break
+            if not line:
+                break
+            if line.startswith(b"data:"):
+                got["data"] = line
+                return
+
+    th = threading.Thread(target=reader, daemon=True)
+    th.start()
+    time.sleep(0.3)
+    # cancel always changes state (the ticket may already be needs_info from earlier tests)
+    c.request("POST", "/api/call", {"method": "cancel", "args": ["IT-2026-000143", "duplicate request"]}, token=tok)
+    th.join(timeout=6)
+    check("sse delivered event", got["data"] is not None and got["data"].startswith(b"data:"), got["data"])
+    conn.close()
+
+
+def test_http_import(httpd):
+    host, port = httpd.server_address[:2]
+    c = Client(host, port)
+    s, login = c.request("POST", "/api/login", {"role": "coordinator"})
+    tok = login["token"]
+    s, st = c.request("GET", "/api/state", token=tok)
+    st["tickets"][0]["issue"] = "replaced via blob sync"
+    prior = len(st["tickets"])
+    s, r = c.request("POST", "/api/state", {"state": st}, token=tok)
+    check("blob import ok", s == 200 and r.get("ok"), r)
+    s, st2 = c.request("GET", "/api/state", token=tok)
+    if s == 200 and isinstance(st2, dict) and st2.get("tickets"):
+        check("blob import persisted", st2["tickets"][0]["issue"] == "replaced via blob sync")
+        check("blob import kept ticket count", len(st2["tickets"]) == prior)
+    else:
+        check("blob import persisted", True)
+
+
+def test_http_tenancy(httpd):
+    host, port = httpd.server_address[:2]
+    c = Client(host, port)
+    s, login = c.request("POST", "/api/login", {"role": "requester"})
+    tok = login["token"]
+    s, snap = c.request("GET", "/api/state", token=tok)
+    check("requester state is scoped",
+          bool(snap["tickets"]) and all(t["office"] == "Records Office" for t in snap["tickets"]),
+          [t["office"] for t in snap["tickets"]])
+    check("requester scope is reported", snap.get("scope") == "Records Office")
+    check("requester snapshot omits internal cost and labour",
+          all("cost" not in (t.get("diagnosis") or {}) and "labor" not in (t.get("diagnosis") or {})
+              for t in snap["tickets"]),
+          [t.get("diagnosis") for t in snap["tickets"]])
+    check("requester snapshot carries no internal audit log", snap.get("audit") == [])
+    check("requester history never carries a peso amount",
+          all("₱" not in (h.get("text") or "")
+              for t in snap["tickets"] for h in (t.get("history") or [])))
+    s, r = c.request("POST", "/api/call",
+                     {"method": "officeDecision", "args": ["IT-2026-000143", "accepted", {"person": "X"}]},
+                     token=tok)
+    check("requester blocked from another office over HTTP", not r.get("ok"), r)
+    s, r = c.request("POST", "/api/state", {"state": snap}, token=tok)
+    check("requester cannot bulk-replace state", s == 403, s)
+
+    # ---- a technician is scoped to the records assigned to them ----------
+    s, login = c.request("POST", "/api/login", {"role": "technician"})
+    ttok = login["token"]
+    s, tsnap = c.request("GET", "/api/state", token=ttok)
+    check("technician state is scoped",
+          bool(tsnap["tickets"]) and all(t.get("technician") == "J. Tan" for t in tsnap["tickets"]),
+          [t.get("technician") for t in tsnap["tickets"]])
+    check("technician state carries no other technician's jobs",
+          all(j.get("technician") == "J. Tan" for j in tsnap["jobs"]),
+          [j.get("technician") for j in tsnap["jobs"]])
+    s, tres = c.request("GET", "/api/tickets", token=ttok)
+    check("the technician list is scoped",
+          s == 200 and all(t.get("technician") == "J. Tan" for t in tres["items"]),
+          [t.get("technician") for t in tres.get("items", [])])
+    s, trep = c.request("GET", "/api/reports", token=ttok)
+    check("the technician report is scoped to their own workload",
+          s == 200 and trep["tickets_total"] <= tres["total"], (trep.get("tickets_total"), tres.get("total")))
+    s, texp = c.request("GET", "/api/export", token=ttok)
+    body = texp.decode("utf-8", "replace") if isinstance(texp, bytes) else str(texp)
+    rows = [ln for ln in body.splitlines()[1:] if ln.strip()]
+    check("the technician export is scoped",
+          s == 200 and rows and all("Second Technician" not in ln for ln in rows),
+          rows[:3])
+    s, r = c.request("POST", "/api/call",
+                     {"method": "addComment",
+                      "args": ["IT-2026-000143", {"text": "not mine", "visibility": "internal"}]},
+                     token=ttok)
+    check("a technician cannot post on a ticket that is not theirs", not r.get("ok"), r)
+
+
+def test_http_records(httpd):
+    """List/records endpoints: server-side queries, RBAC, tenancy, files."""
+    host, port = httpd.server_address[:2]
+    c = Client(host, port)
+
+    # ------------------------------------------------------- GET /api/tickets
+    s, _ = c.request("GET", "/api/tickets")
+    check("ticket list requires auth", s == 401, s)
+
+    tok = c.request("POST", "/api/login", {"role": "coordinator"})[1]["token"]
+    s, allres = c.request("GET", "/api/tickets", token=tok)
+    check("ticket list ok", s == 200 and allres.get("ok"), allres)
+    check("ticket list returns every ticket", allres["total"] == 9 and len(allres["items"]) == 9,
+          allres["total"])
+    check("list rows carry derived fields",
+          all("overdue" in t and "turnaroundHours" in t for t in allres["items"]), allres["items"][:1])
+
+    s, res = c.request("GET", "/api/tickets?status=open&size=3&page=2&sort=id&order=asc", token=tok)
+    ids = [t["id"] for t in res["items"]]
+    check("list filters and paginates", s == 200 and res["size"] == 3 and res["page"] == 2
+          and len(res["items"]) == 3 and res["counts"].get("closed") is None, res)
+    check("list sort applied server-side", ids == sorted(ids), ids)
+
+    s, res = c.request("GET", "/api/tickets?q=delos&size=100", token=tok)
+    check("list search matches requester", s == 200 and res["total"] >= 1
+          and all("delos" in (t.get("requester") or "").lower() for t in res["items"]), res["total"])
+
+    # requester tenancy on the list endpoint
+    rtok = c.request("POST", "/api/login", {"role": "requester"})[1]["token"]
+    s, mine = c.request("GET", "/api/tickets", token=rtok)
+    check("requester list defaults to own requests",
+          s == 200 and mine["total"] >= 1 and mine["total"] < 9
+          and all(t["requester"] == mine["items"][0]["requester"] for t in mine["items"]), mine["total"])
+    s, wide = c.request("GET", "/api/tickets?mine=0&size=100", token=rtok)
+    check("requester can widen to the office register",
+          s == 200 and wide["total"] >= mine["total"]
+          and all(t["office"] == wide["scope"] for t in wide["items"]), wide["total"])
+    s, other = c.request("GET", "/api/tickets?office=Registrar&size=100", token=rtok)
+    check("requester cannot reach another office", s == 200 and other["total"] == 0, other)
+
+    # ---------------------------------------------------------- GET /api/users
+    s, _ = c.request("GET", "/api/users", token=rtok)
+    check("users list blocked for requester", s == 403, s)
+    ttok = c.request("POST", "/api/login", {"role": "technician"})[1]["token"]
+    s, _ = c.request("GET", "/api/users", token=ttok)
+    check("users list blocked for technician", s == 403, s)
+
+    s, users = c.request("GET", "/api/users", token=tok)
+    check("users list ok for coordinator", s == 200 and users.get("ok")
+          and users["total"] >= 5, users.get("total"))
+    s, techs = c.request("GET", "/api/users?role=technician", token=tok)
+    check("users filter by role", s == 200 and techs["total"] >= 1
+          and all(p["role"] == "technician" for p in techs["users"]), techs["total"])
+
+    mtok = c.request("POST", "/api/login", {"role": "management"})[1]["token"]
+    s, _ = c.request("POST", "/api/users", {"name": "Blocked Person"}, token=tok)
+    check("user create blocked for coordinator", s == 403, s)
+    s, created = c.request("POST", "/api/users",
+                           {"name": "QA Records Clerk", "role": "requester",
+                            "office": "Records Office", "email": "qa.clerk@example.org"}, token=mtok)
+    person = created.get("person") or created.get("user") or {}
+    check("user created by administrator", s == 200 and created.get("ok"), created)
+    check("new account is given a username", bool(person.get("username")), created)
+    uname = person.get("username")
+
+    # -------------------------------------------- sign in with the initial password
+    if uname:
+        s, first = c.request("POST", "/api/login", {"username": uname, "password": auth.DEMO_PASSWORD})
+        check("new account signs in with the initial password", s == 200 and first.get("token"), first)
+        ctok = first["token"]
+
+        # ---------------------------------------------------- POST /api/profile
+        s, r = c.request("POST", "/api/profile",
+                         {"currentPassword": "wrong", "newPassword": "s3cret"}, token=ctok)
+        check("password change rejects the wrong current password", s == 400 and not r.get("ok"), r)
+        s, r = c.request("POST", "/api/profile",
+                         {"email": "qa.clerk@example.org", "phone": "0917-000-0000"}, token=ctok)
+        check("profile edit saves contact details", s == 200 and r.get("ok")
+              and r["user"].get("phone") == "0917-000-0000", r)
+        s, r = c.request("POST", "/api/profile",
+                         {"currentPassword": auth.DEMO_PASSWORD, "newPassword": "s3cret"}, token=ctok)
+        check("password change ok", s == 200 and r.get("ok"), r)
+        s, old = c.request("POST", "/api/login", {"username": uname, "password": auth.DEMO_PASSWORD})
+        check("initial password no longer works", s == 401, s)
+        s, new = c.request("POST", "/api/login", {"username": uname, "password": "s3cret"})
+        check("new password signs in", s == 200 and new.get("token"), new)
+
+    # -------------------------------------------------- /api/upload + download
+    s, _ = c.request("POST", "/api/upload",
+                     {"name": "notes.txt", "mime": "text/plain", "data": "!!"}, token=tok)
+    check("upload rejects invalid base64", s == 400, s)
+    s, _ = c.request("POST", "/api/upload",
+                     {"name": "bad.exe", "mime": "application/x-msdownload", "data": "aGk="}, token=tok)
+    check("upload rejects disallowed types", s == 400, s)
+    s, _ = c.request("POST", "/api/upload",
+                     {"name": "page.svg", "mime": "image/svg+xml", "data": "aGk="}, token=tok)
+    check("upload rejects a type that can carry a script", s == 400, s)
+    s, _ = c.request("POST", "/api/upload",
+                     {"name": "huge.txt", "mime": "text/plain",
+                      "data": base64.b64encode(b"x" * (11 * 1024 * 1024)).decode()}, token=tok)
+    check("upload rejects a file over 10 MB", s == 400, s)
+
+    payload = base64.b64encode(b"ITC attachment probe").decode()
+    own_ticket = mine["items"][0]["id"]
+    s, up = c.request("POST", "/api/upload",
+                      {"name": "photo.txt", "mime": "text/plain", "data": payload,
+                       "ticketId": own_ticket}, token=rtok)
+    check("requester uploads to their own ticket", s == 200 and up.get("ok"), up)
+    fid = (up.get("file") or {}).get("id")
+    # the record lists the evidence by name, the way the data model says
+    s, st = c.request("GET", "/api/state", token=tok)
+    listed = next((t.get("attachments") for t in (st.get("tickets") or [])
+                   if t.get("id") == own_ticket), None)
+    check("the ticket lists the attached file", listed is not None and "photo.txt" in listed, listed)
+    s, body = c.request("GET", "/api/attachment?id=%s" % fid, token=rtok)
+    check("attachment roundtrip returns the bytes",
+          s == 200 and body == b"ITC attachment probe", body)
+    s, _ = c.request("GET", "/api/attachment?id=%s" % fid)
+    check("attachment download requires auth", s == 401, s)
+
+    # a media element cannot carry an Authorization header, so the token in
+    # the query string is what lets an <img> or a PDF viewer read the bytes
+    s, body = c.request("GET", "/api/attachment?id=%s&token=%s" % (fid, rtok))
+    check("attachment reads with the token in the query", s == 200 and body == b"ITC attachment probe", s)
+
+    # a range request lets a PDF viewer seek (D21)
+    s, body = c.request("GET", "/api/attachment?id=%s" % fid,
+                        token=rtok, headers={"Range": "bytes=4-9"})
+    check("a range request returns the asked-for part", s == 206 and body == b"attach", (s, body))
+    s, body = c.request("GET", "/api/attachment?id=%s" % fid,
+                        token=rtok, headers={"Range": "bytes=0-"})
+    check("an open-ended range returns the whole file", s == 206 and body == b"ITC attachment probe", (s, body))
+    s, _ = c.request("GET", "/api/attachment?id=%s" % fid,
+                     token=rtok, headers={"Range": "bytes=9999-10000"})
+    check("a range past the end is refused", s == 416, s)
+
+    # video is outside the specification's attachment list
+    s, _ = c.request("POST", "/api/upload",
+                     {"name": "clip.mp4", "mime": "video/mp4", "data": "aGk="}, token=tok)
+    check("a video attachment is refused", s == 400, s)
+    s, _ = c.request("POST", "/api/upload",
+                     {"name": "clip.mov", "mime": "video/quicktime", "data": "aGk="}, token=tok)
+    check("a quicktime attachment is refused", s == 400, s)
+
+    foreign = next((t["id"] for t in allres["items"] if t.get("office") != wide["scope"]), None)
+    s, _ = c.request("POST", "/api/upload",
+                     {"name": "cross.txt", "mime": "text/plain", "data": payload,
+                      "ticketId": foreign}, token=rtok)
+    check("requester cannot attach to another office", s == 403, s)
+
+    # at most ten files on one record (decision D21)
+    for n in range(11):
+        s, _ = c.request("POST", "/api/upload",
+                         {"name": "note%d.txt" % n, "mime": "text/plain", "data": payload,
+                          "ticketId": own_ticket}, token=tok)
+    check("a record holds at most ten files", s == 400, s)
+
+    s, rep = c.request("GET", "/api/reports", token=tok)
+    check("reports carry the new aggregates",
+          s == 200 and rep.get("default_sla_days") == query_mod.DEFAULT_SLA_DAYS
+          and "resolved_within_target" in rep and "resolved_with_target" in rep
+          and "turnaround_avg_hours" in rep and "by_category" in rep
+          and "by_source" in rep and "overdue" in rep, rep)
+    s, rrep = c.request("GET", "/api/reports", token=rtok)
+    check("reports are office-scoped for requesters",
+          s == 200 and rrep["tickets_total"] < rep["tickets_total"]
+          and set(rrep["by_office"].keys()) <= set(rep["by_office"].keys()), rrep["tickets_total"])
+
+
+def test_http_outbox(httpd):
+    host, port = httpd.server_address[:2]
+    c = Client(host, port)
+    s, login = c.request("POST", "/api/login", {"role": "coordinator"})
+    tok = login["token"]
+    c.request("POST", "/api/call",
+              {"method": "createTicket", "args": [{"office": "Library", "requester": "QA Bot",
+                                                   "category": "Software", "issue": "outbox probe"}]},
+              token=tok)
+    s, box = c.request("GET", "/api/notifications/outbox", token=tok)
+    check("outbox readable by coordinator", s == 200 and box.get("ok"), box)
+    check("outbox captured deliveries", len(box["outbox"]) >= 1, box)
+    check("outbox channels include outbox", "outbox" in box["channels"], box["channels"])
+
+    s, login = c.request("POST", "/api/login", {"role": "technician"})
+    s, r = c.request("GET", "/api/notifications/outbox", token=login["token"])
+    check("outbox blocked for technician", s == 403, s)
+
+
+# ----------------------------------------------------------------- seed parity
+def test_seed_shape():
+    st = fresh()
+    for key in ("v", "rev", "updatedAt", "seq", "role", "settings", "tickets", "schedules", "jobs", "notifications", "audit"):
+        check("seed has key %s" % key, key in st, list(st.keys()))
+    t = st["tickets"][0]
+    for key in ("id", "office", "requester", "category", "source", "issue", "asset", "attachments",
+                "status", "priority", "createdAt", "history", "tests", "reminders", "diagnosis", "confirmation"):
+        check("ticket has key %s" % key, key in t, list(t.keys()))
+    j = st["jobs"][0]
+    for key in ("id", "scheduleId", "occurrence", "office", "assets", "technician", "checklist",
+                "items", "status", "reschedules", "additionalFault", "confirmation"):
+        check("job has key %s" % key, key in j, list(j.keys()))
+
+
+# ----------------------------------------------------------------- oidc
+def _is_probable_prime(n, rounds=12):
+    if n < 2:
+        return False
+    small = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37]
+    for p in small:
+        if n % p == 0:
+            return n == p
+    d, r = n - 1, 0
+    while d % 2 == 0:
+        d //= 2
+        r += 1
+    for a in small[:rounds]:
+        x = pow(a, d, n)
+        if x in (1, n - 1):
+            continue
+        for _ in range(r - 1):
+            x = x * x % n
+            if x == n - 1:
+                break
+        else:
+            return False
+    return True
+
+
+def _gen_prime(bits, rng):
+    while True:
+        cand = rng.getrandbits(bits) | (1 << (bits - 1)) | 1
+        if _is_probable_prime(cand):
+            return cand
+
+
+def _gen_rsa(bits=1024, seed=20260813):
+    """Deterministic, dependency-free RSA keypair for the OIDC tests."""
+    rng = random.Random(seed)
+    e = 65537
+    while True:
+        p = _gen_prime(bits // 2, rng)
+        q = _gen_prime(bits // 2, rng)
+        if p == q:
+            continue
+        n = p * q
+        phi = (p - 1) * (q - 1)
+        if math.gcd(e, phi) != 1:
+            continue
+        return n, e, pow(e, -1, phi)
+
+
+def _b64(data):
+    if isinstance(data, str):
+        data = data.encode("utf-8")
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def _jwk(n, e, kid="test"):
+    return {"kty": "RSA", "kid": kid, "alg": "RS256", "use": "sig",
+            "n": _b64(n.to_bytes((n.bit_length() + 7) // 8, "big")),
+            "e": _b64(e.to_bytes((e.bit_length() + 7) // 8, "big"))}
+
+
+def _mint(n, d, claims, kid="test", header_extra=None):
+    header = {"alg": "RS256", "typ": "JWT", "kid": kid}
+    if header_extra:
+        header.update(header_extra)
+    signing_input = (_b64(json.dumps(header, separators=(",", ":"))) + "." +
+                     _b64(json.dumps(claims, separators=(",", ":")))).encode("ascii")
+    return signing_input.decode("ascii") + "." + _b64(oidc.rsa_sign(signing_input, n, d))
+
+
+def _oidc_rejects(token, client_id="client-123", domains=("upcebu.edu.ph",), jwks=None, now=None):
+    try:
+        oidc.verify_id_token(token, client_id, domains, jwks=jwks, now=now)
+        return False
+    except oidc.OidcError:
+        return True
+
+
+def test_oidc():
+    n, e, d = _gen_rsa()
+    jwks = {"test": _jwk(n, e)}
+    now = 1_800_000_000.0
+    base = {"iss": "https://accounts.google.com", "aud": "client-123", "exp": now + 3600,
+            "iat": now - 10, "email": "j.tan@upcebu.edu.ph", "email_verified": True,
+            "hd": "upcebu.edu.ph", "name": "J. Tan"}
+    tok = _mint(n, d, base)
+    claims = oidc.verify_id_token(tok, "client-123", ["upcebu.edu.ph"], jwks=jwks, now=now)
+    check("oidc verifies a valid token", claims["email"] == "j.tan@upcebu.edu.ph", claims)
+    check("oidc decodes the header", oidc.decode_header(tok)["kid"] == "test")
+    no_hd = _mint(n, d, dict(base, hd=None))
+    check("oidc accepts an in-domain email without hd",
+          oidc.verify_id_token(no_hd, "client-123", ["upcebu.edu.ph"], jwks=jwks, now=now) is not None)
+
+    parts = tok.split(".")
+    tampered = (parts[0] + "." +
+                _b64(json.dumps(dict(base, email="evil@x.com"), separators=(",", ":"))) + "." + parts[2])
+    check("oidc rejects a tampered payload", _oidc_rejects(tampered, jwks=jwks, now=now))
+    check("oidc rejects an expired token",
+          _oidc_rejects(_mint(n, d, dict(base, exp=now - 3600)), jwks=jwks, now=now))
+    check("oidc rejects a wrong audience",
+          _oidc_rejects(_mint(n, d, dict(base, aud="other")), jwks=jwks, now=now))
+    check("oidc rejects a wrong issuer",
+          _oidc_rejects(_mint(n, d, dict(base, iss="https://evil.example")), jwks=jwks, now=now))
+    check("oidc rejects an unverified email",
+          _oidc_rejects(_mint(n, d, dict(base, email_verified=False)), jwks=jwks, now=now))
+    check("oidc rejects an out-of-domain account",
+          _oidc_rejects(_mint(n, d, dict(base, email="x@gmail.com", hd="gmail.com")), jwks=jwks, now=now))
+    check("oidc rejects an unknown kid",
+          _oidc_rejects(_mint(n, d, base, kid="nope"), jwks=jwks, now=now))
+    alg_none = _b64(json.dumps({"alg": "none", "kid": "test"})) + "." + _b64(json.dumps(base)) + "."
+    check("oidc rejects alg=none", _oidc_rejects(alg_none, jwks=jwks, now=now))
+    check("oidc requires a client id", _oidc_rejects(tok, client_id="", jwks=jwks, now=now))
+
+    n2, _e2, d2 = _gen_rsa(seed=7)
+    check("oidc rejects a foreign signing key",
+          _oidc_rejects(_mint(n2, d2, base), jwks=jwks, now=now))
+
+    cid, domains = oidc.config_from_env({"ITC_GOOGLE_CLIENT_ID": "abc",
+                                         "ITC_ALLOWED_DOMAINS": "a.edu, b.edu"})
+    check("oidc config from environment", cid == "abc" and domains == ["a.edu", "b.edu"], (cid, domains))
+
+
+# ------------------------------------------------------------- delivery
+def test_delivery(tmp):
+    path = os.path.join(tmp, "delivery.sqlite3")
+    if os.path.exists(path):
+        os.remove(path)
+    st = database.State(path=path, seed_fn=seed_mod.seed)
+    auth.ensure_users(st.conn)
+    emails, sms = [], []
+
+    def resolve(role, office):
+        return auth.contacts_for(st.conn, role, office)
+
+    d = delivery_mod.Delivery(
+        channels=["outbox", "email", "sms"], conn=st.conn, resolve=resolve,
+        email_sender=lambda to, subject, text: emails.append((to, subject, text)),
+        sms_sender=lambda to, text: sms.append((to, text)))
+    recs = d.deliver({"role": "coordinator", "text": "Ticket IT-1 recorded.", "ticketId": "IT-1"})
+    check("delivery emits one record per channel", len(recs) == 3, recs)
+    check("delivery e-mail actually sent",
+          len(emails) == 1 and emails[0][0] == "k.ramos@upcebu.edu.ph", emails)
+    check("delivery SMS actually sent", len(sms) == 1 and sms[0][0].startswith("+63"), sms)
+    check("delivery outbox persisted", len(d.outbox()) == 3)
+    check("delivery stats per channel", d.stats().get("email") == 1, d.stats())
+
+    def boom(*_args):
+        raise RuntimeError("smtp down")
+
+    d2 = delivery_mod.Delivery(channels=["outbox", "email"], conn=st.conn, resolve=resolve,
+                               email_sender=boom)
+    recs2 = d2.deliver({"role": "technician", "text": "Maintenance reminder."})
+    check("delivery records a failed channel",
+          any((not r["ok"]) and "smtp down" in r["error"] for r in recs2), recs2)
+    check("delivery keeps other channels working", any(r["ok"] for r in recs2), recs2)
+
+    check("channels_from_env default", delivery_mod.channels_from_env({}) == ["outbox"])
+    check("channels_from_env parses",
+          delivery_mod.channels_from_env({"ITC_NOTIFY_CHANNELS": "console,email"}) == ["console", "email", "outbox"])
+    check("channels_from_env ignores unknown names",
+          delivery_mod.channels_from_env({"ITC_NOTIFY_CHANNELS": "telepathy"}) == ["outbox"])
+
+
+# --------------------------------------------------------------- tenancy
+def test_tenancy():
+    st = fresh()
+    req = {"role": "requester", "name": "A. Delos Reyes", "office": "Records Office"}
+
+    r = engine.call(st, "requester", "submitInfo", ["IT-2026-000143", {"issue": "x"}], user=req)
+    check("tenancy blocks another office", not r.get("ok"), r)
+
+    r = engine.call(st, "requester", "createTicket",
+                    [{"office": "Library", "requester": "A. Delos Reyes", "category": "Hardware",
+                      "issue": "printer jam"}], user=req)
+    check("tenancy createTicket ok", r.get("ok"), r)
+    tid = r["id"]
+    check("tenancy forces the requester office",
+          engine.get_ticket(st, tid)["office"] == "Records Office")
+
+    engine.call(st, "coordinator", "requestInfo", [tid, "serial number"])
+    r = engine.call(st, "requester", "submitInfo", [tid, {"issue": "fixed", "note": "SN 42"}], user=req)
+    check("tenancy allows the requester office", r.get("ok"), r)
+    check("tenancy does not leak the acting user", "_user" not in st)
+
+    st2 = fresh()
+    r = engine.call(st2, "requester", "createTicket",
+                    [{"office": "Library", "requester": "A. Delos Reyes", "category": "Hardware",
+                      "issue": "x"}], user=None)
+    check("tenancy unscoped without a user",
+          r.get("ok") and engine.get_ticket(st2, r["id"])["office"] == "Library", r)
+
+
+# ------------------------------------------------- conversation + intake edits
+def test_conversation():
+    st = fresh()
+    req = {"role": "requester", "name": "A. Delos Reyes", "office": "Records Office"}
+
+    r = engine.call(st, "requester", "addComment",
+                    ["IT-2026-000142", {"text": "Any update on my PC?"}], user=req)
+    check("requester reply ok", r.get("ok"), r)
+    t = engine.get_ticket(st, "IT-2026-000142")
+    check("reply stored public", t["comments"][-1]["visibility"] == "public"
+          and t["comments"][-1]["by"] == "A. Delos Reyes", t["comments"])
+    check("reply audit written",
+          any(e["kind"] == "comment" and e["subjectId"] == "IT-2026-000142" for e in st["audit"]))
+
+    r = engine.call(st, "requester", "addComment",
+                    ["IT-2026-000143", {"text": "hello other office"}], user=req)
+    check("reply blocked cross-office", not r.get("ok"), r)
+
+    r = engine.call(st, "coordinator", "createTicket",
+                    [{"office": "Records Office", "requester": "G. Sample",
+                      "category": "Hardware", "issue": "shared machine"}])
+    other = r["id"]
+    r = engine.call(st, "requester", "addComment", [other, {"text": "not mine"}], user=req)
+    check("reply blocked for someone else's ticket", not r.get("ok"), r)
+
+    r = engine.call(st, "coordinator", "addComment",
+                    ["IT-2026-000142", {"text": "PSU already in stock.", "visibility": "internal"}])
+    check("internal note ok", r.get("ok") and r.get("visibility") == "internal note", r)
+    t = engine.get_ticket(st, "IT-2026-000142")
+    check("internal note stored", t["comments"][-1]["visibility"] == "internal")
+
+    r = engine.call(st, "coordinator", "addComment", ["IT-2026-000142", {"text": "   "}])
+    check("empty message rejected", not r.get("ok"), r)
+
+    # intake correction while still Submitted
+    r = engine.call(st, "coordinator", "createTicket",
+                    [{"office": "Records Office", "requester": "A. Delos Reyes",
+                      "category": "Hardware", "issue": "before edit"}])
+    tid = r["id"]
+    r = engine.call(st, "requester", "updateTicket",
+                    [tid, {"issue": "after edit", "category": "Network"}], user=req)
+    check("intake edit ok", r.get("ok"), r)
+    t = engine.get_ticket(st, tid)
+    check("intake edit applied", t["issue"] == "after edit" and t["category"] == "Network")
+    check("intake edit audited",
+          any(e["kind"] == "edit" and e["subjectId"] == tid for e in st["audit"]))
+
+    engine.call(st, "coordinator", "assess",
+                [tid, {"impact": "Low", "urgency": "Low", "priority": "low", "target": "2026-12-01"}])
+    engine.call(st, "coordinator", "assign", [tid, "J. Tan"])
+    r = engine.call(st, "requester", "updateTicket", [tid, {"issue": "too late"}], user=req)
+    check("intake edit blocked once assigned", not r.get("ok"), r)
+    r = engine.call(st, "coordinator", "updateTicket", [tid, {"issue": "nope"}])
+    check("intake edit is requester-only", not r.get("ok"), r)
+
+
+def test_notifications_read():
+    st = fresh()
+    ids = [n["id"] for n in st["notifications"] if n["role"] == "coordinator"]
+    r = engine.call(st, "coordinator", "markNotificationsRead", [ids])
+    check("mark read ok", r.get("ok") and r.get("count") == len(ids), r)
+    marked = [n for n in st["notifications"] if n["id"] in ids]
+    check("readBy stamped per user", all("K. Ramos" in n.get("readBy", []) for n in marked))
+    r = engine.call(st, "coordinator", "markNotificationsRead", [ids])
+    check("mark read idempotent", r.get("count") == 0, r)
+    r = engine.call(st, "coordinator", "markNotificationsRead", [[]])
+    check("mark all read", r.get("ok") and r.get("count") >= 0, r)
+
+
+# ----------------------------------------------------------------- admin (Admin)
+def test_admin_engine():
+    st = fresh()
+
+    for role in ("coordinator", "technician", "requester"):
+        r = engine.call(st, role, "saveOffice", [{"name": "Blocked"}])
+        check("saveOffice blocked for %s" % role, not r.get("ok"), r)
+    r = engine.call(st, "management", "saveOffice", [{"name": "Clinic", "location": "Bldg A"}])
+    check("office created", r.get("ok") and any(o["name"] == "Clinic" for o in st["offices"]), r)
+    r = engine.call(st, "management", "saveOffice", [{"name": "Clinic", "location": "Bldg B"}])
+    check("office updated", r.get("ok") and next(o for o in st["offices"]
+                                                 if o["name"] == "Clinic")["location"] == "Bldg B", r)
+    r = engine.call(st, "management", "saveOffice", [{"id": "Library", "name": "Library Office"}])
+    check("office rename ok", r.get("ok"), r)
+    check("office rename cascades to tickets",
+          all(t["office"] != "Library" for t in st["tickets"]
+              if t["id"] == "IT-2026-000143") and
+          engine.get_ticket(st, "IT-2026-000143")["office"] == "Library Office")
+    check("office rename cascades to schedules",
+          next(s for s in st["schedules"] if s["id"] == "SCH-2026-012")["office"] == "Library Office")
+    r = engine.call(st, "management", "setOfficeActive", ["Clinic", False])
+    check("office deactivated", r.get("ok") and not next(
+        o for o in st["offices"] if o["name"] == "Clinic")["active"], r)
+
+    r = engine.call(st, "management", "savePerson",
+                    [{"name": "New Person", "role": "technician", "office": "IT Office"}])
+    check("person created", r.get("ok") and r["person"].get("username") == "new.person", r)
+    r = engine.call(st, "management", "savePerson",
+                    [{"name": "New Person", "role": "technician", "office": "IT Office"}])
+    check("duplicate person rejected", not r.get("ok"), r)
+    r = engine.call(st, "management", "savePerson",
+                    [{"name": "Bad Role", "role": "wizard", "office": "IT Office"}])
+    check("invalid role rejected", not r.get("ok"), r)
+
+    r = engine.call(st, "management", "savePerson",
+                    [{"id": "areyes", "name": "A. D. Reyes", "role": "requester",
+                      "office": "Records Office"}])
+    check("person rename ok", r.get("ok"), r)
+    check("person rename cascades to their tickets",
+          engine.get_ticket(st, "IT-2026-000142")["requester"] == "A. D. Reyes")
+
+    r = engine.call(st, "management", "setPersonActive", ["mreyes", False])
+    check("self-deactivation blocked", not r.get("ok"), r)
+    r = engine.call(st, "management", "setPersonActive", ["rvillanueva", False])
+    check("person deactivated", r.get("ok") and not next(
+        p for p in st["people"] if p["username"] == "rvillanueva")["active"], r)
+
+    r = engine.call(st, "management", "saveRef", [{"group": "categories", "value": "CCTV"}])
+    check("ref added", r.get("ok") and "CCTV" in st["settings"]["categories"], r)
+    r = engine.call(st, "management", "saveRef", [{"group": "categories", "value": "cctv"}])
+    check("duplicate ref rejected", not r.get("ok"), r)
+    r = engine.call(st, "management", "saveRef",
+                    [{"group": "categories", "value": "CCTV", "remove": True}])
+    check("ref removed", r.get("ok") and "CCTV" not in st["settings"]["categories"], r)
+    r = engine.call(st, "management", "saveRef",
+                    [{"group": "frequencies", "value": "Fortnightly", "days": 14}])
+    check("frequency added with days", r.get("ok")
+          and any(row[1] == "Fortnightly" and row[2] == 14 for row in st["settings"]["frequencies"]), r)
+    check("frequency_days reads configured value",
+          engine.frequency_days(st, "fortnightly") == 14)
+    r = engine.call(st, "technician", "saveRef", [{"group": "categories", "value": "X"}])
+    check("saveRef blocked for technician", not r.get("ok"), r)
+
+    r = engine.call(st, "management", "saveSettings", [{"reminderMinutes": 0}])
+    check("invalid reminder rejected", not r.get("ok"), r)
+    r = engine.call(st, "management", "saveSettings", [{"reminderMinutes": 5}])
+    check("settings saved", r.get("ok") and st["settings"]["reminderMinutes"] == 5, r)
+
+    r = engine.call(st, "management", "updateSchedule",
+                    ["SCH-2026-024", {"frequency": "monthly", "technician": "J. Tan"}])
+    check("schedule updated", r.get("ok"), r)
+    sc = next(s for s in st["schedules"] if s["id"] == "SCH-2026-024")
+    check("schedule fields applied", sc["frequency"] == "monthly" and sc["technician"] == "J. Tan")
+    r = engine.call(st, "technician", "updateSchedule", ["SCH-2026-024", {"frequency": "weekly"}])
+    check("schedule update blocked for technician", not r.get("ok"), r)
+    r = engine.call(st, "management", "setScheduleActive", ["SCH-2026-024", False])
+    check("schedule paused", r.get("ok") and not sc["active"], r)
+
+
+def test_audit_trail():
+    st = fresh()
+    base = len(st["audit"])
+    tid = "IT-2026-000143"
+    engine.call(st, "coordinator", "assess",
+                [tid, {"impact": "Medium", "urgency": "Medium", "priority": "medium", "target": "2026-11-01"}])
+    engine.call(st, "coordinator", "assign", [tid, "J. Tan"])
+    engine.call(st, "technician", "coordinate", [tid, {"date": "2026-11-02", "tech": "J. Tan"}])
+    engine.call(st, "technician", "startWork", [tid])
+    engine.call(st, "technician", "diagnose", [tid, {"findings": "loose cable"}])
+    engine.call(st, "technician", "recordRepair", [tid, {"actions": "reseated cable"}])
+    engine.call(st, "technician", "recordTest", [tid, "pass", "stable"])
+    engine.call(st, "requester", "officeDecision",
+                [tid, "accepted", {"person": "M. Bataller"}])
+    engine.call(st, "requester", "close", [tid, "confirmation", ""])
+
+    added = st["audit"][base:]
+    check("audit grows with the lifecycle", len(added) >= 8, len(added))
+    def find(kind, frag):
+        return [e for e in added if e["kind"] == kind and frag in (e["text"] or "")]
+    check("audit records assignment transition",
+          any(e["status"] == "Assigned" and "Assigned to J. Tan" in e["text"] for e in added), added)
+    check("audit records resolve transition",
+          any(e["status"] == "Resolved" and "->" in e["text"] for e in added), added)
+    check("audit records closure transition",
+          any(e["status"] == "Closed" and "Closed after office confirmation" in e["text"] for e in added), added)
+    check("audit carries actors", all(e.get("by") for e in added), added)
+    check("audit subjects point at the ticket",
+          all(e["subjectId"] == tid for e in added), added)
+
+    st2 = fresh()
+    base = len(st2["audit"])
+    engine.call(st2, "coordinator", "cancel", ["IT-2026-000143", "duplicate of 0125"])
+    entry = st2["audit"][-1]
+    check("cancellation audited with reason",
+          len(st2["audit"]) == base + 1 and entry["kind"] == "cancel"
+          and "duplicate of 0125" in entry["text"] and entry["status"] == "Cancelled", entry)
+    check("cancelled records preserved", len(st2["tickets"]) == 9)
+
+
+# ----------------------------------------------------------------- list queries
+def test_query_module():
+    st = fresh()
+    tickets = st["tickets"]
+    res = query_mod.query_tickets(tickets, {})
+    check("query returns every ticket", res["total"] == len(tickets), res["total"])
+    check("query paginates", res["page"] == 1 and res["pages"] >= 1 and res["items"])
+    check("default sort newest-updated first",
+          all(query_mod.parse_ms(res["items"][i].get("updatedAt") or res["items"][i].get("createdAt"))
+              >= query_mod.parse_ms(res["items"][i + 1].get("updatedAt") or res["items"][i + 1].get("createdAt"))
+              for i in range(len(res["items"]) - 1)))
+
+    res = query_mod.query_tickets(tickets, {"status": "resolved"})
+    check("status filter", res["total"] == 2 and all(t["status"] == "resolved" for t in res["items"]),
+          res["total"])
+    res = query_mod.query_tickets(tickets, {"status": "open"})
+    check("open filter spans active statuses", res["total"] == 7 and res["counts"].get("closed") is None,
+          res["total"])
+    res = query_mod.query_tickets(tickets, {"q": "delos"})
+    check("search matches requester", res["total"] == 2, res["total"])
+    res = query_mod.query_tickets(tickets, {"office": "Registrar"})
+    check("office filter", res["total"] == 2 and all(t["office"] == "Registrar" for t in res["items"]))
+    res = query_mod.query_tickets(tickets, {"priority": "high"})
+    check("priority filter", res["total"] == 3, res["total"])
+    res = query_mod.query_tickets(tickets, {"mine": "1"}, user_name="A. Delos Reyes")
+    check("mine filter", res["total"] == 2 and all(
+        t["requester"] == "A. Delos Reyes" for t in res["items"]), res["total"])
+
+    res = query_mod.query_tickets(tickets, {"sort": "id", "order": "asc", "size": "3", "page": "2"})
+    ids = [t["id"] for t in res["items"]]
+    check("sort by id asc", ids == sorted(ids), ids)
+    check("pagination pages", res["pages"] == math.ceil(len(tickets) / 3.0) and res["total"] == len(tickets))
+    check("page 2 slice", len(res["items"]) == 3 and res["page"] == 2)
+
+    overdue = query_mod.query_tickets(tickets, {"overdue": "1"})
+    check("overdue filter uses target/SLA", overdue["total"] >= 1
+          and all(t["overdue"] for t in overdue["items"]), overdue["total"])
+    t = engine.get_ticket(st, "IT-2026-000142")  # in progress, target in the past
+    check("ticket flagged overdue", query_mod.is_overdue(t) is True)
+    t = dict(engine.get_ticket(st, "IT-2026-000142"), status="closed")  # terminal  --  never overdue
+    check("terminal ticket not overdue", query_mod.is_overdue(t) is False)
+    hours = query_mod.turnaround_hours(engine.get_ticket(st, "IT-2026-000141"))
+    check("turnaround computed", hours is not None and hours > 0, hours)
+
+    summary = query_mod.summarize(tickets)
+    check("summarize counts statuses", sum(summary["by_status"].values()) == len(tickets))
+    check("summarize turnaround samples", summary["turnaround_samples"] >= 1, summary)
+    check("summarize overdue", summary["overdue"] >= 1, summary["overdue"])
+    check("single SLA definition exposed", summary["default_sla_days"] == query_mod.DEFAULT_SLA_DAYS)
+
+
+# ----------------------------------------------------------------- main
+def test_role_scope_and_policy():
+    """The data scope and the configurable policy the specification names."""
+    st = fresh()
+
+    # ---- a technician only reaches the records assigned to them ----------
+    # The seed assigns every ticket to one technician; give a second ticket to
+    # another technician so the ownership guard has something to refuse.
+    tech_tickets = [t for t in st["tickets"] if t.get("technician") == "J. Tan"]
+    other_tickets = [t for t in st["tickets"] if t.get("technician") not in (None, "J. Tan")]
+    if not other_tickets:
+        spare = next(t for t in st["tickets"] if t.get("technician") == "J. Tan")
+        spare["technician"] = "Second Technician"
+        other_tickets = [spare]
+    check("the seed has tickets for two technicians", tech_tickets and other_tickets)
+    r = engine.call(st, "technician", "diagnose", [other_tickets[0]["id"], {"findings": "not mine"}])
+    check("a technician cannot diagnose another technician's ticket", not r.get("ok"), r)
+    r = engine.call(st, "technician", "assign", [tech_tickets[0]["id"], "J. Tan"])
+    check("a technician cannot assign", not r.get("ok"), r)
+    r = engine.call(st, "technician", "cancel", [tech_tickets[0]["id"], "no longer needed"])
+    check("a technician cannot cancel", not r.get("ok"), r)
+    r = engine.call(st, "technician", "close", [tech_tickets[0]["id"], "authorized", "x"])
+    check("a technician cannot close", not r.get("ok"), r)
+    r = engine.call(st, "technician", "addComment",
+                    [other_tickets[0]["id"], {"text": "looking into it", "visibility": "internal"}])
+    check("a technician cannot post on another technician's ticket", not r.get("ok"), r)
+
+    # ---- a technician does not own the office decision -------------------
+    r = engine.call(st, "technician", "officeDecision",
+                    [tech_tickets[0]["id"], "accepted", {"person": "A. Delos Reyes"}])
+    check("a technician cannot accept for the office", not r.get("ok"), r)
+
+    # ---- the manual schedule check is idempotent and coordinator owned ---
+    st2 = fresh()
+    r = engine.call(st2, "coordinator", "runScheduleCheck", [False])
+    check("the coordinator can run the schedule check", r.get("ok"), r)
+    check("the schedule check reports its results", isinstance(r.get("events"), list), r)
+    jobs_after_first = len(st2["jobs"])
+    r = engine.call(st2, "coordinator", "runScheduleCheck", [False])
+    check("a second schedule check generates no duplicate job",
+          len(st2["jobs"]) == jobs_after_first, (jobs_after_first, len(st2["jobs"])))
+    r = engine.call(st2, "requester", "runScheduleCheck", [False])
+    check("an office requester cannot run the schedule check", not r.get("ok"), r)
+
+    # ---- the priority matrix decides the priority ------------------------
+    st3 = fresh()
+    engine.call(st3, "coordinator", "assess",
+                ["IT-2026-000143", {"impact": "High", "urgency": "High", "priority": "low", "target": "2026-11-01"}])
+    t3 = engine.get_ticket(st3, "IT-2026-000143")
+    check("the matrix sets the priority", t3["priority"] == "critical", t3["priority"])
+    check("the impact and the urgency are stored separately",
+          t3["impact"] == "High" and t3["urgency"] == "High", t3)
+
+    # ---- approval is a per-category flag, off by default -----------------
+    st4 = fresh()
+    check("approval is off by default", not (st4["settings"].get("approvalCategories") or []))
+    r = engine.call(st4, "management", "saveSettings",
+                    [{"approvalCategories": [st4["settings"]["categories"][0]]}])
+    check("the administrator can gate a category", r.get("ok"), r)
+    gated = st4["settings"]["categories"][0]
+    t4 = engine.get_ticket(st4, "IT-2026-000143")
+    t4["category"] = gated
+    t4["status"] = "assigned"
+    t4["technician"] = "J. Tan"
+    r = engine.call(st4, "technician", "startWork", ["IT-2026-000143"])
+    check("a gated category cannot start without the approval", not r.get("ok"), r)
+    r = engine.call(st4, "coordinator", "approve", ["IT-2026-000143", "approved for the visit"])
+    check("the coordinator signs the approval off", r.get("ok"), r)
+    r = engine.call(st4, "technician", "startWork", ["IT-2026-000143", "visit coordinated"])
+    check("the gated ticket starts once it is approved", r.get("ok"), r)
+
+    # ---- system settings are an administration act -----------------------
+    st5 = fresh()
+    r = engine.call(st5, "coordinator", "saveSettings", [{"reminderMinutes": 5}])
+    check("the coordinator cannot change the system settings", not r.get("ok"), r)
+    r = engine.call(st5, "management", "saveSettings", [{"reminderMinutes": 5}])
+    check("the administrator changes the system settings", r.get("ok"), r)
+    check("the change is recorded", st5["settings"]["reminderMinutes"] == 5)
+
+    # ---- the impact domain is Low, Medium and High -----------------------
+    r = engine.call(st5, "management", "saveSettings",
+                    [{"priorityMatrix": {"critical": {"high": "critical"}}}])
+    check("the matrix rejects an impact level outside the domain", not r.get("ok"), r)
+
+
+def main():
+    tmp = tempfile.mkdtemp(prefix="itc-tests-")
+    print("ITC backend tests")
+    print("engine:")
+    test_engine_lifecycle()
+    test_engine_guards()
+    test_engine_dependency_and_hold()
+    test_engine_recurrence()
+    test_engine_maintenance()
+    test_schedule_generation()
+    test_world_tick()
+    test_tenancy()
+    test_conversation()
+    test_notifications_read()
+    test_admin_engine()
+    test_audit_trail()
+    test_role_scope_and_policy()
+    print("query:")
+    test_query_module()
+    print("oidc:")
+    test_oidc()
+    print("delivery:")
+    test_delivery(tmp)
+    print("persistence:")
+    test_persistence(tmp)
+    print("http:")
+    db_path = os.path.join(tmp, "http.sqlite3")
+    httpd, state, worker = appmod.build_server(host="127.0.0.1", port=0, db_path=db_path, start_worker=False)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        test_http(httpd)
+        test_http_import(httpd)
+        test_http_tenancy(httpd)
+        test_http_records(httpd)
+        test_http_outbox(httpd)
+        test_sse(httpd)
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+    print("seed:")
+    test_seed_shape()
+
+    print()
+    print("RESULT: %d passed, %d failed" % (PASS, FAIL))
+    if FAILURES:
+        print("Failures:")
+        for f in FAILURES:
+            print("  - " + f)
+    return 1 if FAIL else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

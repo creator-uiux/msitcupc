@@ -1,0 +1,251 @@
+"""Responsive / UX audit for the mockups.
+
+Drives the installed Chrome over the DevTools Protocol (the same stdlib
+WebSocket client used by tools/shots.py) and, for every page × viewport:
+
+  • emulates the exact viewport with Emulation.setDeviceMetricsOverride;
+  • measures the live DOM in that page context;
+  • flags horizontal page overflow, elements spilling past the viewport,
+    text clipped inside its own box, and interactive tap targets smaller
+    than 36x36 px on small screens.
+
+Measuring over CDP (instead of `chrome --dump-dom`) makes the audit
+deterministic  --  no timer races, no stale harness caching.
+
+Run:  python tools/responsive.py
+"""
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+sys.path.insert(0, HERE)
+
+import shots  # noqa: E402  (WS, wait_endpoint, free_port, CHROME)
+
+# name, css width, css height
+VIEWPORTS = [
+    ("desktop", 1440, 900),
+    ("wide", 1280, 800),
+    ("laptop", 1024, 768),
+    ("tablet", 768, 1024),
+    ("mobile", 430, 932),
+    ("phone", 390, 844),
+    ("small", 375, 812),
+    ("narrow", 320, 720),
+]
+
+MEASURE = r"""
+(function () {
+  function label(e) {
+    var c = (typeof e.className === 'string' ? e.className : '') || e.tagName;
+    return e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') +
+      (c ? '.' + c.trim().split(/\s+/).slice(0, 2).join('.') : '');
+  }
+  /* An element is allowed to be wider than the viewport when a deliberate
+     horizontal scroller owns it: the app ships wide data tables (tickets,
+     register, settings, the roles matrix) inside .card/.matrix-wrap with
+     overflow-x:auto, so the user scrolls the card, not the page. Walk up
+     the tree and treat any overflow-x:auto/scroll ancestor (or self) as
+     "intentionally scrollable"  --  those are never a layout bug. */
+  function inScroller(e) {
+    for (var n = e; n && n !== document.body; n = n.parentElement) {
+      var ox = getComputedStyle(n).overflowX;
+      if (ox === 'auto' || ox === 'scroll') return true;
+    }
+    return false;
+  }
+  var de = document.documentElement;
+  var vw = de.clientWidth, vh = de.clientHeight;
+  var body = document.body || de;
+  var r = { vw: vw, vh: vh, docW: Math.max(de.scrollWidth, body.scrollWidth),
+            docH: Math.max(de.scrollHeight, body.scrollHeight),
+            fit: body.getAttribute('data-fit') === 'viewport',
+            wide: [], clip: [], taps: [] };
+  var all = Array.prototype.slice.call(body.querySelectorAll('*'));
+  for (var i = 0; i < all.length; i++) {
+    var e = all[i];
+    var cs = getComputedStyle(e);
+    if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) continue;
+    var b = e.getBoundingClientRect();
+    if (b.width < 1 || b.height < 1) continue;
+    if (b.right > vw + 1 || b.left < -1) {
+      if (!inScroller(e) && r.wide.length < 12) r.wide.push(label(e) + ' L=' + Math.round(b.left) + ' R=' + Math.round(b.right));
+    }
+    /* Text that is deliberately truncated (an ellipsis, or a control that
+       scrolls its own value) is not a layout bug.  Only flag content that
+       is cut off without an ellipsis to show it.  Form controls scroll
+       their own value, so they are never a clipping defect. */
+    var tag0 = e.tagName.toLowerCase();
+    if (e.children.length === 0 && e.scrollWidth > e.clientWidth + 2 &&
+        cs.overflowX !== 'auto' && cs.overflowX !== 'scroll' &&
+        cs.textOverflow !== 'ellipsis' && cs.overflow !== 'hidden' &&
+        tag0 !== 'input' && tag0 !== 'textarea' && tag0 !== 'select') {
+      if (r.clip.length < 12) r.clip.push(label(e) + ' sw=' + e.scrollWidth + ' cw=' + e.clientWidth);
+    }
+    if (vw <= 480) {
+      var tag = e.tagName.toLowerCase();
+      if (tag === 'button' || tag === 'a' || tag === 'select' || tag === 'input' ||
+          (e.getAttribute && e.getAttribute('role') === 'button')) {
+        if ((b.width < 36 || b.height < 36) && r.taps.length < 15) {
+          r.taps.push(label(e) + ' ' + Math.round(b.width) + 'x' + Math.round(b.height));
+        }
+      }
+    }
+  }
+  return JSON.stringify(r);
+})()
+"""
+
+
+def static_server(root, port):
+    import functools
+    from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+
+    class Quiet(SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    httpd = ThreadingHTTPServer(("127.0.0.1", port), functools.partial(Quiet, directory=root))
+    httpd.daemon_threads = True
+    return httpd
+
+
+def main():
+    if not os.path.exists(shots.CHROME):
+        print("!! Chrome not found at %s" % shots.CHROME)
+        return 2
+
+    pages = sorted(os.path.basename(p) for p in os.listdir(ROOT)
+                   if p.endswith(".html") and not p.startswith("__"))
+    # --pages and --viewports narrow the sweep, so a single screen can be
+    # re-checked quickly while a layout is being fixed.
+    only = []
+    for arg in sys.argv[1:]:
+        if arg.startswith("--pages="):
+            only = [p.strip() for p in arg.split("=", 1)[1].split(",") if p.strip()]
+        elif arg.startswith("--viewports="):
+            wanted = [v.strip() for v in arg.split("=", 1)[1].split(",") if v.strip()]
+            globals()["VIEWPORTS"] = [v for v in VIEWPORTS if v[0] in wanted]
+    if only:
+        pages = [p for p in pages if p in only or p[:-5] in only]
+        if not pages:
+            print("no matching pages")
+            return 2
+    if not pages:
+        print("no pages found in %s" % ROOT)
+        return 2
+
+    port = shots.free_port()
+    base = "http://127.0.0.1:%d/" % port
+    httpd = static_server(ROOT, port)
+    import threading
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+
+    dbg = shots.free_port()
+    # NOTE: not tempfile.mkdtemp  --  mkdtemp builds the directory with an
+    # explicit (non-inherited) ACL where the owner only gets OWNER RIGHTS,
+    # and headless Chrome silently refuses to start on such a profile
+    # (remote-debugging endpoint never comes up). A plain makedirs inherits
+    # the normal %TEMP% ACLs and Chrome starts fine.
+    profile = os.path.join(tempfile.gettempdir(), "resp-chrome-%d" % dbg)
+    if os.path.isdir(profile):
+        shutil.rmtree(profile, ignore_errors=True)
+    os.makedirs(profile)
+    chrome = subprocess.Popen(
+        [shots.CHROME, "--headless=new", "--disable-gpu", "--no-sandbox",
+         "--no-first-run", "--no-default-browser-check", "--disable-extensions",
+         "--hide-scrollbars", "--force-device-scale-factor=1",
+         "--remote-debugging-port=%d" % dbg, "--user-data-dir=" + profile, "about:blank"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    ws = shots.WS(shots.wait_endpoint(dbg))
+    ws.command("Page.enable")
+    ws.command("Runtime.enable")
+
+    def nav(url, timeout=25):
+        ws.drain_events()
+        ws.command("Page.navigate", {"url": url})
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                r = ws.command("Runtime.evaluate",
+                               {"expression": "document.readyState", "returnByValue": True})
+            except Exception:
+                time.sleep(0.1)
+                continue
+            if r.get("result", {}).get("value") == "complete":
+                return True
+            time.sleep(0.1)
+        return False
+
+    def evaluate(expr):
+        r = ws.command("Runtime.evaluate", {"expression": expr, "returnByValue": True})
+        return r.get("result", {}).get("value")
+
+    problems = 0
+    failed_pages = []
+    try:
+        for vp, w, h in VIEWPORTS:
+            ws.command("Emulation.setDeviceMetricsOverride",
+                       {"width": w, "height": h, "deviceScaleFactor": 1, "mobile": False})
+            print("\n== %s  %dx%d ==" % (vp, w, h))
+            for name in pages:
+                ok = nav("%s%s?demo=1" % (base, name))
+                r = None
+                if ok:
+                    time.sleep(0.15)
+                    raw = evaluate(MEASURE)
+                    try:
+                        r = json.loads(raw) if raw else None
+                    except (ValueError, TypeError):
+                        r = None
+                if not r:
+                    print("?? %-18s no probe result" % name)
+                    problems += 1
+                    failed_pages.append("%s @ %s" % (name, vp))
+                    continue
+                flags = []
+                if r["docW"] > r["vw"] + 2:
+                    flags.append("H-OVERFLOW docW=%d vw=%d" % (r["docW"], r["vw"]))
+                # A screen that declares data-fit="viewport" has to stand on one
+                # screen: the sign-in page is a single purpose screen, so it may
+                # never need a scrollbar of its own.
+                if r.get("fit") and r["docH"] > r["vh"] + 2:
+                    flags.append("V-SCROLL docH=%d vh=%d" % (r["docH"], r["vh"]))
+                if r["wide"]:
+                    flags.append("WIDE %s" % "; ".join(r["wide"][:4]))
+                if r["clip"]:
+                    flags.append("CLIP %s" % "; ".join(r["clip"][:3]))
+                if w <= 480 and r["taps"]:
+                    flags.append("TAP %s" % "; ".join(r["taps"][:5]))
+                if flags:
+                    problems += 1
+                    failed_pages.append("%s @ %s" % (name, vp))
+                    print("FAIL %-18s %s" % (name, " | ".join(flags)))
+                else:
+                    print(" ok  %-18s docW=%d" % (name, r["docW"]))
+    finally:
+        try:
+            ws.close()
+        except Exception:
+            pass
+        chrome.terminate()
+        shutil.rmtree(profile, ignore_errors=True)
+        httpd.shutdown()
+        httpd.server_close()
+
+    print("\n%d page/viewport checks with problems" % problems)
+    if failed_pages:
+        print("problem pages: " + ", ".join(failed_pages))
+    return 1 if problems else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OR - Request - ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- Theme before first paint (?theme=dark|light, else the saved choice), so an
+     import or a direct link never flashes the wrong palette.
+     Defaults to light (no auto-OS-dark). -->
+<script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1E3A5F">
+<script>(function(){var P="or",R="requester",F="request.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "ic"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="chromeSide"></aside>
+  <div class="main">
+    <header class="appbar" id="chromeAppbar"></header>
+    <header class="topbar" id="chromeTopbar"></header>
+
+    <main class="content">
+      <div class="sec-title">
+        <h2 id="formTitle">Submit an IT service request</h2>
+        <span class="hint" id="formHint">Flows to <b>Review &amp; Assign</b> in the coordinator lane</span>
+      </div>
+
+      <div class="note" id="respondNote" hidden>
+        <span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></span>
+        <div><b>Office needs information.</b> The coordinator requested missing details for
+        <span class="mono" id="respondId"></span>. Your reply updates the <u>same ticket</u> and returns it to review  -- 
+        no duplicate ticket is created (flowchart: <b>Update existing ticket → Return to review; no new ticket</b>).</div>
+      </div>
+
+      <section class="grid grid-2 mt" id="formRow">
+        <div class="card card-pad">
+          <form id="reqForm" class="grid grid-form req-form-inner">
+            <div class="field"><label for="fDateReported">Date reported</label>
+              <input type="date" name="dateReported" id="fDateReported" value=""></div>
+            <div class="field"><label for="fOffice">Office</label>
+              <select name="office" id="fOffice" required>
+                <option value=""> --  Select Office  -- </option>
+                <option>Records Office</option><option>Accounting</option><option>Registrar</option>
+                <option>HR</option><option>Library</option><option>SDG</option>
+              </select>
+            </div>
+            <div class="field"><label for="fReq">Requester</label>
+              <input type="text" name="requester" id="fReq" value="A. Delos Reyes" placeholder="Full name" required>
+            </div>
+            <div class="field"><label for="fCategory">Category</label>
+              <select name="category" id="fCategory" required>
+                <option value=""> --  Select Category  -- </option>
+                <option>Hardware Repair</option><option>Software Support</option><option>Network and Connectivity</option>
+                <option>Account Assistance</option><option>Printer and Peripheral</option><option>Installation and Configuration</option><option>Other</option>
+              </select>
+            </div>
+            <div class="field span-2"><label for="fSource">Request source</label>
+              <select name="source" id="fSource">
+                <option value="telephone">Telephone</option>
+                <option value="email">Email</option>
+                <option value="walk-in">Walk-in</option>
+                <option value="on-site">On-site</option>
+                <option value="online portal">Online Portal</option>
+              </select>
+            </div>
+            <div class="field span-2"><label for="fIssue">Issue / what do you need?</label>
+              <textarea name="issue" id="fIssue" rows="4" placeholder="Describe the problem, where it happens, and when it started  --  complete details avoid the Needs Information loop." required minlength="10"></textarea>
+            </div>
+            <div class="field"><label for="fIdempotency">Duplicate protection key (optional)</label>
+              <input type="text" name="idempotencyKey" id="fIdempotency" placeholder="e.g. unique-key-for-double-click-prevention">
+              <div class="help">Leave empty. A value here stops a repeated submit from creating a second ticket.</div>
+            </div>
+            <div class="field"><label for="fAsset">Asset tag (optional)</label>
+              <input type="text" name="asset" id="fAsset" placeholder="e.g. PC-OF-118, PRN-REG-02" pattern="[A-Z]{2,4}-[A-Z]{2,4}-\d{2,4}">
+              <div class="help">The asset the request is about  --  written on the service record (format XX-XX-000).</div>
+            </div>
+            <div class="field span-2"><label for="fFiles">Relevant files / chat notes</label>
+              <input type="file" name="files" multiple id="fFiles" accept="image/jpeg,image/png,image/webp,application/pdf,text/plain,text/csv,.docx,.xlsx" capture="environment">
+              <div class="help">A photo of the fault or a copy of the message. Captured with the ticket and visible to the IT team.</div>
+            </div>
+            <div class="row row-between span-2">
+              <span class="hint">Status on submit: <span class="badge b-submitted">Submitted</span></span>
+              <div class="row">
+                <button type="button" class="btn btn-ghost" id="btnReset">Clear</button>
+                <button type="submit" class="btn btn-primary" id="btnSubmit">Submit service request</button>
+              </div>
+            </div>
+          </form>
+
+          <div id="successBox" hidden class="note ok mt">
+            <span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></span>
+            <div><b id="sucId"> -- </b> recorded  --  Status: Submitted.<br>
+            <span class="muted" id="sucNext"></span>
+            <div class="row mt-sm">
+              <a class="btn btn-sm btn-primary" id="sucOpen" href="#">Open ticket</a>
+              <button class="btn btn-sm btn-ghost" id="sucAgain">Submit another</button>
+            </div></div>
+          </div>
+        </div>
+
+        <!-- side: what happens next -->
+        <div class="stack">
+          <div class="card">
+            <div class="card-head"><h3>What happens after you submit</h3><span class="hint">live</span></div>
+            <ul class="list">
+              <li><span class="ico"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></svg></span><div class="body"><strong>Record service request → Status: Submitted</strong><span>The system captures ticket, office, requester, category, issue, date, asset, attachments, source.</span></div></li>
+              <li><span class="ico warn"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20.5 20.5-4.2-4.2"/></svg></span><div class="body"><strong>Review request → Details complete?</strong><span>If anything is missing you get <b>Needs Information</b> and reply on this same page.</span></div></li>
+              <li><span class="ico"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m16 16 3-8 3 8a3 3 0 0 1-6 0Z"/><path d="m2 16 3-8 3 8a3 3 0 0 1-6 0Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></span><div class="body"><strong>Assess impact &amp; urgency → priority + target date</strong><span>Coordinator sets priority and target completion date.</span></div></li>
+              <li><span class="ico ok"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9Z"/></svg></span><div class="body"><strong>Assign technician → notify you both</strong><span>Status: Assigned  --  technician and requester are notified in real time.</span></div></li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Your office's recent tickets</h3><span class="hint" id="myOffice"> -- </span></div>
+            <ul class="list" id="myList"></ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottomnav" id="chromeBottom"></nav>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/flow.js"></script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/time.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/live.js"></script>
+<script>
+/* Initialize required selects with default values for validation */
+function initFormValidation() {
+  var form = document.getElementById('reqForm');
+  if (form) {
+    var selects = form.querySelectorAll('select[required]');
+    selects.forEach(function (sel) {
+      if (!sel.value && sel.options.length > 0) {
+        var firstOpt = sel.options[0];
+        if (firstOpt.value === '') firstOpt = sel.options[1] || firstOpt;
+        sel.value = firstOpt.value;
+      }
+    });
+  }
+}
+initFormValidation();
+
+UI.mountChrome({ title: 'New Service Request', sub: 'Office Requester lane · intake, missing information, follow-ups' });
+
+var respondId = UI.qs('respond') || '';
+var form = document.getElementById('reqForm');
+UI.bindFormValidation(form);   /* live blur/input feedback + submit gate */
+function F(name) { return form.elements.namedItem(name); }
+
+function setMode() {
+  var note = document.getElementById('respondNote');
+  var t = Store.getTicket(respondId);
+  if (t && t.status === 'needs_info') {
+    note.hidden = false;
+    document.getElementById('respondId').textContent = t.id;
+    document.getElementById('formTitle').textContent = 'Supply missing information  --  ' + t.id;
+    document.getElementById('formHint').innerHTML = '<b>Supply missing information → update the existing ticket → return to review</b>';
+    F('office').value = t.office; F('requester').value = t.requester;
+    F('category').value = t.category; F('issue').value = t.issue;
+    F('asset').value = t.asset || '';
+    document.getElementById('btnSubmit').textContent = 'Submit information (same ticket)';
+    document.getElementById('fReq').disabled = true;
+    document.getElementById('fOffice').disabled = true;
+  } else {
+    note.hidden = true;
+    if (respondId && t) document.getElementById('formHint').innerHTML = 'Ticket <span class="mono">' + UI.esc(t.id) + '</span> is <b>' + UI.STATUS[t.status][0] + '</b>  --  no information is outstanding.';
+  }
+}
+
+function renderSide() {
+  var role = Store.db.role;
+  var office = window.ROLES[role].office;
+  document.getElementById('myOffice').textContent = role === 'requester' ? office : 'all offices';
+  var ACTIVE = ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved'];
+  var mine = Store.db.tickets.filter(function (t) { return role !== 'requester' || t.office === office || t.requester === window.ROLES.requester.name; }).slice(0, 6);
+  document.getElementById('myList').innerHTML = mine.map(function (t) {
+    var canWithdraw = role === 'requester' && ACTIVE.indexOf(t.status) > -1 && !t.withdrawal;
+    return '<li><span class="ico">' + (t.status === 'needs_info' ? UI.icon('pen') : UI.icon('ticket')) + '</span>' +
+      '<div class="body"><strong><span class="mono">' + UI.esc(t.id) + '</span> · ' + UI.esc(t.office) + '</strong>' +
+      '<span>' + UI.esc(t.issue.slice(0, 54)) + '</span>' +
+      (t.withdrawal ? '<div class="hint mt-xs">Withdrawal requested  --  the IT Coordinator will record the cancellation reason.</div>' : '') +
+      (canWithdraw ? '<button class="btn btn-sm btn-danger-soft mt-xs" data-withdraw="' + t.id + '">Request withdrawal</button>' : '') +
+      '</div>' +
+      '<span class="when">' + UI.badge(t.status) + '</span></li>';
+  }).join('') || '<li><div class="body"><strong>No tickets yet</strong></div></li>';
+  document.querySelectorAll('#myList [data-withdraw]').forEach(function (b) {
+    b.addEventListener('click', function () { withdraw(b.dataset.withdraw); });
+  });
+}
+
+function withdraw(id) {
+  UI.openModal('Request withdrawal  --  ' + id,
+    '<div class="note mb-sm"><span>' + UI.icon('info') + '</span><div>The IT Coordinator records the cancellation reason, ' +
+    'so the request keeps its status until they action it.</div></div>' +
+    UI.field('Why is the request no longer needed?', UI.textarea('reason', 'e.g. Issue resolved without IT; request no longer needed.', '', 3, true)),
+    '<button class="btn btn-ghost" data-close>Keep request</button><button class="btn btn-danger-soft" id="mGo">Request withdrawal</button>');
+  document.getElementById('mGo').onclick = function () {
+    var r = Flow.requestWithdrawal(id, UI.modalValue('reason'));
+    UI.closeModal(); UI.toast(r.msg, r.ok ? 'ok' : 'err'); if (r.ok) UI.renderBell(); renderSide();
+  };
+}
+
+form.addEventListener('submit', function (e) {
+  e.preventDefault();
+  if (!UI.validateForm(form)) return;
+  var role = Store.db.role;
+  var files = [];
+  var fi = document.getElementById('fFiles');
+  if (fi.files) for (var i = 0; i < fi.files.length; i++) files.push(fi.files[i].name);
+
+  if (respondId && Store.getTicket(respondId) && Store.getTicket(respondId).status === 'needs_info') {
+    var r = Flow.submitInfo(respondId, { issue: F('issue').value, asset: F('asset').value, attachments: files, note: 'details supplied via office reply' });
+    UI.toast(r.msg, r.ok ? 'ok' : 'err');
+    if (r.ok) { UI.renderBell(); var rid = respondId; respondId = ''; location.href = 'ticket.html?id=' + encodeURIComponent(rid); }
+    return;
+  }
+
+  var d = {
+    office: F('office').value, requester: F('requester').value, category: F('category').value,
+    source: F('source').value, issue: F('issue').value.trim(), asset: F('asset').value.trim(),
+    attachments: files
+  };
+  var res = Flow.createTicket(d);
+  UI.toast(res.msg, res.ok ? 'ok' : 'err');
+  if (res.ok) {
+    document.getElementById('successBox').hidden = false;
+    document.getElementById('sucId').textContent = res.id;
+    document.getElementById('sucNext').innerHTML = 'The IT Coordinator will review it  --  you will be notified here the moment it is assessed, assigned, or if details are missing.';
+    document.getElementById('sucOpen').href = 'ticket.html?id=' + encodeURIComponent(res.id);
+    document.getElementById('btnSubmit').disabled = true;
+    UI.renderBell(); renderSide();
+  }
+});
+
+document.getElementById('btnReset').addEventListener('click', function () { form.reset(); });
+document.getElementById('sucAgain').addEventListener('click', function () {
+  form.reset(); F('requester').value = window.ROLES[Store.db.role].name;
+  document.getElementById('successBox').hidden = true;
+  document.getElementById('btnSubmit').disabled = false;
+  F('issue').focus();
+});
+
+Store.subscribe(function () { renderSide(); });
+setMode(); renderSide(); Live.start();
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

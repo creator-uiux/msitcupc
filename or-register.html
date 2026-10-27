@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OR - Register - ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- Theme before first paint (?theme=dark|light, else the saved choice), so an
+     import or a direct link never flashes the wrong palette.
+     Defaults to light (no auto-OS-dark). -->
+<script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1E3A5F">
+<script>(function(){var P="or",R="requester",F="register.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="chromeSide"></aside>
+  <div class="main">
+    <header class="appbar" id="chromeAppbar"></header>
+    <header class="topbar" id="chromeTopbar"></header>
+
+    <main class="content">
+      <div class="sec-title">
+        <h2>Office IT Service Register</h2>
+        <span class="hint">The central record of every service  --  corrective and preventive, with its history preserved</span>
+      </div>
+
+      <div class="card">
+        <div class="filters">
+          <div class="field"><label for="gQ">Search</label>
+            <input type="search" id="gQ" placeholder="Ticket, issue, asset or person…"></div>
+          <div class="field"><label for="gOffice">Office</label><select id="gOffice"><option value="">All offices</option></select></div>
+          <div class="field"><label for="gKind">Kind</label>
+            <select id="gKind"><option value="">All services</option><option value="corrective">Corrective (tickets)</option><option value="preventive">Preventive (jobs)</option></select></div>
+          <div class="field"><label for="gStatus">Status</label><select id="gStatus"><option value="">All statuses</option></select></div>
+          <div class="field"><label for="gFrom">From</label><input type="date" id="gFrom"></div>
+          <div class="field"><label for="gTo">To</label><input type="date" id="gTo"></div>
+          <div class="field filter-action"><button class="btn btn-ghost" id="gReset">Reset</button></div>
+          <div class="field filter-action"><button class="btn btn-soft" id="gCsv">Export CSV</button></div>
+        </div>
+      </div>
+
+      <section class="grid grid-kpi mt" id="gKpi"></section>
+
+      <div class="card mt">
+        <div class="tabs" role="tablist" id="gTabs" aria-label="Register sections">
+          <button type="button" class="tab" role="tab" id="tab-history" aria-controls="panel-history" aria-selected="true" data-g="history">Service history</button>
+          <button type="button" class="tab" role="tab" id="tab-assets" aria-controls="panel-assets" aria-selected="false" data-g="assets">Assets</button>
+          <button type="button" class="tab" role="tab" id="tab-maintenance" aria-controls="panel-maintenance" aria-selected="false" data-g="maintenance">Maintenance</button>
+          <button type="button" class="tab" role="tab" id="tab-audit" aria-controls="panel-audit" aria-selected="false" data-g="audit">Audit trail</button>
+        </div>
+
+        <div class="tab-panel" id="panel-history" role="tabpanel" aria-labelledby="tab-history">
+          <div class="card-head"><h3>Register entries</h3><span class="chip" id="gCount"> -- </span>
+            <span class="hint">newest first</span></div>
+          <table class="table">
+            <thead><tr><th>Record</th><th>Office</th><th>Kind</th><th>Status</th><th>Owners</th><th>When</th></tr></thead>
+            <tbody id="gBody"></tbody>
+          </table>
+          <div id="gPagination"></div>
+          <div class="empty" id="gEmpty" hidden><img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No service records match these filters.</div>
+        </div>
+
+        <div class="tab-panel" id="panel-assets" role="tabpanel" aria-labelledby="tab-assets" hidden></div>
+        <div class="tab-panel" id="panel-maintenance" role="tabpanel" aria-labelledby="tab-maintenance" hidden></div>
+        <div class="tab-panel" id="panel-audit" role="tabpanel" aria-labelledby="tab-audit" hidden></div>
+      </div>
+    </main>
+
+    <nav class="bottomnav" id="chromeBottom"></nav>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/flow.js"></script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/time.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/query.js"></script>
+<script src="js/live.js"></script>
+<script>
+UI.mountChrome({ title: 'Office IT Service Register', sub: 'Every corrective and preventive service on record' });
+
+var G_F = { q: '', office: '', kind: '', status: '', from: '', to: '' };
+var gPage = 1;
+var G_PER = 18;
+
+function role() { return Store.db.role; }
+function authOffice() {
+  var db = Store.db;
+  return (db.auth && db.auth.office) || window.ROLES[role()].office;
+}
+/* requesters only ever see their own office (mirrors server tenancy) */
+function scoped() {
+  var scope = role() === 'requester' ? authOffice() : null;
+  return scope;
+}
+
+function entries() {
+  var db = Store.db;
+  var scope = scoped();
+  var out = [];
+  db.tickets.forEach(function (t) {
+    if (scope && t.office !== scope) return;
+    out.push({ kind: 'corrective', id: t.id, office: t.office, status: t.status, _status: UI.STATUS[t.status],
+      title: t.issue, category: t.category, asset: t.asset,
+      owner: t.requester, technician: t.technician, at: t.updatedAt || t.createdAt, createdAt: t.createdAt, href: 'ticket.html?id=' + encodeURIComponent(t.id) });
+  });
+  db.jobs.forEach(function (j) {
+    if (scope && j.office !== scope) return;
+    out.push({ kind: 'preventive', id: j.id, office: j.office, status: j.status, _status: UI.STATUS[j.status] || [j.status, 'b-assigned'],
+      title: 'Preventive maintenance  --  ' + j.category + ' (' + j.scheduleId + ')', category: j.category, asset: (j.assets || []).join(', '),
+      owner: 'Maintenance plan', technician: j.technician, at: j.visitDate || j.createdAt, createdAt: j.createdAt, href: 'maintenance.html?job=' + encodeURIComponent(j.id) });
+  });
+  return out;
+}
+
+function fill() {
+  function opt(id, all, vals, label) {
+    var el = document.getElementById(id);
+    if (el.dataset.filled) return;
+    el.dataset.filled = '1';
+    el.innerHTML = '<option value="">' + all + '</option>' + vals.map(function (v) {
+      return '<option value="' + UI.attr(v) + '">' + UI.esc(label ? label(v) : v) + '</option>';
+    }).join('');
+  }
+  var sc = scoped();
+  var offices = {}, statuses = {};
+  Store.db.tickets.forEach(function (t) { if (!sc || t.office === sc) { offices[t.office] = 1; statuses[t.status] = 1; } });
+  Store.db.jobs.forEach(function (j) { if (!sc || j.office === sc) { offices[j.office] = 1; statuses[j.status] = 1; } });
+  opt('gOffice', 'All offices', Object.keys(offices).sort(), null);
+  opt('gStatus', 'All statuses', Object.keys(statuses).sort(), function (s) { return UI.STATUS[s] ? UI.STATUS[s][0] : s; });
+  document.getElementById('gOffice').value = G_F.office;
+  document.getElementById('gStatus').value = G_F.status;
+}
+
+function filtered() {
+  return entries().filter(function (e) {
+    if (G_F.office && e.office !== G_F.office) return false;
+    if (G_F.kind && e.kind !== G_F.kind) return false;
+    if (G_F.status && e.status !== G_F.status) return false;
+    if (G_F.from && String(e.createdAt).slice(0, 10) < G_F.from) return false;
+    if (G_F.to && String(e.createdAt).slice(0, 10) > G_F.to) return false;
+    if (G_F.q) {
+      var hay = [e.id, e.title, e.office, e.owner, e.technician, e.category, e.asset].join(' ').toLowerCase();
+      if (hay.indexOf(G_F.q.toLowerCase()) === -1) return false;
+    }
+    return true;
+  }).sort(function (a, b) { return new Date(b.at) - new Date(a.at); });
+}
+
+function render() {
+  fill();
+  var scope = scoped(), rows = filtered();
+  var all = entries();
+  var corrective = all.filter(function (e) { return e.kind === 'corrective'; }).length;
+  var preventive = all.length - corrective;
+  var open = all.filter(function (e) { return Query.OPEN_STATES.indexOf(e.status) > -1; }).length;
+  document.getElementById('gKpi').innerHTML =
+    kpi('Register entries', all.length, scope ? 'your office only' : 'all offices', 'k-brand', UI.icon('book')) +
+    kpi('Corrective', corrective, 'service tickets', 'k-ok', UI.icon('ticket')) +
+    kpi('Preventive', preventive, 'maintenance jobs', 'k-hold', UI.icon('toolbox')) +
+    kpi('Still open', open, 'in progress or awaiting', 'k-warn', UI.icon('hourglass'));
+  function kpi(l, v, d, c, dot) {
+    return '<div class="card kpi ' + c + '"><div class="dot">' + dot + '</div><div class="label">' + l +
+      '</div><div class="value">' + v + '</div><div class="delta">' + d + '</div></div>';
+  }
+
+  document.getElementById('gCount').textContent = rows.length + ' of ' + all.length;
+  document.getElementById('gEmpty').hidden = rows.length > 0;
+
+  var pg = UI.paginate(rows, gPage, G_PER);
+  document.getElementById('gBody').innerHTML = pg.items.map(function (e, i) {
+    var st = e._status || [e.status, 'b-submitted'];
+    return '<tr style="--row-index:' + i + '">' +
+      '<td class="td-main" data-label="Record"><a class="t-id" href="' + e.href + '">' + UI.esc(e.id) + '</a>' +
+      '<div class="t-title">' + UI.esc(String(e.title || '').slice(0, 60)) + '</div>' +
+      '<div class="t-sub">' + UI.esc(e.category || '') + (e.asset ? ' · ' + UI.esc(e.asset) : '') + '</div></td>' +
+      '<td data-label="Office"><div class="t-title">' + UI.esc(e.office) + '</div></td>' +
+      '<td data-label="Kind"><span class="chip">' + (e.kind === 'preventive' ? 'Preventive' : 'Corrective') + '</span></td>' +
+      '<td data-label="Status"><span class="badge ' + st[1] + '">' + UI.esc(st[0]) + '</span></td>' +
+      '<td data-label="Owners"><div class="t-title">' + UI.esc(e.owner || ' -- ') + '</div>' +
+      '<div class="t-sub">' + (e.technician ? 'tech ' + UI.esc(e.technician) : 'unassigned') + '</div></td>' +
+      '<td data-label="When"><div class="t-title">' + UI.dateOnly(e.at) + '</div><div class="t-sub">' + UI.timeAgo(e.at) + '</div></td></tr>';
+  }).join('');
+
+  UI.renderPagination(document.getElementById('gPagination'), pg, function (p) { gPage = p; render(); });
+
+  renderAssets(scope, rows);
+  renderMaintenance(scope);
+  renderAudit(scope);
+}
+
+/* ---------- the asset history of the office ---------- */
+function renderAssets(scope, rows) {
+  var db = Store.db;
+  var assets = {};
+  db.tickets.forEach(function (t) {
+    if (scope && t.office !== scope) return;
+    if (!t.asset) return;
+    var a = assets[t.asset] || (assets[t.asset] = { tag: t.asset, offices: {}, services: 0, open: 0, last: null });
+    a.offices[t.office] = 1;
+    a.services++;
+    if (Query.OPEN_STATES.indexOf(t.status) > -1) a.open++;
+    if (!a.last || String(t.updatedAt) > String(a.last)) a.last = t.updatedAt;
+  });
+  db.jobs.forEach(function (j) {
+    if (scope && j.office !== scope) return;
+    (j.assets || []).forEach(function (tag) {
+      var a = assets[tag] || (assets[tag] = { tag: tag, offices: {}, services: 0, open: 0, last: null });
+      a.offices[j.office] = 1;
+      a.services++;
+      if (j.status !== 'closed' && j.status !== 'cancelled') a.open++;
+      if (!a.last || String(j.createdAt) > String(a.last)) a.last = j.createdAt;
+    });
+  });
+  var list = Object.keys(assets).map(function (k) { return assets[k]; })
+    .filter(function (a) {
+      if (!G_F.office || Object.keys(a.offices).indexOf(G_F.office) > -1) return true;
+      return false;
+    })
+    .filter(function (a) {
+      if (!G_F.q) return true;
+      return a.tag.toLowerCase().indexOf(G_F.q.toLowerCase()) > -1;
+    })
+    .sort(function (x, y) { return y.services - x.services || x.tag.localeCompare(y.tag); });
+  document.getElementById('panel-assets').innerHTML = list.length
+    ? '<div class="card-head"><h3>Asset service history</h3><span class="chip">' + list.length + ' asset(s)</span></div>' +
+      '<table class="table"><thead><tr><th>Asset</th><th>Office</th><th>Services</th><th>Still open</th><th>Last service</th></tr></thead><tbody>' +
+      list.map(function (a) {
+        return '<tr><td class="td-main" data-label="Asset"><div class="t-id">' + UI.esc(a.tag) + '</div></td>' +
+          '<td data-label="Office">' + UI.esc(Object.keys(a.offices).join(', ')) + '</td>' +
+          '<td data-label="Services">' + a.services + '</td>' +
+          '<td data-label="Still open">' + a.open + '</td>' +
+          '<td data-label="Last service">' + (a.last ? UI.dateOnly(a.last) : ' -- ') + '</td></tr>';
+      }).join('') + '</tbody></table>'
+    : '<div class="empty"> <img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No assets on record for this scope.</div>';
+}
+
+/* ---------- the maintenance plans and the visits ---------- */
+function renderMaintenance(scope) {
+  var db = Store.db;
+  var jobs = db.jobs.filter(function (j) { return !scope || j.office === scope; });
+  var schedules = db.schedules.filter(function (s) { return !scope || s.office === scope; });
+  document.getElementById('panel-maintenance').innerHTML =
+    '<div class="card-head"><h3>Preventive maintenance</h3><span class="chip">' + jobs.length + ' visit(s)</span></div>' +
+    '<table class="table"><thead><tr><th>Visit</th><th>Schedule</th><th>Office</th><th>Technician</th><th>Status</th><th>Outcome</th><th>Next due</th></tr></thead><tbody>' +
+    jobs.map(function (j) {
+      var st = UI.STATUS[j.status] || [j.status, 'b-submitted'];
+      return '<tr><td class="td-main" data-label="Visit"><a class="t-id" href="maintenance.html?job=' + encodeURIComponent(j.id) + '">' + UI.esc(j.id) + '</a>' +
+        '<div class="t-sub">' + UI.esc(j.category) + '</div></td>' +
+        '<td data-label="Schedule"><span class="mono">' + UI.esc(j.scheduleId) + '</span></td>' +
+        '<td data-label="Office">' + UI.esc(j.office) + '</td>' +
+        '<td data-label="Technician">' + UI.esc(j.technician || ' -- ') + '</td>' +
+        '<td data-label="Status"><span class="badge ' + st[1] + '">' + UI.esc(st[0]) + '</span></td>' +
+        '<td data-label="Outcome">' + UI.esc(j.outcome === 'success' ? 'Successful' : j.outcome === 'incomplete' ? 'Incomplete' : j.outcome === 'cancelled' ? 'Cancelled' : 'Pending') + '</td>' +
+        '<td data-label="Next due">' + (j.nextDue ? UI.dateOnly(j.nextDue) : ' -- ') + '</td></tr>';
+    }).join('') + '</tbody></table>' +
+    '<div class="card-head mt"><h3>Maintenance plans</h3><span class="chip">' + schedules.length + '</span></div>' +
+    '<table class="table"><thead><tr><th>Schedule</th><th>Office</th><th>Category</th><th>Assets</th><th>Frequency</th><th>Due</th><th>Technician</th></tr></thead><tbody>' +
+    schedules.map(function (s) {
+      return '<tr><td class="td-main" data-label="Schedule"><span class="t-id">' + UI.esc(s.id) + '</span></td>' +
+        '<td data-label="Office">' + UI.esc(s.office) + '</td>' +
+        '<td data-label="Category">' + UI.esc(s.category) + '</td>' +
+        '<td data-label="Assets">' + UI.esc((s.assets || []).join(', ') || ' -- ') + '</td>' +
+        '<td data-label="Frequency">' + UI.esc(s.frequency) + '</td>' +
+        '<td data-label="Due">' + (s.dueDate ? UI.dateOnly(s.dueDate) : ' -- ') + '</td>' +
+        '<td data-label="Technician">' + UI.esc(s.technician || ' -- ') + '</td></tr>';
+    }).join('') + '</tbody></table>';
+}
+
+/* ---------- the audit trail of the office ---------- */
+function renderAudit(scope) {
+  var panel = document.getElementById('panel-audit');
+  if (!panel) return;
+  var db = Store.db;
+  var audit = db.audit || [];
+  var ids = {};
+  db.tickets.forEach(function (t) { if (!scope || t.office === scope) ids[t.id] = 1; });
+  db.jobs.forEach(function (j) { if (!scope || j.office === scope) ids[j.id] = 1; });
+  var rows = audit.filter(function (a) { return ids[a.subjectId]; }).slice().reverse();
+  panel.innerHTML =
+    '<div class="card-head"><h3>Audit trail</h3><span class="chip">' + rows.length + ' event(s)</span>' +
+    '<span class="hint">append only</span></div>' +
+    (rows.length
+      ? '<ul class="list">' + rows.slice(0, 60).map(function (a) {
+        return '<li><span class="ico">' + UI.icon('shield') + '</span>' +
+          '<div class="body"><strong>' + UI.esc(a.text) + '</strong>' +
+          '<span><span class="mono">' + UI.esc(a.subjectId) + '</span> · ' + UI.esc(a.by) + ' (' + UI.esc(a.role) + ')</span></div>' +
+          '<span class="when">' + UI.clock(a.at) + '</span></li>';
+      }).join('') + '</ul>'
+      : '<div class="empty"> <img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No audit events for this scope.</div>');
+}
+
+/* the audit log is a review screen for the IT team, not the office */
+if (UI.roleKey() === 'requester') {
+  var auditTab = document.getElementById('tab-audit');
+  if (auditTab) auditTab.style.display = 'none';
+}
+
+/* the register tabs */
+document.querySelectorAll('#gTabs .tab').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    ['history', 'assets', 'maintenance', 'audit'].forEach(function (k) {
+      var b = document.getElementById('tab-' + k);
+      var p = document.getElementById('panel-' + k);
+      var on = k === btn.dataset.g;
+      if (b) b.setAttribute('aria-selected', on ? 'true' : 'false');
+      if (p) p.hidden = !on;
+    });
+  });
+});
+
+function sync() {
+  G_F = {
+    q: document.getElementById('gQ').value, office: document.getElementById('gOffice').value,
+    kind: document.getElementById('gKind').value, status: document.getElementById('gStatus').value,
+    from: document.getElementById('gFrom').value, to: document.getElementById('gTo').value
+  };
+  gPage = 1; render();
+}
+document.getElementById('gQ').addEventListener('input', UI.debounce(sync, 200));
+['gOffice', 'gKind', 'gStatus', 'gFrom', 'gTo'].forEach(function (id) { document.getElementById(id).addEventListener('change', sync); });
+document.getElementById('gReset').addEventListener('click', function () {
+  G_F = { q: '', office: '', kind: '', status: '', from: '', to: '' };
+  ['gQ', 'gOffice', 'gKind', 'gStatus', 'gFrom', 'gTo'].forEach(function (id) { document.getElementById(id).value = ''; });
+  gPage = 1; render();
+});
+document.getElementById('gCsv').addEventListener('click', function () {
+  var rows = [['record', 'kind', 'office', 'status', 'category', 'asset', 'owner', 'technician', 'created', 'updated']];
+  filtered().forEach(function (e) {
+    rows.push([e.id, e.kind, e.office, e.status, e.category, e.asset || '', e.owner || '', e.technician || '', e.createdAt, e.at]);
+  });
+  UI.downloadCSV('service-register.csv', rows);
+});
+
+Store.subscribe(render);
+render();
+Live.start();
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review &amp; Assign  --  ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- Theme before first paint (?theme=dark|light, else the saved choice), so an
+     import or a direct link never flashes the wrong palette.
+     Defaults to light (no auto-OS-dark). -->
+<script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1E3A5F">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="chromeSide"></aside>
+  <div class="main">
+    <header class="appbar" id="chromeAppbar"></header>
+    <header class="topbar" id="chromeTopbar"></header>
+
+    <main class="content">
+      <div class="sec-title">
+        <h2>Review &amp; Assign</h2>
+        <span class="hint">Review, assess, assign and monitor dependencies</span>
+      </div>
+
+      <section class="grid grid-kpi" id="rKpi"></section>
+
+      <section class="grid grid-2 mt">
+        <div class="stack">
+          <div class="card">
+            <div class="card-head">
+              <h3>Coordinator worklist</h3>
+              <span class="chip" id="rvCount"> -- </span>
+            </div>
+            <table class="table">
+              <thead><tr><th>Ticket</th><th>Office</th><th>Status</th><th>Priority</th><th>Target</th></tr></thead>
+              <tbody id="rvBody"></tbody>
+            </table>
+            <div id="rvPagination"></div>
+            <div class="empty" id="rvEmpty" hidden><img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No requests are waiting on the coordinator.</div>
+          </div>
+        </div>
+
+        <div class="stack" id="rvPanel"></div>
+      </section>
+    </main>
+
+    <nav class="bottomnav" id="chromeBottom"></nav>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/flow.js"></script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/time.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/actions.js"></script>
+<script src="js/live.js"></script>
+<script>
+UI.mountChrome({ title: 'Review & Assign', sub: 'Review, assess, assign and monitor dependencies' });
+
+var WORK = ['submitted', 'needs_info', 'assigned', 'on_hold'];
+var sel = UI.qs('id') || '';
+var reviewPage = 1;
+const REVIEW_PER_PAGE = 10;
+
+function kpi(label, value, delta, cls, dot) {
+  return '<div class="card kpi ' + cls + '"><div class="dot">' + dot + '</div><div class="label">' + label +
+    '</div><div class="value">' + value + '</div><div class="delta">' + delta + '</div></div>';
+}
+function btn(label, a, cls) { return '<button class="btn ' + cls + '" data-act="' + a + '">' + label + '</button>'; }
+
+function worklist() {
+  return Store.db.tickets.filter(function (t) { return WORK.indexOf(t.status) > -1; });
+}
+
+function actionsHTML(t) {
+  var h = '';
+  /* The office may ask for an active request to be withdrawn.  The PDF places
+     the withdrawal itself ("Active request withdrawn" -> "Record cancellation
+     reason") in this lane, so the coordinator records the reason. */
+  if (t.withdrawal) {
+    h += '<div class="note warn"><span>' + UI.icon('repeat') + '</span><div><b>Withdrawal requested by the office.</b> ' +
+      UI.esc(t.withdrawal.reason || '') + '  --  record the cancellation reason to close this out.</div></div>';
+  }
+  if (t.status === 'submitted') {
+    if (!t.reviewed) {
+      h += btn('Request missing details', 'needsinfo', 'btn-ghost') +
+        btn('Details complete  --  assess', 'assess', 'btn-primary') +
+        btn('Record cancellation', 'cancel', 'btn-danger-soft');
+    } else {
+      h += btn('Assign technician', 'assign', 'btn-primary') +
+        btn('Edit assessment', 'assess', 'btn-ghost') +
+        btn('Record cancellation', 'cancel', 'btn-danger-soft');
+    }
+  } else if (t.status === 'needs_info') {
+    h += '<div class="note warn"><span>' + UI.icon('pen') + '</span><div>Waiting on the office to supply the missing details. Their reply updates this same request and returns it to review.</div></div>';
+    h += '<div class="row mt">' + btn('Record cancellation', 'cancel', 'btn-danger-soft') + '</div>';
+  } else if (t.status === 'assigned') {
+    h += btn('Coordinate service schedule', 'coord', 'btn-primary') +
+      btn('Record cancellation', 'cancel', 'btn-danger-soft');
+  } else if (t.status === 'on_hold') {
+    h += btn('Record follow-up update', 'followup', 'btn-ghost') +
+      btn('Dependency resolved  --  resume', 'resolve', 'btn-primary') +
+      btn('Cannot proceed  --  cancel', 'cannot', 'btn-danger-soft');
+  }
+  return h;
+}
+
+function render() {
+  var list = worklist();
+  var c = { submitted: 0, needs_info: 0, assigned: 0, on_hold: 0 };
+  list.forEach(function (t) { if (c[t.status] !== undefined) c[t.status]++; });
+  document.getElementById('rKpi').innerHTML =
+    kpi('Awaiting review', c.submitted, 'Decide if the details are complete', 'k-brand', UI.icon('inbox')) +
+    kpi('Needs information', c.needs_info, 'Office reply returns it to review', 'k-warn', UI.icon('pen')) +
+    kpi('Ready to schedule', c.assigned, 'Assigned  --  coordinate the visit', 'k-ok', UI.icon('cal')) +
+    kpi('On hold · dependency', c.on_hold, 'Follow up or resume processing', 'k-hold', UI.icon('pause'));
+
+  document.getElementById('rvCount').textContent = list.length + ' in review';
+  document.getElementById('rvEmpty').hidden = list.length > 0;
+  if (!sel || !Store.getTicket(sel) || WORK.indexOf(Store.getTicket(sel).status) === -1) {
+    sel = list.length ? list[0].id : '';
+  }
+
+  var pg = UI.paginate(list, reviewPage, REVIEW_PER_PAGE);
+  document.getElementById('rvBody').innerHTML = pg.items.map(function (t, i) {
+    return '<tr data-id="' + t.id + '"' + (t.id === sel ? ' class="tr-sel"' : '') + ' style="--row-index:' + i + '">' +
+      '<td class="td-main" data-label="Ticket"><div class="t-id">' + UI.esc(t.id) + '</div>' +
+      '<div class="t-title">' + UI.esc(t.issue.slice(0, 48)) + (t.issue.length > 48 ? '…' : '') + '</div>' +
+      '<div class="t-sub">' + UI.esc(t.category) + '</div></td>' +
+      '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div></td>' +
+      '<td data-label="Status">' + UI.badge(t.status) + '</td>' +
+      '<td data-label="Priority">' + UI.prio(t.priority) + '</td>' +
+      '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : ' -- ') + '</td></tr>';
+  }).join('');
+  document.querySelectorAll('#rvBody tr[data-id]').forEach(function (tr) {
+    tr.addEventListener('click', function () { sel = tr.dataset.id; render(); });
+  });
+
+  UI.renderPagination(document.getElementById('rvPagination'), pg, function (p) { reviewPage = p; render(); });
+
+  var panel = document.getElementById('rvPanel');
+  var t = sel ? Store.getTicket(sel) : null;
+  if (!t) {
+    panel.innerHTML = '<div class="card card-pad"><div class="empty"> <img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">Nothing is waiting on the coordinator right now.</div></div>';
+    return;
+  }
+  var dep = t.status === 'on_hold' && t.dependency
+    ? '<div class="info mt"><div><div class="k">Dependency</div><div class="v">' + UI.esc(t.dependency.reason) + '</div></div>' +
+      '<div><div class="k">Responsible</div><div class="v">' + UI.esc(t.dependency.responsible) + '</div></div>' +
+      '<div><div class="k">Next action</div><div class="v">' + UI.esc(t.dependency.nextAction) + '</div></div>' +
+      '<div><div class="k">Follow-up due</div><div class="v">' + UI.timeAgo(t.dependency.dueAt) + '</div></div></div>' +
+      (t.dependency.updates.length ? '<ul class="list list-divided">' +
+        t.dependency.updates.slice().reverse().map(function (u) {
+          return '<li><span class="ico">' + UI.icon('message') + '</span><div class="body"><strong>' + UI.esc(u.text) + '</strong><span>' + UI.clock(u.at) + '</span></div></li>';
+        }).join('') + '</ul>' : '')
+    : '';
+
+  panel.innerHTML = '<div class="card card-pad">' +
+    '<div class="card-head-row">' +
+    '<div class="row"><span class="t-id">' + UI.esc(t.id) + '</span>' + UI.badge(t.status) + UI.prio(t.priority) + '</div>' +
+    '<a class="link-arrow" href="ticket.html?id=' + encodeURIComponent(t.id) + '">Full record' + UI.icon('arrowRight') + '</a></div>' +
+    '<h3 class="record-subject">' + UI.esc(t.issue) + '</h3>' +
+    '<div class="info mt">' +
+    '<div><div class="k">Office / requester</div><div class="v">' + UI.esc(t.office) + ' · ' + UI.esc(t.requester) + '</div></div>' +
+    '<div><div class="k">Category / source</div><div class="v">' + UI.esc(t.category) + ' · ' + UI.esc(t.source) + '</div></div>' +
+    '<div><div class="k">Asset</div><div class="v mono">' + UI.esc(t.asset || ' -- ') + '</div></div>' +
+    '<div><div class="k">Impact / urgency</div><div class="v">' + UI.esc(t.impact || ' -- ') + ' / ' + UI.esc(t.urgency || ' -- ') + '</div></div>' +
+    '<div><div class="k">Target completion</div><div class="v">' + (t.target ? UI.dateOnly(t.target) : ' -- ') + '</div></div>' +
+    '<div><div class="k">Technician</div><div class="v">' + UI.esc(t.technician || ' -- ') + '</div></div>' +
+    '</div>' + dep +
+    '<div class="row mt">' + actionsHTML(t) + '</div>' +
+    '</div>';
+
+  panel.querySelectorAll('[data-act]').forEach(function (b) {
+    b.addEventListener('click', function () { Actions.act(b.dataset.act, t.id, render); });
+  });
+}
+
+Store.subscribe(render);
+render();
+Live.start();
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

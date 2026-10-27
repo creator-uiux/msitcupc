@@ -1,0 +1,1096 @@
+/* ==========================================================================
+   ITC Maintenance System  --  shared UI kit
+   --------------------------------------------------------------------------
+   Loaded last, after css/app.css (structure) and css/green.css (tokens).
+   This file is the single place where "how a screen is put together" is
+   decided, so every page and every role page looks the same.
+
+   It does three jobs:
+     1. Utilities  -- the small, repeated layout and type patterns that used
+        to be written as one-off inline styles on each page.
+     2. Parity     -- the rules that make the same component look identical
+        wherever it appears (card, table, note, list, empty state, buttons).
+     3. Clean-up   -- the decorative leftovers of earlier themes (aurora
+        canvas, glow bars, gradient headers) that made some screens look
+        busier than others.
+
+   Rule of the house: no inline styles in the markup.  If a page needs a
+   new arrangement, it takes a class from this file.
+   ========================================================================== */
+
+/* ==========================================================================
+   0 · HIDDEN
+   The hidden attribute always wins.  A component class that sets `display`
+   (a note, an empty state, a card) must never make a hidden element
+   visible -- that is how the "needs information" banner and the empty
+   states used to show on every page.
+   ========================================================================== */
+[hidden]{display:none !important}
+
+/* ==========================================================================
+   1 · SPACING SCALE
+   A 4px grid: 4, 8, 12, 16, 24, 32, 48.  Every gap in the interface is
+   one of these, so two screens never drift apart by a few pixels.
+   ========================================================================== */
+:root{
+  --space-1:4px;
+  --space-2:8px;
+  --space-3:12px;
+  --space-4:16px;
+  --space-5:24px;
+  --space-6:32px;
+  --space-7:48px;
+}
+
+/* ==========================================================================
+   2 · TYPE SCALE
+   The documented scale: 12 / 13 / 14 / 16 / 18 / 20 / 24 / 30.
+   Nothing on a page may use a size that is not in this list.
+   ========================================================================== */
+.t-xs{font-size:var(--text-xs)}          /* 12 - captions, footnotes      */
+.t-sm{font-size:var(--text-sm)}          /* 13 - labels, badges, help     */
+.t-md{font-size:var(--text-md)}          /* 16 - card titles, form values */
+.t-lg{font-size:var(--text-lg)}          /* 18 - panel titles             */
+.t-xl{font-size:var(--text-xl)}          /* 20 - page / section titles    */
+.t-2xl{font-size:var(--text-2xl)}        /* 24 - hero numbers             */
+.t-3xl{font-size:var(--text-3xl)}        /* 30 - stat tile numbers        */
+
+.t-muted{color:var(--muted)}
+.t-secondary{color:var(--text-secondary)}
+.t-strong{font-weight:var(--w-semibold)}
+.t-medium{font-weight:var(--w-medium)}
+.t-center{text-align:center}
+.t-right{text-align:right}
+.t-num{font-variant-numeric:tabular-nums}
+.t-nowrap{white-space:nowrap}
+.t-break{overflow-wrap:anywhere;word-break:break-word}
+.t-lead{font-size:var(--text-md);line-height:1.55}
+.t-ellipsis{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Small vertical steps, so a gap is never an arbitrary pixel value. */
+.mt-xs{margin-top:var(--space-1)}
+.mt-sm{margin-top:var(--space-2)}
+.mt-md{margin-top:var(--space-3)}
+.mb-xs{margin-bottom:var(--space-1)}
+.mb-sm{margin-bottom:var(--space-2)}
+.mb-md{margin-bottom:var(--space-3)}
+
+/* ==========================================================================
+   3 · PAGE HEAD
+   One page title, one helper line, on every screen.
+   ========================================================================== */
+.sec-title{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:var(--space-3);
+  flex-wrap:wrap;
+}
+.sec-title h2{
+  font-size:var(--text-xl);
+  font-weight:var(--w-semibold);
+  letter-spacing:-.01em;
+  line-height:var(--leading-tight);
+  margin:0;
+  position:relative;
+  padding-left:16px;
+}
+/* The one accent that marks a page title, on every page. */
+.sec-title h2::before{
+  content:"";
+  position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:5px;height:18px;border-radius:3px;background:var(--brand-3);
+}
+.sec-title h3{
+  font-size:var(--text-md);
+  font-weight:var(--w-semibold);
+  margin:0;
+}
+.sec-title .hint{
+  margin-left:auto;
+  font-size:var(--text-sm);
+  color:var(--muted);
+  line-height:1.4;
+}
+/* A page head that also carries actions on the right. */
+.sec-title .sec-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+
+/* ==========================================================================
+   4 · CARDS
+   Four legal shapes, and only four:
+       .card                       a bare card (tables, lists)
+       .card > .card-head          a card with a titled header strip
+       .card > .card-pad           a card with a padded body
+       .card > .card-head + .card-pad   a titled panel
+   A .card-head is never nested inside a .card-pad (that used to double the
+   padding and float a grey band inside the card).
+   ========================================================================== */
+.card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow-sm);
+  min-width:0;
+}
+.card-head{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:12px 18px;
+  background:var(--surface-2);
+  border-bottom:1px solid var(--line);
+  border-radius:var(--radius) var(--radius) 0 0;
+}
+.card-head h3{font-size:var(--text-md);font-weight:var(--w-semibold);margin:0;line-height:1.35}
+.card-head h4{font-size:var(--text-base);font-weight:var(--w-semibold);margin:0}
+.card-head .hint{margin-left:auto;font-size:var(--text-sm);color:var(--muted);line-height:1.4}
+.card-head .chip{flex:0 0 auto}
+.card-pad{padding:18px 20px}
+.card-pad > :last-child{margin-bottom:0}
+
+/* The heading of a panel that lives inside a card body. */
+.card-title{
+  font-size:var(--text-md);
+  font-weight:var(--w-semibold);
+  line-height:1.35;
+  margin:0;
+}
+.card-sub{
+  font-size:var(--text-sm);
+  color:var(--muted);
+  margin:2px 0 0;
+  line-height:1.45;
+}
+/* A heading row: title on the left, a chip or action on the right.  The two
+   items are pushed apart with space-between, so a chip that no longer fits
+   drops to the next line on the left instead of floating on the right. */
+.card-head-row{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  justify-content:space-between;margin-bottom:10px;
+}
+
+/* The bottom strip of a card: buttons that belong to the card above them. */
+.card-foot{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:12px 20px;
+  border-top:1px solid var(--line);
+  background:var(--surface-2);
+  border-radius:0 0 var(--radius) var(--radius);
+}
+.card-foot .btn{min-width:0}
+
+/* A separated block inside a card (a maintenance job, a schedule, a panel). */
+.card-block{
+  padding:16px 20px;
+  border-top:1px solid var(--line);
+}
+.card-block:first-child{border-top:none}
+.card-block > :last-child{margin-bottom:0}
+
+/* ==========================================================================
+   5 · ROWS, LISTS AND STACKS
+   ========================================================================== */
+.row-between{justify-content:space-between}
+.row-end{justify-content:flex-end}
+.row-center{justify-content:center}
+.row-start{justify-content:flex-start}
+.row-top{align-items:flex-start}
+.row-bottom{align-items:flex-end}
+.row-tight{gap:6px}
+.row-wide{gap:14px}
+.grow{flex:1 1 auto;min-width:0}
+
+/* A run of chips / small badges that wraps. */
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+/* An attachment chip is a button: it opens the file in place. */
+.chip-file{cursor:pointer;font:inherit;text-align:left;display:inline-flex;align-items:center;gap:5px}
+.chip-file:hover{border-color:var(--brand-3);color:var(--brand-2)}
+/* a button needs the phone tap target, the same one the other chips get */
+@media (max-width:480px){
+  .chip-file{min-height:36px;padding:8px 14px}
+}
+.att-open{font-size:12px;color:var(--brand-2);text-decoration:underline;align-self:center}
+
+/* A vertical run of buttons (the "where to act" stack on a ticket). */
+.btn-stack{display:flex;flex-direction:column;gap:9px}
+.btn-stack > .btn{width:100%;justify-content:flex-start;text-align:left}
+.btn-stack > .btn b{font-weight:var(--w-semibold)}
+.btn-stack > .btn small{display:block;font-size:var(--text-xs);color:var(--muted)}
+
+/* A vertical run of list items with a hairline above the first one. */
+.list-divided{margin-top:10px;border-top:1px solid var(--line)}
+
+/* A block separated from the content above it by a hairline. */
+.divided{margin-top:var(--space-3);border-top:1px solid var(--line);padding-top:var(--space-3)}
+
+/* A narrow numeric input (maintenance frequency in days). */
+.input-days{width:92px;flex:0 0 92px}
+
+/* The request form keeps its own width so it can never push the grid. */
+.req-form-inner{min-width:0;width:100%;max-width:100%;overflow:hidden}
+
+/* A full-width control inside a card body. */
+.w-full{width:100%}
+
+/* A live dot used inline in a sentence. */
+.live-dot.inline{display:inline-block;vertical-align:-1px}
+
+/* A warning-coloured value (an overdue date). */
+.text-warn{color:var(--warn)}
+.text-danger{color:var(--danger)}
+.text-ok{color:var(--ok)}
+
+/* Form action row: right aligned, separated from the fields above it. */
+.form-actions{
+  display:flex;align-items:center;justify-content:flex-end;gap:10px;
+  flex-wrap:wrap;margin-top:14px;
+}
+
+/* A field used as a control inside a toolbar (not a stacked form field). */
+.field-inline{margin:0}
+.field-inline > span{
+  display:block;font-size:var(--text-sm);font-weight:var(--w-medium);
+  color:var(--text-secondary);margin-bottom:5px;
+}
+.field-inline input,
+.field-inline select,
+.field-inline textarea{
+  width:100%;min-height:40px;font-size:var(--text-md);
+  padding:9px 11px;border:1px solid var(--line-strong);
+  border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);
+}
+.field-inline input:focus,
+.field-inline select:focus,
+.field-inline textarea:focus{
+  border-color:var(--brand-3);box-shadow:0 0 0 3px var(--ring);outline:none;
+}
+.field-inline.grow{flex:1 1 220px;min-width:0}
+.field-inline.pick{flex:0 1 320px;min-width:240px;max-width:420px}
+
+/* ==========================================================================
+   6 · TOOLBARS AND FILTERS
+   Every filter bar on every screen has the same shape: labelled controls
+   that share the row evenly, and the action buttons flush with the inputs.
+   ========================================================================== */
+.toolbar{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.toolbar + .toolbar{margin-top:12px}
+
+.filters{
+  display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;
+  padding:14px 16px;
+}
+.filters > *{flex:1 1 165px;min-width:148px}
+.filters .field label{font-size:var(--text-sm);margin-bottom:4px}
+.filters .field select,
+.filters .field input{padding:8px 10px;font-size:var(--text-sm);min-height:38px}
+.filters .field .help{margin-top:4px}
+
+/* An action button inside a filter bar, aligned with the inputs.  It keeps
+   its own width instead of stretching to fill the row. */
+.filters .filter-action{display:flex;align-items:flex-end;flex:0 0 auto}
+.filters .filter-action .btn{min-width:148px}
+
+/* ==========================================================================
+   7 · NOTES
+   One note shape for every tone, with the icon always the same size.
+   ========================================================================== */
+.note{
+  display:flex;gap:10px;align-items:flex-start;
+  background:var(--brand-soft);border:1px solid #CBE3D6;color:var(--brand-ink);
+  border-radius:var(--radius-sm);padding:11px 14px;
+  font-size:var(--text-sm);line-height:1.55;
+}
+.note > span:first-child{flex:0 0 auto;display:flex;margin-top:1px}
+.note > span:first-child svg{width:16px;height:16px}
+.note b{font-weight:var(--w-semibold)}
+.note.warn{background:var(--warn-bg);border-color:#F0DFB4;color:var(--warn)}
+.note.ok{background:var(--ok-bg);border-color:#C7E6D2;color:var(--ok)}
+.note.danger{background:var(--danger-bg);border-color:#F3CFCA;color:var(--danger)}
+.note.flush{margin:0}
+
+/* ==========================================================================
+   8 · EMPTY STATES
+   The same artwork, the same size, the same wording rhythm.
+   ========================================================================== */
+.empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;padding:32px 20px;text-align:center;
+  color:var(--muted);font-size:var(--text-base);line-height:1.5;
+}
+.empty img{width:110px;height:82px;object-fit:contain;opacity:.9;max-width:100%}
+.empty svg{width:44px;height:44px;color:var(--line-strong)}
+.empty b{display:block;color:var(--text-secondary);font-size:var(--text-md);font-weight:var(--w-semibold)}
+.empty p{margin:0;color:var(--muted);max-width:44ch;font-size:var(--text-sm)}
+
+/* ==========================================================================
+   9 · TABLES
+   The same column rhythm everywhere, and a selected row that actually
+   shows (the old markup emitted two `style` attributes, so the second one
+   was dropped by the browser and the highlight never appeared).
+   ========================================================================== */
+.table th:first-child,
+.table td:first-child{padding-left:20px}
+.table th:last-child,
+.table td:last-child{padding-right:20px}
+.table .t-id{white-space:nowrap}
+.table .t-sub{font-size:var(--text-sm);color:var(--muted);margin-top:2px}
+.table .t-title{font-weight:var(--w-semibold)}
+.table .col-check{width:40px}
+.table td.num{text-align:right;font-variant-numeric:tabular-nums}
+/* The record column keeps a readable width instead of collapsing, so the
+   issue text never wraps into a four-line column. */
+.table td.td-main{min-width:190px}
+/* A name column (office, technician) keeps enough room for the name and
+   breaks at the space, never in the middle of a word. */
+.table td[data-label="Office"],
+.table td[data-label="Office / Requester"],
+.table td[data-label="Office / requester"]{min-width:120px}
+.table td[data-label="Office"] .t-title,
+.table td[data-label="Office / Requester"] .t-title,
+.table td[data-label="Office / requester"] .t-title{overflow-wrap:normal;word-break:normal}
+/* A wide table keeps its columns and scrolls inside its card rather than
+   squeezing every cell until the text breaks mid-word. */
+.table-wide{min-width:880px}
+.nowrap{white-space:nowrap}
+
+tr.tr-sel > td{background:var(--brand-soft)}
+tr.tr-sel:hover > td{background:var(--brand-soft)}
+.table tbody tr[data-href]{cursor:pointer}
+
+/* A caption row: a small muted line under a table. */
+.table-note{
+  padding:10px 20px;border-top:1px solid var(--line);
+  font-size:var(--text-sm);color:var(--muted);
+}
+
+/* ==========================================================================
+   10 · KEY / VALUE BLOCKS
+   ========================================================================== */
+.info{display:flex;flex-wrap:wrap;gap:14px 18px}
+.info > *{flex:1 1 180px;min-width:150px}
+.info .k{
+  font-size:var(--text-xs);font-weight:var(--w-semibold);
+  letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+}
+.info .v{font-size:var(--text-md);font-weight:var(--w-medium);margin-top:3px;line-height:1.45}
+.info .v.mono{font-family:var(--font-mono);font-size:var(--text-sm)}
+
+/* ==========================================================================
+   11 · MISC PARTS
+   ========================================================================== */
+.divider{height:1px;background:var(--line);border:0;margin:14px 0}
+.divider.flush{margin:0}
+
+/* The record id, always monospace, always the same size. */
+.t-id{font-family:var(--font-mono);font-size:var(--text-sm);font-weight:var(--w-medium);color:var(--brand-2);white-space:nowrap}
+
+/* A text link with an arrow, used to open a record in another screen. */
+.link-arrow{
+  display:inline-flex;align-items:center;gap:5px;
+  color:var(--brand-2);font-size:var(--text-sm);font-weight:var(--w-medium);
+  text-decoration:none;white-space:nowrap;
+}
+.link-arrow:hover{color:var(--brand);text-decoration:underline;text-underline-offset:2px}
+.link-arrow svg{width:14px;height:14px}
+
+/* The account popover header (the name and e-mail block). */
+.acct-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.acct-head > div{min-width:0}
+
+/* "Mark all read" in the notification popover. */
+.markAll{color:var(--brand-2);cursor:pointer;font-weight:var(--w-medium)}
+.markAll:hover{color:var(--brand);text-decoration:underline;text-underline-offset:2px}
+
+/* The confirm dialog copy. */
+.confirm-text{font-size:var(--text-md);line-height:1.55;color:var(--ink)}
+.confirm-note{font-size:var(--text-sm);line-height:1.5;color:var(--muted);margin-top:8px}
+
+/* A soft icon tile, 32px, used by list rows and inline callouts. */
+.ico{
+  width:32px;height:32px;flex:0 0 32px;border-radius:var(--radius-sm);
+  background:var(--brand-soft);color:var(--brand-2);
+  display:flex;align-items:center;justify-content:center;
+}
+.ico svg{width:16px;height:16px}
+.ico.warn{background:var(--warn-bg);color:var(--warn)}
+.ico.ok{background:var(--ok-bg);color:var(--ok)}
+.ico.danger{background:var(--danger-bg);color:var(--danger)}
+
+/* The subject line of a record: the one headline above a key/value block. */
+.record-subject{
+  font-size:var(--text-lg);font-weight:var(--w-semibold);
+  line-height:1.35;margin:8px 0 0;letter-spacing:-.01em;
+}
+
+/* A muted line under a heading. */
+.hint{font-size:var(--text-sm);color:var(--muted);line-height:1.45}
+.hint.flush{margin:0}
+
+/* A stat strip that is not a KPI tile (inline numbers with a caption). */
+.stat-row{display:flex;flex-wrap:wrap;gap:12px 24px}
+.stat-row .stat .n{font-size:var(--text-lg);font-weight:var(--w-bold);font-variant-numeric:tabular-nums;display:block}
+.stat-row .stat .l{font-size:var(--text-xs);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:var(--w-semibold)}
+
+/* A short label above a group of controls. */
+.sec-label{
+  font-size:var(--text-xs);font-weight:var(--w-semibold);
+  letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+}
+
+/* A block of checklist items (maintenance job execution). */
+.check-stack{display:flex;flex-direction:column;gap:7px}
+
+/* A gallery card that is not a link (a document, not a screen). */
+.g-card.is-static{cursor:default}
+.g-card.is-static:hover{transform:none;box-shadow:var(--shadow-sm)}
+
+/* ------------------------------------------------------------ 404 page */
+.nf{min-height:82vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}
+.nf-card{
+  max-width:540px;text-align:center;background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--radius);
+  padding:40px 34px;box-shadow:var(--shadow-sm);
+}
+.nf-card .brand-mark{margin-bottom:14px}
+.nf-code{
+  font-family:var(--font-mono);font-size:56px;font-weight:var(--w-bold);
+  letter-spacing:-.04em;color:var(--brand-2);line-height:1;
+}
+.nf-card h1{font-size:var(--text-xl);font-weight:var(--w-bold);margin-top:8px}
+.nf-card p{color:var(--muted);margin-top:10px;line-height:1.6}
+.nf-actions{margin-top:24px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+/* ---------------------------------------------------------------- offline */
+.offline-card{max-width:560px;margin:48px auto;text-align:center}
+.offline-ic{
+  display:flex;align-items:center;justify-content:center;
+  width:56px;height:56px;margin:0 auto 12px;
+  border-radius:var(--radius);background:var(--brand-soft);color:var(--brand-2);
+}
+.offline-ic svg{width:30px;height:30px}
+.offline-card h2{margin:0 0 8px}
+.offline-card p{margin:0 0 18px}
+
+/* --------------------------------------------------------------- landing */
+.hero{
+  background:var(--sidebar-1);color:#fff;
+  border-radius:var(--radius-lg);padding:30px 32px;
+}
+.hero h1{font-size:var(--text-2xl);font-weight:var(--w-bold);letter-spacing:-.02em;line-height:1.25}
+.hero p{color:#a7c6b5;font-size:var(--text-base);margin-top:8px;max-width:70ch;line-height:1.6}
+.hero .row{margin-top:16px}
+.hero .badge{white-space:normal}
+.vp{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.vp .badge{background:rgba(255,255,255,.78);color:#d7ecdf}
+.preview{display:grid;grid-template-columns:1fr 320px;gap:var(--space-4);margin-top:var(--space-4)}
+.frame{
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);
+}
+.frame .bar{
+  display:flex;gap:6px;align-items:center;padding:9px 12px;
+  background:var(--surface-2);border-bottom:1px solid var(--line);
+}
+.frame .bar i{width:9px;height:9px;border-radius:50%;background:var(--line-strong);display:block}
+.frame .bar span{margin-left:8px;font-size:var(--text-xs);color:var(--muted);font-weight:var(--w-semibold)}
+.frame iframe{display:block;border:0;transform-origin:0 0}
+.frame .shell{height:430px;overflow:hidden}
+.frame .shell iframe{width:1440px;height:900px}
+.frame.phone .shell{height:560px}
+.frame.phone .shell iframe{width:390px;height:844px;margin:0 auto}
+.frame .cap{
+  padding:11px 14px;border-top:1px solid var(--line);
+  font-size:var(--text-sm);color:var(--muted);
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+}
+@media (max-width:1023px){.preview{grid-template-columns:1fr}}
+
+/* ==========================================================================
+   12 · PARITY FIXES
+   Rules that make the same component identical everywhere.
+   ========================================================================== */
+
+/* Buttons: one height, one radius, one focus ring - whatever the variant. */
+.btn{
+  border-radius:var(--radius-sm);
+  min-height:40px;
+  font-size:var(--text-base);
+  font-weight:var(--w-medium);
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  border:1px solid var(--line-strong);
+  background:var(--surface);
+  color:var(--ink);
+  text-align:center;
+  line-height:1.2;
+  transition:background .15s ease,border-color .15s ease,color .15s ease,box-shadow .15s ease;
+}
+.btn svg{width:16px;height:16px;flex:0 0 16px}
+.btn-sm,.btn.sm{
+  min-height:34px;padding:6px 11px;font-size:var(--text-sm);
+  border-radius:var(--radius-sm);white-space:normal;
+}
+.btn-block{width:100%}
+.btn:disabled,.btn[aria-disabled="true"]{opacity:.45;cursor:not-allowed;pointer-events:none}
+label.btn{cursor:pointer}
+
+/* Badges and chips: same height, same radius, same icon size. */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:var(--text-sm);font-weight:var(--w-medium);letter-spacing:.01em;
+  padding:3px 9px;border-radius:99px;white-space:nowrap;line-height:1.4;
+}
+.badge svg{width:13px;height:13px;flex:0 0 13px}
+.prio{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:var(--text-sm);font-weight:var(--w-medium);
+  padding:3px 8px;border-radius:var(--radius-sm);white-space:nowrap;line-height:1.4;
+}
+.prio svg{width:12px;height:12px;flex:0 0 12px}
+.chip{
+  display:inline-flex;align-items:center;gap:5px;
+  background:var(--surface-2);border:1px solid var(--line);
+  border-radius:99px;font-size:var(--text-sm);font-weight:var(--w-medium);
+  color:var(--text-secondary);padding:3px 10px;line-height:1.4;white-space:nowrap;
+}
+.chip svg{width:12px;height:12px;flex:0 0 12px}
+
+/* List rows: one icon tile, one title, one secondary line, one time. */
+.list li{gap:12px;padding:12px 18px}
+.list .body strong{font-size:var(--text-base);font-weight:var(--w-medium);display:block}
+.list .body span{font-size:var(--text-sm);color:var(--muted)}
+.list .when{font-size:var(--text-sm);color:var(--muted);white-space:nowrap;margin-left:auto;padding-left:8px}
+
+/* A message row in the notification centre.  The tile keeps its own surface so
+   it stays visible on the tinted unread rows. */
+.list li.notif-item .nico{
+  width:32px;height:32px;flex:0 0 32px;border-radius:var(--radius-sm);
+  background:var(--surface);border:1px solid var(--line);color:var(--brand-2);
+  display:flex;align-items:center;justify-content:center;
+}
+.list li.notif-item .nico svg{width:16px;height:16px}
+.list li.notif-item.unread{background:var(--brand-soft)}
+.list li.notif-item .body strong{font-weight:var(--w-semibold)}
+.list li.notif-item .body .btn{margin-top:8px}
+
+/* KPI tiles: identical anatomy on every screen that has them.  The grid is
+   2-up below 1024px and 4-up from 1024px, so a page with four or eight
+   tiles always fills every row completely at every width. */
+.grid-kpi{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:1024px){.grid-kpi{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.kpi{padding:15px 16px}
+.kpi .label{font-size:var(--text-sm);font-weight:var(--w-medium);color:var(--text-secondary);line-height:1.3}
+.kpi .value{font-size:var(--text-3xl);font-weight:var(--w-bold);letter-spacing:-.02em;margin-top:6px;font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi .delta{font-size:var(--text-sm);margin-top:6px;line-height:1.4;color:var(--muted)}
+.kpi .dot{width:32px;height:32px;border-radius:var(--radius-sm);right:14px;top:14px}
+
+/* Form controls: identical height and focus ring everywhere. */
+.field label,.legend{font-size:var(--text-sm);font-weight:var(--w-medium);color:var(--text-secondary);margin-bottom:5px}
+.field input,.field select,.field textarea{
+  border-color:var(--line-strong);border-radius:var(--radius-sm);
+  padding:9px 11px;font-size:var(--text-md);min-height:40px;width:100%;
+  background:var(--surface);color:var(--ink);
+}
+.field .help{font-size:var(--text-sm);color:var(--muted);margin-top:4px}
+.field .field-error-msg{font-size:var(--text-sm)}
+
+/* The timeline: one node, one connector, one meta line. */
+.tl-title{font-size:var(--text-base);font-weight:var(--w-medium);line-height:1.5}
+.tl-meta{font-size:var(--text-sm);color:var(--muted);margin-top:2px}
+.tl-note{font-size:var(--text-sm);border-radius:var(--radius-sm)}
+
+/* ==========================================================================
+   13 · CLEAN-UP
+   The aurora / glow layers of the earlier themes are switched off here, so
+   every screen is flat and calm in both themes.
+   ========================================================================== */
+
+/* A screen the signed-in role may not open keeps its page head, so it still
+   reads as a page of the product and not as a broken screen. */
+body.access-denied .content > *:not(.access-panel){display:none !important}
+body.access-denied .content > .sec-title{display:flex !important}
+body.access-denied .access-panel{margin-top:0}
+html:not([data-theme="dark"]) body,
+html[data-theme="dark"] body{
+  background:var(--bg);
+  background-attachment:scroll;
+}
+body::before{display:none}
+
+/* No glow bar on the active navigation item. */
+.nav-item.active::before{display:none}
+/* No decorative top bar on a stat tile. */
+.kpi::after{display:none}
+/* No gradient strip on a card header. */
+.card-head{background:var(--surface-2)}
+/* No drifting glow behind the sign-in hero. */
+.login-hero::before{display:none}
+/* No gradient table header. */
+.table th{background:var(--surface-2)}
+/* Flat primary button. */
+.btn-primary{background:var(--brand);border-color:transparent;color:#fff;box-shadow:var(--shadow-sm)}
+.btn-primary:hover{background:var(--brand-2);box-shadow:var(--shadow-sm)}
+/* The brand mark is a flat tile, like every other surface. */
+.brand-mark,.brand-mark.lg{box-shadow:none}
+
+/* The top bar and the app bar carry the same page title; keep the type
+   identical between the two chrome tiers. */
+.topbar h1{font-size:var(--text-lg);font-weight:var(--w-semibold)}
+.appbar h1{font-size:var(--text-md);font-weight:var(--w-semibold)}
+
+/* A narrow rail needs a smaller brand, or the name breaks over three lines. */
+@media (max-width:1279px){
+  .brand{padding-left:4px;padding-right:4px}
+  .brand-mark{width:36px;height:36px;flex:0 0 36px;border-radius:var(--radius-sm)}
+  .brand-mark svg{width:19px;height:19px}
+  .brand strong{font-size:var(--text-sm)}
+  .brand small{font-size:var(--text-xs)}
+}
+
+/* The live toast stack must not swallow a third of a small screen. */
+@media (max-width:1279px){
+  .toast-box{width:min(320px,calc(100vw - 28px))}
+}
+
+/* ==========================================================================
+   14 · RESPONSIVE
+   The same rules for every page: 44px touch targets and stacked tables on
+   a phone, one column when the columns can no longer hold their content.
+   ========================================================================== */
+@media (max-width:1023px){
+  .grid-2{grid-template-columns:minmax(0,1fr)}
+  .sec-title .hint{margin-left:0;flex-basis:100%}
+  .sec-title{align-items:flex-start}
+  .card-head .hint{margin-left:0;flex-basis:100%}
+  .card-foot{padding:12px 16px}
+  .card-block{padding:14px 16px}
+  .form-actions{justify-content:stretch}
+  .form-actions .btn{flex:1 1 auto}
+}
+@media (max-width:599px){
+  .sec-title{flex-direction:column;align-items:flex-start;gap:3px}
+  .sec-title h2{font-size:var(--text-lg)}
+  .card{border-radius:var(--radius)}
+  .card-head{padding:12px 14px}
+  .card-pad{padding:14px}
+  .card-foot{padding:12px 14px}
+  .card-block{padding:14px}
+  .table th:first-child,.table td:first-child{padding-left:16px}
+  .table th:last-child,.table td:last-child{padding-right:16px}
+  .table td.td-main{min-width:0}
+  .filters{padding:12px}
+  .filters > *{flex:1 1 140px;min-width:130px}
+  .field-inline.pick{flex:1 1 100%;min-width:0;max-width:100%}
+  .toolbar{gap:8px}
+  a.link-arrow{min-height:44px}
+  .btn,.btn-sm,.btn.sm{min-height:44px}
+  .btn-sm,.btn.sm{font-size:var(--text-sm);padding:10px 14px}
+  .record-subject{font-size:var(--text-md)}
+  .info > *{flex:1 1 150px;min-width:140px}
+}
+@media (min-width:1280px){
+  .content{padding:26px 32px 56px}
+}
+
+/* ---------- the workflow stepper ---------- */
+.stepper{
+  list-style:none;display:flex;align-items:center;margin:0;padding:4px 0;
+  overflow-x:auto;gap:0;
+}
+.step{display:flex;align-items:center;gap:7px;flex:0 0 auto;padding:2px 0}
+.step-dot{
+  width:12px;height:12px;border-radius:50%;background:var(--surface-2);
+  border:2px solid var(--line);flex:0 0 auto;
+}
+.step.done .step-dot{background:var(--ok);border-color:var(--ok)}
+.step.now .step-dot{background:var(--brand);border-color:var(--brand);box-shadow:0 0 0 3px var(--ring)}
+.step-label{font-size:var(--text-xs);color:var(--muted);white-space:nowrap}
+.step.done .step-label,.step.now .step-label{color:var(--ink);font-weight:500}
+.step-line{flex:0 0 auto;display:flex;align-items:center;margin:0 8px}
+.step-line span{display:block;width:24px;height:2px;background:var(--line)}
+.step-branch{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
+@media (max-width:599px){
+  .step-line{margin:0 5px}
+  .step-line span{width:14px}
+  .step-label{font-size:11px}
+}
+
+/* ---------- the loading skeleton ----------
+   The pages read their data synchronously, so a skeleton only shows where the
+   app genuinely waits: an upload in flight and a live reload.  It is one
+   component so every wait looks the same. */
+.skeleton{
+  border-radius:var(--radius-sm);
+  background:linear-gradient(90deg,var(--surface-2) 25%,var(--surface-3) 37%,var(--surface-2) 63%);
+  background-size:400% 100%;
+  animation:skeleton 1.4s ease infinite;
+}
+.skeleton-line{height:12px;margin:0 0 10px}
+.skeleton-line.short{width:38%}
+.skeleton-line.mid{width:64%}
+.skeleton-line.tall{height:70px}
+.skeleton-block{padding:16px}
+@keyframes skeleton{0%{background-position:100% 50%}100%{background-position:0 50%}}
+@media (prefers-reduced-motion:reduce){
+  .skeleton{animation:none}
+}
+
+/* ---------- tabs ---------- */
+.tabs{display:flex;gap:2px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:16px}
+.tab{
+  border:none;background:none;font:inherit;font-size:var(--text-sm);font-weight:500;
+  color:var(--muted);padding:10px 14px;cursor:pointer;border-bottom:2px solid transparent;
+  margin-bottom:-1px;min-height:36px;
+}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--brand-2);border-bottom-color:var(--brand)}
+.tab:focus-visible{outline:2px solid var(--brand-2);outline-offset:2px;border-radius:4px}
+.tab-panel[hidden]{display:none}
+@media (max-width:599px){
+  .tab{font-size:var(--text-xs);padding:10px 10px;flex:1 1 auto;min-height:44px}
+}
+
+/* ---------- the daily activity chart ---------- */
+.chart{display:block}
+.cols{display:flex;align-items:flex-end;gap:2px;height:180px;padding-top:8px;border-bottom:1px solid var(--line)}
+.col-day{flex:1 1 0;min-width:0;display:flex;align-items:flex-end;gap:1px;height:100%}
+.col{flex:1 1 0;min-width:2px;border-radius:2px 2px 0 0;background:var(--muted)}
+.col.c-submitted{background:var(--brand-2)}
+.col.c-resolved{background:var(--warn)}
+.col.c-closed{background:var(--ok)}
+.col.c-cancelled{background:var(--muted)}
+.legend-line{display:flex;flex-wrap:wrap;gap:14px;font-size:var(--text-xs);color:var(--muted)}
+.legend-line span{display:inline-flex;align-items:center;gap:6px}
+.legend-line i{width:10px;height:10px;border-radius:2px;background:var(--muted);display:inline-block}
+.legend-line i.c-submitted{background:var(--brand-2)}
+.legend-line i.c-resolved{background:var(--warn)}
+.legend-line i.c-closed{background:var(--ok)}
+.legend-line i.c-cancelled{background:var(--muted)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- policy controls (settings) ----------
+   A tick list and an impact by urgency matrix.  The matrix is a grid rather
+   than a table so it stacks cleanly on a phone instead of scrolling sideways
+   or turning into a set of stacked cards. */
+.policy-list{list-style:none;margin:0;padding:0}
+/* The "Waiting on" label: who must act next, by role name.  It wraps, so a
+   narrow column never cuts the role name in half. */
+.chip-waiting{font-size:var(--text-xs);white-space:normal;max-width:100%}
+.policy-list li{border-bottom:1px solid var(--line)}
+.policy-list li:last-child{border-bottom:none}
+.policy-list label.row{display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer;padding:6px 0}
+.policy-list .body{flex:1 1 auto;min-width:0}
+.policy-check{
+  flex:0 0 auto;width:20px;height:20px;margin:0;accent-color:var(--brand);
+  cursor:pointer;
+}
+.matrix-list{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.matrix-group{
+  font-size:var(--text-xs);text-transform:uppercase;letter-spacing:.08em;
+  color:var(--muted);font-weight:500;margin-top:8px;
+}
+.matrix-group:first-child{margin-top:0}
+.matrix-row{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;align-items:center}
+.matrix-row label{font-size:var(--text-sm);color:var(--muted);min-width:0}
+.matrix-row select{
+  width:100%;min-width:0;border:1px solid var(--line);background:var(--surface);
+  border-radius:var(--radius-sm);padding:10px 12px;font:inherit;font-size:16px;
+  color:var(--ink);min-height:44px;
+}
+@media (min-width:1280px){
+  /* Wide enough for the label and the choice side by side. */
+  .matrix-row{grid-template-columns:minmax(0,1fr) minmax(0,170px);gap:12px}
+}
+@media (max-width:1023px){
+  .matrix-row{grid-template-columns:minmax(0,1fr)}
+  .matrix-row label{font-weight:500}
+}
+@media (max-width:480px){
+  .policy-check{width:36px;height:36px}
+}
+
+/* ==========================================================================
+   15 · SIGN-IN
+   The sign-in screen is one centred column standing on one measure.
+
+   The card and the foot under it share the same horizontal inset (--inset),
+   so every line of the screen sits on the same measure: nothing runs past
+   the card and nothing stops short of it.  One alignment as well: everything
+   inside the card is centred on the same axis, the theme pills included.
+
+   The card keeps the shape the design system gives it -- 452px at the most,
+   a 22px radius and the 3px brand hairline along the top edge, whose
+   corners now follow the radius of the card.
+   ========================================================================== */
+.login-body{
+  min-height:100vh;min-height:100svh;
+  display:flex;align-items:flex-start;justify-content:center;
+  padding:clamp(16px,3vh,36px) 20px;
+}/* --- the sign-in canvas carries one photograph -------------------------
+   The picture fills the screen and the card is a pane of glass on top of
+   it: a translucent surface, a blurred backdrop and a hairline of light
+   along its edge.  The foot sits directly on the picture, so its caption
+   and its theme label carry a pane of their own; without one they read at
+   about 1.7:1 against the photograph. */
+html:not([data-theme="dark"]) .login-body,
+html[data-theme="dark"] .login-body{
+  background:url("../img/login-bg.jpg") center/cover no-repeat;
+  background-attachment:fixed;
+}
+
+.login-brand-logo{
+  display:block;
+  width:161px;
+  max-width:100%;
+  height:auto;
+  margin:0 auto 18px;
+}
+.login-card{
+  background:rgba(255,255,255,.78);
+  border:1px solid rgba(255,255,255,.45);
+  box-shadow:0 24px 70px rgba(10,6,36,.42);
+}
+.login-card::before{
+  background:linear-gradient(90deg,rgba(255,255,255,.85),rgba(255,255,255,.30));
+}
+/* On glass the muted ink is too light, so the card carries the darker ink. */
+.login-sub,
+.login-note,
+.login-fine{color:var(--text-secondary)}
+.login-note b{color:var(--ink)}
+.login-foot-note,
+.login-foot .theme-picker-label{
+  background:rgba(255,255,255,.78);
+  color:var(--text-secondary);
+  border-radius:999px;
+  padding:5px 15px;
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+}
+.login-foot .theme-seg{
+  background:rgba(255,255,255,.78);
+  border-color:transparent;
+  border-radius:999px;
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+}
+html[data-theme="dark"] .login-card{
+  background:rgba(20,13,46,.58);
+  border-color:rgba(255,255,255,.26);
+  box-shadow:0 24px 70px rgba(6,3,20,.62);
+}
+html[data-theme="dark"] .login-card::before{
+  background:linear-gradient(90deg,rgba(255,255,255,.50),rgba(255,255,255,.16));
+}
+html[data-theme="dark"] .login-foot-note,
+html[data-theme="dark"] .login-foot .theme-picker-label{
+  background:rgba(14,10,36,.80);
+  color:#D9DFF5;
+}
+html[data-theme="dark"] .login-foot .theme-seg{
+  background:rgba(14,10,36,.80);
+}
+.login-main{
+  --inset:34px;                 /* the measure the card and the foot share */
+  width:100%;max-width:452px;min-width:0;
+  margin:auto;                  /* centred; flush to the top when it is tall */
+  padding:0;                    /* the card and the foot carry the measure */
+  gap:20px;
+}
+.login-card{
+  padding:34px var(--inset) 28px;
+  border-radius:22px;
+}
+/* The brand hairline follows the radius of the card: it is the card's own
+   box, clipped to the top 3px, so its corners never square off the card. */
+.login-card::before{
+  inset:0;height:auto;border-radius:inherit;
+  clip-path:inset(0 0 calc(100% - 3px) 0);
+}
+
+/* --- the brand row: the mark and the wordmark never break apart --- */
+.login-brand{
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  margin-bottom:22px;text-align:left;
+}
+.login-wordmark{min-width:0}
+.login-wordmark strong{white-space:nowrap}
+.login-card h1{font-size:30px;line-height:1.2;margin:0}
+.login-sub{font-size:15px;line-height:1.55;max-width:38ch;margin:8px auto 0}
+/* the greeting: bold, in ink, a step below the headline so the two never
+   compete for the same line */
+.login-welcome{
+  margin:10px auto 0;max-width:38ch;text-align:center;
+  font-family:var(--sora);font-size:18px;font-weight:700;
+  letter-spacing:-.01em;color:var(--ink);
+}
+.login-providers{gap:12px;margin-top:24px}
+.provider-btn{gap:12px}
+
+/* --- the note and the fine print share the card's axis --- */
+.login-note{
+  display:block;text-align:center;
+  max-width:44ch;margin:22px auto 0;
+  color:var(--muted);font-size:13px;line-height:1.55;
+}
+.login-note b{color:var(--text-secondary);font-weight:600}
+/* the icon runs in with the sentence, so the note reads as one centred line
+   and the lock never sits alone on a line of its own */
+.login-note > div{display:inline}
+.login-note-icon{display:inline-block;vertical-align:-3px;margin-right:7px;color:var(--muted)}
+.login-note-icon svg{width:15px;height:15px;display:inline-block;vertical-align:-3px}
+.login-fine{
+  text-align:center;max-width:48ch;margin:12px auto 0;
+  color:var(--muted);font-size:13px;line-height:1.55;opacity:.9;
+}
+.login-error{text-align:center}
+
+/* --- the foot: the same measure, the pills on the axis --- */
+.login-foot{
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  width:100%;padding:0 var(--inset);
+}
+.login-foot-note{
+  font-size:var(--text-xs);color:var(--muted);text-align:center;text-wrap:balance;
+}
+.login-foot .theme-picker{
+  flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;padding:0;margin:0;
+}
+.login-foot .theme-picker-label{text-align:center}
+.login-foot .theme-seg{background:transparent;border-color:transparent;padding:0}
+
+/* Google's own button is a fixed-width iframe: give it the card's measure
+   so it can never run past the card on a narrow screen. */
+.gsi-wrap{margin-top:24px;display:flex;justify-content:center;max-width:100%;overflow:hidden}
+.gsi-wrap[hidden]{display:none !important}
+
+/* The demo account list: on a phone the role chip moves under the name and
+   the mail address, so neither the name nor the address is broken in half. */
+@media (max-width:599px){
+  .gacct{
+    display:grid;grid-template-columns:auto minmax(0,1fr);
+    grid-template-areas:"av info" ". chip";
+    gap:4px 12px;align-items:center;
+  }
+  .gacct .g-av{grid-area:av}
+  .gacct .g-info{grid-area:info}
+  .gacct .chip{grid-area:chip;justify-self:start}
+}
+
+/* --- a phone: the whole sign-in fits the screen, and the measure tightens --- */
+@media (max-width:1023px){
+  .login-main{--inset:30px}
+}
+@media (max-width:599px){
+  .login-main{--inset:22px;gap:16px}
+  .login-card{padding:26px var(--inset) 24px}
+  .login-card h1{font-size:26px}
+  .login-brand-logo{width:140px;margin-bottom:14px}
+  .login-brand{margin-bottom:18px}
+  .login-providers{margin-top:20px}
+  .login-note{margin-top:18px}
+  .login-fine{margin-top:10px}
+  .login-sub{font-size:14.5px}
+  .login-foot{gap:8px}
+}
+/* A very narrow phone (320px): the same screen, tightened so the whole
+   sign-in still stands on one screen without anything being cut off. */
+@media (max-width:359px){
+  .login-main{--inset:18px;gap:10px}
+  .login-card{padding:20px var(--inset) 18px}
+  .login-brand-logo{width:118px;margin-bottom:10px}
+  .login-brand{margin-bottom:12px}
+  .login-providers{margin-top:14px}
+  .login-sub{font-size:13.5px;margin-top:5px}
+  .login-note{margin-top:12px;font-size:12px}
+  .login-fine{margin-top:7px;font-size:12px}
+  .login-foot{gap:5px}
+  .login-foot .theme-picker{gap:3px}
+}
+
+/* The mobile app bar carries the notification panel and the account menu.
+   Its backdrop filter already makes it a stacking context, and a context
+   that is not positioned is painted under the positioned cards of the page:
+   the panel and the cards then show through each other.  Giving the bar a
+   z-index of its own puts the whole bar, and the panel on it, on top. */
+.appbar{position:relative;z-index:20}
+
+/* The pop-up switch, in the foot of the notification panel: one click to
+   quiet the live notices, one to bring them back. */
+.notif-foot{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  text-align:left;
+}
+.popups-toggle{
+  display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;
+  font:inherit;font-size:var(--text-sm);color:var(--muted);
+  background:none;border:0;padding:6px 8px;border-radius:var(--radius-sm);
+  cursor:pointer;white-space:nowrap;
+}
+.popups-toggle:hover{background:var(--surface);color:var(--ink)}
+.popups-toggle .popups-state{font-weight:var(--w-semibold);color:var(--ink-2)}
+.popups-toggle.on .popups-state{color:var(--brand-2)}
+/* Safety net: with the notices paused, nothing can slip through. */
+body.popups-off .toast-box{display:none !important}
+
+/* ---------- the attachment viewer (the lightbox) ----------
+   The evidence behind a record, opened over the page so the person never
+   loses the record they are reading. */
+.viewer-host{
+  position:fixed;inset:0;z-index:90;
+  background:rgba(6,20,14,.72);
+  display:flex;align-items:center;justify-content:center;padding:24px;
+}
+.viewer-card{
+  background:var(--surface);border:1px solid var(--glass-line);
+  border-radius:var(--radius-lg);box-shadow:0 44px 90px -40px rgba(1,68,33,.72);
+  width:min(980px,100%);max-height:92vh;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.viewer-head{
+  display:flex;align-items:center;gap:12px;padding:12px 16px;
+  border-bottom:1px solid var(--line);
+}
+.viewer-ic{
+  flex:0 0 auto;width:34px;height:34px;border-radius:var(--radius-sm);
+  display:flex;align-items:center;justify-content:center;
+  background:var(--brand-soft);color:var(--brand-2);
+}
+.viewer-ic svg{width:18px;height:18px}
+.viewer-title{min-width:0;flex:1 1 auto}
+.viewer-title b{display:block;font-size:15px;overflow-wrap:anywhere}
+.viewer-title .muted{display:block;font-size:12.5px}
+.viewer-body{
+  flex:1 1 auto;min-height:0;padding:12px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--surface-2);
+}
+.viewer-media{
+  max-width:100%;max-height:calc(92vh - 170px);
+  object-fit:contain;border-radius:var(--radius-sm);
+  background:var(--surface);
+}
+iframe.viewer-media{width:100%;height:calc(92vh - 170px);border:0}
+.viewer-missing{
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  text-align:center;padding:34px 20px;max-width:44ch;
+}
+.viewer-missing svg{width:30px;height:30px;color:var(--muted)}
+.viewer-missing b{font-size:15px}
+.viewer-missing .muted{font-size:13px;line-height:1.55}
+.viewer-foot{
+  display:flex;justify-content:flex-end;align-items:center;gap:10px;
+  padding:12px 16px;border-top:1px solid var(--line);
+}
+.viewer-foot .btn svg{width:16px;height:16px}
+@media (max-width:599px){
+  .viewer-host{padding:0}
+  .viewer-card{width:100%;height:100%;max-height:100%;border-radius:0;border:0}
+  .viewer-media,iframe.viewer-media{max-height:calc(100vh - 190px);height:auto}
+  iframe.viewer-media{height:calc(100vh - 190px)}
+}
+
+/* Print: chrome off, content on. */
+@media print{
+  .sidebar,.topbar,.appbar,.bottomnav,.toast-box,.notif,.acct{display:none !important}
+  body{background:#fff}
+  .card{box-shadow:none}
+}

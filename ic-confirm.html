@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IC - Confirm - ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- Theme before first paint (?theme=dark|light, else the saved choice), so an
+     import or a direct link never flashes the wrong palette.
+     Defaults to light (no auto-OS-dark). -->
+<script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1E3A5F">
+<script>(function(){var P="ic",R="coordinator",F="confirm.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "ic"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="chromeSide"></aside>
+  <div class="main">
+    <header class="appbar" id="chromeAppbar"></header>
+    <header class="topbar" id="chromeTopbar"></header>
+
+    <main class="content">
+      <div class="sec-title">
+        <h2>Confirmation &amp; Closure</h2>
+        <span class="hint">Office confirmation, closure and recurrence</span>
+      </div>
+
+      <section class="grid grid-kpi" id="cKpi"></section>
+
+      <section class="grid grid-2 mt">
+        <div class="stack">
+          <div class="card">
+            <div class="card-head">
+              <h3>Awaiting office confirmation</h3>
+              <span class="chip" id="cfCount"> -- </span>
+            </div>
+            <table class="table">
+              <thead><tr><th>Ticket</th><th>Office</th><th>Status</th><th>Resolved</th></tr></thead>
+              <tbody id="cfBody"></tbody>
+            </table>
+            <div id="cfPagination"></div>
+            <div class="empty" id="cfEmpty" hidden><img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No service results are waiting for confirmation.</div>
+          </div>
+        </div>
+
+        <div class="stack" id="cfPanel"></div>
+      </section>
+
+      <div class="card mt">
+        <div class="card-head"><h3>Preventive maintenance  --  scheduling &amp; confirmation</h3>
+          <span class="hint">Agree visit availability, then confirm completed visits</span></div>
+        <div id="cfJobs"></div>
+      </div>
+    </main>
+
+    <nav class="bottomnav" id="chromeBottom"></nav>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/flow.js"></script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/time.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/actions.js"></script>
+<script src="js/live.js"></script>
+<script>
+UI.mountChrome({ title: 'Confirmation & Closure', sub: 'Office confirmation, closure and recurrence' });
+
+var sel = UI.qs('id') || '';
+var confirmPage = 1;
+const CONFIRM_PER_PAGE = 10;
+
+function kpi(label, value, delta, cls, dot) {
+  return '<div class="card kpi ' + cls + '"><div class="dot">' + dot + '</div><div class="label">' + label +
+    '</div><div class="value">' + value + '</div><div class="delta">' + delta + '</div></div>';
+}
+function btn(label, a, cls) { return '<button class="btn ' + cls + '" data-act="' + a + '">' + label + '</button>'; }
+
+function confirmable() {
+  return Store.db.tickets.filter(function (t) {
+    return t.status === 'resolved' || (t.status === 'closed' && !t.recurring);
+  });
+}
+
+function ticketActions(t) {
+  var h = '', role = Store.db.role, st = t.confirmation.state;
+  if (t.status === 'resolved') {
+    if (st === 'accepted') {
+      /* The owning office closes its own confirmed ticket.  The IT Coordinator
+         may not answer for the office (Section 4A.2). */
+      if (role === 'requester') h += btn('Close ticket', 'close', 'btn-primary');
+      else h += '<span class="chip">Waiting on the office</span>';
+    } else {
+      if (role === 'requester') {
+        h += btn('Office accepts result', 'accept', 'btn-primary') +
+          btn('Office rejects  --  feedback', 'reject', 'btn-ghost') +
+          btn('Record no response', 'noresp', 'btn-ghost');
+      } else {
+        h += '<span class="chip">Waiting on the office</span>';
+      }
+      if (role !== 'requester') h += btn('Send follow-up reminder', 'remind', 'btn-ghost');
+      if (role === 'coordinator') h += btn('Authorized closure', 'autoclose', 'btn-danger-soft');
+    }
+  } else if (t.status === 'closed') {
+    h += btn('Issue recurs  --  new linked ticket', 'recur', 'btn-primary');
+  }
+  return h;
+}
+
+/* Office tenancy: the requester only sees their own office's maintenance jobs;
+   the coordinator sees every office. Mirrors the request.html "mine" scope. */
+function inMyOffice(j) {
+  var role = Store.db.role;
+  if (role !== 'requester') return true;
+  var office = (UI.auth() || {}).office;
+  return !office || j.office === office;
+}
+
+function render() {
+  var list = confirmable();
+  var pending = list.filter(function (t) { return t.status === 'resolved'; }).length;
+  var accepted = list.filter(function (t) { return t.confirmation.state === 'accepted'; }).length;
+  var reminders = list.reduce(function (n, t) { return n + t.reminders.length; }, 0);
+  /* Maintenance jobs use the same eight status labels as a ticket.
+     A visit waiting on the office has not been confirmed yet (Submitted after
+     generation, or On Hold after a reschedule); a finished visit is Resolved
+     and waits for the Section 3 office decision. */
+  var jobs = Store.db.jobs.filter(function (j) {
+    return j.status === 'resolved' && j.confirmation && j.confirmation.state === 'pending';
+  }).filter(inMyOffice);
+  var openJobs = Store.db.jobs.filter(function (j) {
+    if (['closed', 'cancelled', 'resolved', 'in_progress'].indexOf(j.status) > -1) return false;
+    return j.availability !== 'yes';
+  }).filter(inMyOffice);
+
+  document.getElementById('cKpi').innerHTML =
+    kpi('Awaiting confirmation', pending, 'Resolved  --  office decision pending', 'k-ok', UI.icon('checkCircle')) +
+    kpi('Accepted  --  to close', accepted, 'Confirmed results ready for closure', 'k-brand', UI.icon('lock')) +
+    kpi('Maintenance to action', openJobs.length + jobs.length, 'Availability, scheduling and confirmation', 'k-warn', UI.icon('toolbox')) +
+    kpi('Reminders sent', reminders, 'Follow-ups while awaiting a reply', 'k-hold', UI.icon('mail'));
+
+  document.getElementById('cfCount').textContent = list.length + ' to action';
+  document.getElementById('cfEmpty').hidden = list.length > 0;
+  if (!sel || !Store.getTicket(sel) || confirmable().map(function (x) { return x.id; }).indexOf(sel) === -1) {
+    sel = list.length ? list[0].id : '';
+  }
+
+  var pg = UI.paginate(list, confirmPage, CONFIRM_PER_PAGE);
+  document.getElementById('cfBody').innerHTML = pg.items.map(function (t, i) {
+    return '<tr data-id="' + t.id + '"' + (t.id === sel ? ' class="tr-sel"' : '') + ' style="--row-index:' + i + '">' +
+      '<td class="td-main" data-label="Ticket"><div class="t-id">' + UI.esc(t.id) + '</div>' +
+      '<div class="t-title">' + UI.esc(t.issue.slice(0, 48)) + (t.issue.length > 48 ? '…' : '') + '</div>' +
+      '<div class="t-sub">' + UI.esc(t.category) + '</div></td>' +
+      '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div></td>' +
+      '<td data-label="Status">' + UI.badge(t.status) + '</td>' +
+      '<td class="nowrap" data-label="Resolved">' + (t.resolvedAt ? UI.dateOnly(t.resolvedAt) : ' -- ') + '</td></tr>';
+  }).join('');
+  document.querySelectorAll('#cfBody tr[data-id]').forEach(function (tr) {
+    tr.addEventListener('click', function () { sel = tr.dataset.id; render(); });
+  });
+
+  UI.renderPagination(document.getElementById('cfPagination'), pg, function (p) { confirmPage = p; render(); });
+
+  var panel = document.getElementById('cfPanel');
+  var t = sel ? Store.getTicket(sel) : null;
+  if (!t) {
+    panel.innerHTML = '<div class="card card-pad"><div class="empty"> <img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">Nothing is waiting for confirmation.</div></div>';
+  } else {
+    var st = t.confirmation.state;
+    panel.innerHTML = '<div class="card card-pad">' +
+      '<div class="card-head-row">' +
+      '<div class="row"><span class="t-id">' + UI.esc(t.id) + '</span>' + UI.badge(t.status) + '</div>' +
+      '<a class="link-arrow" href="ticket.html?id=' + encodeURIComponent(t.id) + '">Full record' + UI.icon('arrowRight') + '</a></div>' +
+      '<h3 class="record-subject">' + UI.esc(t.issue) + '</h3>' +
+      '<div class="info mt">' +
+      '<div><div class="k">Office</div><div class="v">' + UI.esc(t.office) + '</div></div>' +
+      '<div><div class="k">Technician</div><div class="v">' + UI.esc(t.technician || ' -- ') + '</div></div>' +
+      '<div><div class="k">Resolution</div><div class="v">' + UI.esc(t.diagnosis.actions || t.diagnosis.findings || ' -- ') + '</div></div>' +
+      '<div><div class="k">Decision</div><div class="v">' + UI.esc(st === 'none' ? 'pending' : st) + '</div></div>' +
+      '<div><div class="k">Confirming person</div><div class="v">' + UI.esc(t.confirmation.person || ' -- ') + '</div></div>' +
+      '<div><div class="k">Confirmed on</div><div class="v">' + (t.confirmation.date ? UI.clock(t.confirmation.date) : ' -- ') + '</div></div>' +
+      '</div>' +
+      (t.confirmation.feedback ? '<div class="note mt"><span>' + UI.icon('message') + '</span><div><b>Office feedback:</b> ' + UI.esc(t.confirmation.feedback) + '</div></div>' : '') +
+      '<div class="row mt">' + ticketActions(t) + '</div>' +
+      '</div>';
+    panel.querySelectorAll('[data-act]').forEach(function (b) {
+      b.addEventListener('click', function () { Actions.act(b.dataset.act, t.id, render); });
+    });
+  }
+
+  /* maintenance  --  office availability (Requester lane) + Section 3 confirmation */
+  function jobHead(j) {
+    return '<div class="card-head-row">' +
+      '<div class="row"><span class="t-id">' + UI.esc(j.id) + '</span><span class="chip">' + UI.esc(j.office) + '</span>' +
+      '<span class="chip">' + UI.esc(j.category) + '</span></div>' +
+      '<span class="hint">' + (j.visitDate ? 'visit ' + UI.dateOnly(j.visitDate) : 'visit not set') + '</span></div>' +
+      '<div class="t-sub mt-xs">Schedule ' + UI.esc(j.scheduleId) + ' · ' + UI.esc(j.assets.join(', ')) + ' · technician ' + UI.esc(j.technician) + '</div>';
+  }
+
+  var openHTML = openJobs.length ? openJobs.map(function (j) {
+    return '<div class="card-block">' + jobHead(j) +
+      '<div class="row mt">' +
+      '<button class="btn btn-sm btn-primary" data-job="' + j.id + '" data-jact="availYes">Office available  --  confirm visit</button>' +
+      '<button class="btn btn-sm btn-ghost" data-job="' + j.id + '" data-jact="availNo">Not available  --  propose a new date</button>' +
+      '</div></div>';
+  }).join('') : '<div class="empty"><img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No maintenance visit is waiting on your office.</div>';
+
+  var doneHTML = jobs.length ? jobs.map(function (j) {
+    var h = '<div class="card-block">' + jobHead(j) + '<div class="row mt">';
+    if (Store.db.role === 'requester') {
+      h += '<button class="btn btn-sm btn-primary" data-job="' + j.id + '" data-jact="confYes">Office accepts  --  confirm &amp; close</button>' +
+        '<button class="btn btn-sm btn-ghost" data-job="' + j.id + '" data-jact="confNo">Office rejects  --  continue verification</button>' +
+        '<button class="btn btn-sm btn-ghost" data-job="' + j.id + '" data-jact="confNone">No response  --  keep pending</button>';
+    } else {
+      h += '<span class="chip">Waiting on the office</span>' +
+        '<button class="btn btn-sm btn-danger-soft" data-job="' + j.id + '" data-jact="confClose">Authorized closure  --  record the reason</button>';
+    }
+    return h + '</div></div>';
+  }).join('') : '<div class="empty"><img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No completed maintenance visit is awaiting confirmation.</div>';
+
+  document.getElementById('cfJobs').innerHTML =
+    '<div class="card-head-row"><h3 class="card-title">Awaiting office availability</h3>' +
+    '<span class="hint">Office available? Yes → coordinate the visit · No → agree a new maintenance date</span></div>' + openHTML +
+    '<div class="card-head-row mt"><h3 class="card-title">Completed visits  --  office decision</h3></div>' + doneHTML;
+
+  document.querySelectorAll('#cfJobs [data-jact]').forEach(function (b) {
+    b.addEventListener('click', function () { jobAct(b.dataset.jact, b.dataset.job); });
+  });
+}
+
+function jobAct(a, jobId) {
+  var j = Store.getJob(jobId), r;
+  if (a === 'availYes') {
+    r = Maint.confirmAvailability(jobId, true);
+    UI.toast(r.msg, r.ok ? 'ok' : 'err'); if (r.ok) UI.renderBell(); render();
+  } else if (a === 'availNo') {
+    UI.openModal('Office available? No → agree a new maintenance date',
+      '<div class="grid grid-form">' +
+      UI.field('New maintenance date', UI.dateInput('date', Time.todayPlus(7), { required: true })) +
+      UI.field('Reason', UI.input('reason', 'e.g. Office examination week')) + '</div>',
+      '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Save new date</button>');
+    document.getElementById('mGo').onclick = function () {
+      var rr = Maint.rescheduleJob(jobId, UI.modalValue('date'), UI.modalValue('reason'));
+      UI.closeModal(); UI.toast(rr.msg, rr.ok ? 'ok' : 'err'); if (rr.ok) UI.renderBell(); render();
+    };
+  } else if (a === 'confYes') {
+    UI.openModal('Record confirmation, confirming person and date',
+      UI.field('Confirming person', UI.input('person', 'e.g. A. Delos Reyes', '', { required: true })),
+      '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Confirm &amp; close</button>');
+    document.getElementById('mGo').onclick = function () {
+      var r = Maint.jobConfirmation(jobId, 'accepted', UI.modalValue('person'));
+      UI.closeModal(); UI.toast(r.msg, r.ok ? 'ok' : 'err'); if (r.ok) UI.renderBell(); render();
+    };
+  } else if (a === 'confNo') {
+    r = Maint.jobConfirmation(jobId, 'rejected', j.office);
+    UI.toast(r.msg, r.ok ? 'ok' : 'err'); render();
+  } else if (a === 'confClose') {
+    UI.openModal('Authorized closure  --  the office has not confirmed',
+      UI.field('Reason for authorized closure', UI.textarea('reason', 'e.g. Office head authorised closure by email; requester on leave.', '', 3, true)),
+      '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-danger-soft" id="mGo">Close the visit</button>');
+    document.getElementById('mGo').onclick = function () {
+      var rr = Maint.closeJob(jobId, UI.modalValue('reason'));
+      UI.closeModal(); UI.toast(rr.msg, rr.ok ? 'ok' : 'err'); if (rr.ok) UI.renderBell(); render();
+    };
+  } else {
+    r = Maint.jobConfirmation(jobId, 'no_response', '');
+    UI.toast(r.msg, r.ok ? 'ok' : 'err'); render();
+  }
+}
+
+Store.subscribe(render);
+render();
+Live.start();
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

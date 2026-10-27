@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# SQLite database and its write-ahead log
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+*.db
+*.db-wal
+*.db-shm
+
+# Generated review captures (docs/screenshots is the tracked evidence)
+shots/
+
+# Local logs and OS noise
+*.log
+.DS_Store
+Thumbs.db
