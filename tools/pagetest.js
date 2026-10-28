@@ -159,7 +159,7 @@ var tests = [];
 tests.push(async function dashboard() {
   var p = await open(BASE + 'dashboard.html');
   ok(p.errors.length === 0, 'dashboard loads with no script errors' + (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));
-  ok($$('#kpiGrid .kpi').length >= 8, 'KPI row renders all eight status cards (' + $$('#kpiGrid .kpi').length + ')');
+  ok($$('#kpiGrid .kpi').length === 4, 'role dashboard renders four focused KPI tiles (' + $$('#kpiGrid .kpi').length + ')');
   ok($$('#queueBody tr').length >= 5, 'active queue lists seeded tickets (' + $$('#queueBody tr').length + ')');
   ok($$('#maintDue li').length >= 3, 'maintenance due list populated');
   ok($$('#activity li').length >= 5, 'live audit feed populated');
@@ -170,7 +170,7 @@ tests.push(async function dashboard() {
   asRole(p, 'requester');
   ok(p.w.Store.db.role === 'requester', 'signed-in role persists to store');
   ok($('.acctName').textContent === 'A. Delos Reyes', 'account tray reflects the signed-in account');
-  ok($('.rail-avatar').textContent === 'AD', 'rail avatar initials update');
+  ok($('.side-avatar').textContent === 'AD', 'sidebar avatar initials update');
 
   /* live tick */
   var n0 = p.w.Store.db.tickets.length;
@@ -723,22 +723,22 @@ tests.push(async function rolesPage() {  var p = await open(BASE + 'roles.html')
 
 tests.push(async function roleNav() {
   var p = await open(BASE + 'dashboard.html');
-  var rail = function () {
-    return $$('.rail-item[href]').map(function (a) { return a.textContent.replace(/\s+/g, ' ').trim(); });
+  var nav = function () {
+    return $$('.side-link[href]').map(function (a) { return a.textContent.replace(/\s+/g, ' ').trim(); });
   };
-  var n0 = rail().length;
+  var n0 = nav().length;
   ok(n0 >= 7, 'coordinator sees the full navigation (' + n0 + ')');
-  var c0 = rail().join('|');
+  var c0 = nav().join('|');
   ok(c0.indexOf('My Tickets') === -1, 'My Tickets is the technician lane  --  hidden from the coordinator');
   asRole(p, 'requester');
-  var labels = rail().join('|');
-  ok(rail().length < n0, 'requester sees fewer nav items than the coordinator');
-  ok(labels.indexOf('My Jobs') === -1, 'requester cannot see the technician workspace');
+  var labels = nav().join('|');
+  ok(nav().length < n0, 'requester sees fewer nav items than the coordinator');
+  ok(labels.indexOf('My Maintenance Jobs') === -1, 'requester cannot see the technician workspace');
   ok(labels.indexOf('Maintenance') === -1, 'requester cannot see maintenance');
   asRole(p, 'management');
-  var m = rail().join('|');
+  var m = nav().join('|');
   ok(m.indexOf('New Request') === -1, 'management cannot submit requests');
-  ok(m.indexOf('Roles') === -1, 'reference pages stay out of the primary rail');
+  ok(m.indexOf('Roles and Access') > -1, 'reference pages live in their own sidebar group');
   ok(m.indexOf('Maintenance') > -1, 'management can still open maintenance');
   ok(p.errors.length === 0, 'no errors switching roles');
   close(p);
@@ -748,14 +748,13 @@ tests.push(async function navGroupsNeverEmpty() {
   var p = await open(BASE + 'dashboard.html');
   ['requester', 'technician', 'coordinator', 'management'].forEach(function (role) {
     asRole(p, role);
-    var items = $$('#chromeSide .rail-nav .rail-item[href]');
-    var ctxItems = $$('#chromeSide .ctx .ctx-item[href]');
-    ok(items.length > 0, role + ': the rail renders destinations (' + items.length + ')');
-    ok(ctxItems.length > 0, role + ': the contextual menu renders destinations (' + ctxItems.length + ')');
-    ok($$('#chromeSide .ctx-group').every(function (g) {
-      var next = g.nextElementSibling;
-      return next && next.classList.contains('ctx-item');
-    }), role + ': no contextual group renders empty');
+    var groups = $$('#chromeSide .side-group-wrap');
+    ok(groups.length > 0, role + ': the sidebar renders groups (' + groups.length + ')');
+    ok(groups.every(function (g) { return g.querySelectorAll('.side-link[href]').length > 0; }),
+      role + ': no sidebar group renders empty');
+    ok($$('#chromeSide .side-link[href]').length >= 6,
+      role + ': the sidebar renders destinations (' + $$('#chromeSide .side-link[href]').length + ')');
+    ok($('#chromeSide .ctx') === null, role + ': the old contextual column is gone');
   });
   ok(p.errors.length === 0, 'no errors across role navigation');
   close(p);
@@ -811,10 +810,14 @@ tests.push(async function dashboardActivity() {
   ok($('#actTableWrap').hidden === false, 'the data table alternative can be shown');
   ok($('#actTableWrap table tbody tr') !== null, 'the data table carries the daily rows');
 
-  /* the summary tiles: the eight statuses plus Overdue */
+  /* the summary tiles: four role tiles, then the eight statuses plus Overdue */
   var tiles = $$('#kpiGrid .kpi .label').map(function (e) { return e.textContent; });
-  ok(tiles.length === 9, 'the dashboard shows the eight statuses plus Overdue (' + tiles.length + ')');
-  ok(tiles.indexOf('Overdue') > -1, 'the Overdue tile is present');
+  ok(tiles.length === 4, 'the dashboard shows four role-focused tiles (' + tiles.length + ')');
+  var strip = $$('#statusStrip .status-bit');
+  ok(strip.length === 9, 'the status strip shows the eight statuses plus Overdue (' + strip.length + ')');
+  ok(strip.some(function (e) { return /Overdue/.test(e.textContent); }), 'the Overdue link is present');
+  ok(strip.every(function (e) { return e.getAttribute('href'); }),
+     'every status in the strip links to its filtered queue');
 
   /* the breakdown tabs */
   ok($$('#bdTabs .tab').length === 3, 'the breakdown has three tabs');

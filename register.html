@@ -92,6 +92,15 @@ UI.mountChrome({ title: 'Office IT Service Register', sub: 'Every corrective and
 var G_F = { q: '', office: '', kind: '', status: '', from: '', to: '' };
 var gPage = 1;
 var G_PER = 18;
+var aPage = 1, mPage = 1, sPage = 1, auPage = 1;
+var G_TAB_PER = 15;
+
+function paginateSafe(items, page, per) {
+  var pages = Math.max(1, Math.ceil(items.length / per));
+  var state = UI.paginate(items, Math.min(Math.max(1, page), pages), per);
+  state.pages = pages;
+  return state;
+}
 
 function role() { return Store.db.role; }
 function authOffice() {
@@ -232,17 +241,22 @@ function renderAssets(scope, rows) {
       return a.tag.toLowerCase().indexOf(G_F.q.toLowerCase()) > -1;
     })
     .sort(function (x, y) { return y.services - x.services || x.tag.localeCompare(y.tag); });
-  document.getElementById('panel-assets').innerHTML = list.length
+  var ap = paginateSafe(list, aPage, G_TAB_PER);
+  aPage = ap.page;
+  var panel = document.getElementById('panel-assets');
+  panel.innerHTML = list.length
     ? '<div class="card-head"><h3>Asset service history</h3><span class="chip">' + list.length + ' asset(s)</span></div>' +
       '<table class="table"><thead><tr><th>Asset</th><th>Office</th><th>Services</th><th>Still open</th><th>Last service</th></tr></thead><tbody>' +
-      list.map(function (a) {
+      ap.items.map(function (a) {
         return '<tr><td class="td-main" data-label="Asset"><div class="t-id">' + UI.esc(a.tag) + '</div></td>' +
           '<td data-label="Office">' + UI.esc(Object.keys(a.offices).join(', ')) + '</td>' +
           '<td data-label="Services">' + a.services + '</td>' +
           '<td data-label="Still open">' + a.open + '</td>' +
           '<td data-label="Last service">' + (a.last ? UI.dateOnly(a.last) : ' -- ') + '</td></tr>';
-      }).join('') + '</tbody></table>'
+      }).join('') + '</tbody></table>' +
+      '<div id="aPagination"></div>'
     : '<div class="empty"> <img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No assets on record for this scope.</div>';
+  UI.renderPagination(document.getElementById('aPagination'), ap, function (p) { aPage = p; renderAssets(scope); });
 }
 
 /* ---------- the maintenance plans and the visits ---------- */
@@ -250,10 +264,13 @@ function renderMaintenance(scope) {
   var db = Store.db;
   var jobs = db.jobs.filter(function (j) { return !scope || j.office === scope; });
   var schedules = db.schedules.filter(function (s) { return !scope || s.office === scope; });
+  var mp = paginateSafe(jobs, mPage, G_TAB_PER);
+  var sp = paginateSafe(schedules, sPage, G_TAB_PER);
+  mPage = mp.page; sPage = sp.page;
   document.getElementById('panel-maintenance').innerHTML =
     '<div class="card-head"><h3>Preventive maintenance</h3><span class="chip">' + jobs.length + ' visit(s)</span></div>' +
     '<table class="table"><thead><tr><th>Visit</th><th>Schedule</th><th>Office</th><th>Technician</th><th>Status</th><th>Outcome</th><th>Next due</th></tr></thead><tbody>' +
-    jobs.map(function (j) {
+    mp.items.map(function (j) {
       var st = UI.STATUS[j.status] || [j.status, 'b-submitted'];
       return '<tr><td class="td-main" data-label="Visit"><a class="t-id" href="maintenance.html?job=' + encodeURIComponent(j.id) + '">' + UI.esc(j.id) + '</a>' +
         '<div class="t-sub">' + UI.esc(j.category) + '</div></td>' +
@@ -264,9 +281,10 @@ function renderMaintenance(scope) {
         '<td data-label="Outcome">' + UI.esc(j.outcome === 'success' ? 'Successful' : j.outcome === 'incomplete' ? 'Incomplete' : j.outcome === 'cancelled' ? 'Cancelled' : 'Pending') + '</td>' +
         '<td data-label="Next due">' + (j.nextDue ? UI.dateOnly(j.nextDue) : ' -- ') + '</td></tr>';
     }).join('') + '</tbody></table>' +
+    '<div id="mPagination"></div>' +
     '<div class="card-head mt"><h3>Maintenance plans</h3><span class="chip">' + schedules.length + '</span></div>' +
     '<table class="table"><thead><tr><th>Schedule</th><th>Office</th><th>Category</th><th>Assets</th><th>Frequency</th><th>Due</th><th>Technician</th></tr></thead><tbody>' +
-    schedules.map(function (s) {
+    sp.items.map(function (s) {
       return '<tr><td class="td-main" data-label="Schedule"><span class="t-id">' + UI.esc(s.id) + '</span></td>' +
         '<td data-label="Office">' + UI.esc(s.office) + '</td>' +
         '<td data-label="Category">' + UI.esc(s.category) + '</td>' +
@@ -274,7 +292,10 @@ function renderMaintenance(scope) {
         '<td data-label="Frequency">' + UI.esc(s.frequency) + '</td>' +
         '<td data-label="Due">' + (s.dueDate ? UI.dateOnly(s.dueDate) : ' -- ') + '</td>' +
         '<td data-label="Technician">' + UI.esc(s.technician || ' -- ') + '</td></tr>';
-    }).join('') + '</tbody></table>';
+    }).join('') + '</tbody></table>' +
+    '<div id="sPagination"></div>';
+  UI.renderPagination(document.getElementById('mPagination'), mp, function (p) { mPage = p; renderMaintenance(scope); });
+  UI.renderPagination(document.getElementById('sPagination'), sp, function (p) { sPage = p; renderMaintenance(scope); });
 }
 
 /* ---------- the audit trail of the office ---------- */
@@ -287,17 +308,21 @@ function renderAudit(scope) {
   db.tickets.forEach(function (t) { if (!scope || t.office === scope) ids[t.id] = 1; });
   db.jobs.forEach(function (j) { if (!scope || j.office === scope) ids[j.id] = 1; });
   var rows = audit.filter(function (a) { return ids[a.subjectId]; }).slice().reverse();
+  var aup = paginateSafe(rows, auPage, G_TAB_PER);
+  auPage = aup.page;
   panel.innerHTML =
     '<div class="card-head"><h3>Audit trail</h3><span class="chip">' + rows.length + ' event(s)</span>' +
     '<span class="hint">append only</span></div>' +
     (rows.length
-      ? '<ul class="list">' + rows.slice(0, 60).map(function (a) {
+      ? '<ul class="list">' + aup.items.map(function (a) {
         return '<li><span class="ico">' + UI.icon('shield') + '</span>' +
           '<div class="body"><strong>' + UI.esc(a.text) + '</strong>' +
           '<span><span class="mono">' + UI.esc(a.subjectId) + '</span> · ' + UI.esc(a.by) + ' (' + UI.esc(a.role) + ')</span></div>' +
           '<span class="when">' + UI.clock(a.at) + '</span></li>';
-      }).join('') + '</ul>'
+      }).join('') + '</ul>' +
+      '<div id="auPagination"></div>'
       : '<div class="empty"> <img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No audit events for this scope.</div>');
+  UI.renderPagination(document.getElementById('auPagination'), aup, function (p) { auPage = p; renderAudit(scope); });
 }
 
 /* the audit log is a review screen for the IT team, not the office */
@@ -325,14 +350,14 @@ function sync() {
     kind: document.getElementById('gKind').value, status: document.getElementById('gStatus').value,
     from: document.getElementById('gFrom').value, to: document.getElementById('gTo').value
   };
-  gPage = 1; render();
+  gPage = 1; aPage = 1; mPage = 1; sPage = 1; auPage = 1; render();
 }
 document.getElementById('gQ').addEventListener('input', UI.debounce(sync, 200));
 ['gOffice', 'gKind', 'gStatus', 'gFrom', 'gTo'].forEach(function (id) { document.getElementById(id).addEventListener('change', sync); });
 document.getElementById('gReset').addEventListener('click', function () {
   G_F = { q: '', office: '', kind: '', status: '', from: '', to: '' };
   ['gQ', 'gOffice', 'gKind', 'gStatus', 'gFrom', 'gTo'].forEach(function (id) { document.getElementById(id).value = ''; });
-  gPage = 1; render();
+  gPage = 1; aPage = 1; mPage = 1; sPage = 1; auPage = 1; render();
 });
 document.getElementById('gCsv').addEventListener('click', function () {
   var rows = [['record', 'kind', 'office', 'status', 'category', 'asset', 'owner', 'technician', 'created', 'updated']];

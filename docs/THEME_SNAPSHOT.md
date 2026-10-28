@@ -7,7 +7,7 @@ Cascade order on every authenticated page:
 1. `css/app.css` (base tokens and legacy blue layer)
 2. `css/green.css` (effective palette, typography, shell)
 3. `css/kit.css` (spacing scale, composition, dark brand overrides)
-4. `css/console.css` (authenticated pages only; Phase 10 shell rules)
+4. `css/console.css` (authenticated pages only; Phase 11 shell rules)
 
 The login page loads the first three plus `css/login.css` and does not load
 `console.css`.

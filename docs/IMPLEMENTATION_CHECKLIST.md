@@ -133,8 +133,8 @@ The authoritative workflow is the 29 step SOP in the bundled
 |---|---|---|---|
 | 9.1 | Backend suite | DONE | `python server/tests.py`: 335 passed, 0 failed |
 | 9.2 | Workflow smoke | DONE | `node tools/smoke.js`: 60 passed, 0 failed |
-| 9.3 | Page integration | DONE | `node tools/pagetest.js`: 355 passed, 0 failed |
-| 9.4 | Role page tests | DONE | `node tools/rolepages_test.js`: 173 passed, 0 failed, including computed-display checks for the role visibility classes |
+| 9.3 | Page integration | DONE | `node tools/pagetest.js`: 361 passed, 0 failed |
+| 9.4 | Role page tests | DONE | `node tools/rolepages_test.js`: 174 passed, 0 failed, including computed-display checks for the role visibility classes |
 | 9.5 | API integration | DONE | `python tools/api_check.py`: 17 passed, 0 failed |
 | 9.6 | Markup and DOM ids | DONE | `python tools/validate.py`: PASSED |
 | 9.7 | UI house rules | DONE | `python tools/ui_check.py`: PASSED (71 pages) |
@@ -148,6 +148,19 @@ The authoritative workflow is the 29 step SOP in the bundled
 | 9.15 | Visual review of the captures | DONE | login at 1440 light and dark, 390 light and dark, 320x720, 531x553 and 768 reviewed; the 48 role captures of dashboard and ticket detail read at all three widths in both themes |
 | 9.16 | Full designer review of every capture | PARTIAL | the machine gate passed and the key screens were read, but not all 108 images were re-reviewed individually |
 | 9.17 | Role visibility in the interface | DONE | `rolepages_test.js` asserts hidden-not-disabled classes per role, rail links against the permission map, requester plain language and the neutral forbidden-page panel; `docs/UI_POLISH_REPORT.md` records the matrix |
+
+## Phase 11. One sidebar, role dashboards and pagination
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 11.1 | One navigation column instead of two competing columns | DONE | `js/ui.js` `navModel`/`renderSide`; `css/console.css` `.side-head`, `.side-user`, `.side-nav`, `.side-group`, `.side-link`, `.side-foot`; the old `.rail`/`.ctx` markup and styles are removed |
+| 11.2 | Every permitted screen reachable from the sidebar, grouped and labelled | DONE | groups Workspace, Service Requests, Maintenance, Records, Administration, Reference; account links at the foot; empty groups omitted |
+| 11.3 | Role-focused dashboard | DONE | four role tiles, the eight status labels plus Overdue as links into the filtered queue, four role quick actions, scoped data, paginated Needs your action list |
+| 11.4 | Status links open the matching filtered queue | DONE | `?status=` and `?queue=overdue` handled in `tickets.html`; the advanced status filter no longer loses the chip |
+| 11.5 | Pagination wherever a list or table can grow | DONE | `UI.paginate`/`UI.renderPagination` in dashboard queues, tickets, users, offices, settings reference data, register history/assets/maintenance/audit, reports, review, confirm, notifications |
+| 11.6 | No duplicate breadcrumb | DONE | breadcrumbs render once in the top bar; the page-frame injection was removed |
+| 11.7 | Frozen surfaces intact | DONE | no diff for `login.html`, `css/login.css`, `js/login.js`, `js/theme.js`, the seals, `app.css`, `green.css`, `kit.css`; only the phase label in `docs/THEME_SNAPSHOT.md` changed, no token values |
+| 11.8 | Tests and role pages refreshed | DONE | role pages regenerated (49); page suite 361 passed; role page suite 174 passed; responsive 0 problems; visual gate PASS |
 
 ## Known gaps
 

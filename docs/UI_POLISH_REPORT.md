@@ -1,6 +1,11 @@
 # UI Polish Report
 
-Phase 10, Section 25 pass. Recorded 2026-10-28 on the V5 tree.
+Phases 10 and 11, Section 25 pass. Recorded 2026-10-28 on the V5 tree.
+
+Phase 11 replaced the icon rail and contextual second column with one grouped
+sidebar, made each dashboard role-focused, and added pagination wherever a
+list or table can grow. The workflow, routes, palette and sign-in screen did
+not change.
 
 This report replaces the earlier v2 document. That document described a
 retired `HTMLUP/` tree, a blue palette and a serif display face; none of
@@ -34,31 +39,32 @@ authenticated page: `#chromeSide`, `#chromeAppbar`, `#chromeTopbar` and
 `#chromeBottom`. No page markup carries the navigation itself, so a role
 change re-renders the same shell everywhere.
 
-- **Icon rail.** 88 px on desktop, 72 px on phones. Five to seven
-  destinations per role, each with a 10 px label and an optional count
-  pill. The foot of the rail holds Workflow and Account.
-- **Contextual panel.** 196 px panel beside the rail, titled by the current
-  section (Tickets, Maintenance, Records, Administration, Reference). It
-  holds role-specific queues, section anchors and related screens. On
-  tablet and phone it becomes a slide-in drawer with a scrim and an explicit
-  close control.
-- **Top bar.** Seal lockup, breadcrumbs, ticket search, Workflow Guide link,
-  role chip, notification tray and account tray. The account tray holds the
-  Light, Dark and System theme picker.
+- **Grouped sidebar.** One 256 px column. The top block carries the two
+  existing seals, "UP Cebu" and the system name. The signed-in person, role
+  and account shortcut sit directly below it. The navigation is a labelled
+  list (Workspace, Service Requests, Maintenance, Records, Administration,
+  Reference) with a left accent bar on the active screen and role-scoped
+  count pills. A "Your account" block at the foot holds Notifications and
+  Profile. There is no second navigation column.
+- **Top bar.** Breadcrumbs, ticket search, Workflow Guide link, role chip,
+  notification tray and account tray. The account tray holds the Light, Dark
+  and System theme picker. Breadcrumbs appear once, in the top bar, not in
+  the page body.
 - **Mobile app bar.** Menu control, seal lockup, notification bell and
   account trigger. The same theme picker is bound inside the mobile tray.
 - **Bottom bar.** Four main destinations per role plus a More sheet. The
-  More sheet always exposes Workflow Guide and Roles and Access.
-- **Page frame.** Breadcrumbs on desktop and tablet, and a formal footer on
-  every authenticated page: copyright line with the current year,
-  University of the Philippines Cebu. Breadcrumbs are hidden below 600 px
-  to keep phone headers clear.
+  More sheet exposes every remaining destination, including Workflow Guide
+  and Roles and Access.
+- **Page frame.** A formal footer on every authenticated page: copyright
+  line with the current year, University of the Philippines Cebu. The page
+  content fills the remaining height so the footer sits at the bottom of
+  short screens.
 
-The design borrows the layout grammar of Canvas LMS and Firebase Console:
-a narrow icon rail, a contextual second column, a slim top bar, underlined
-tabs, card-based content and a right-side properties rail. It does not copy
-their branding. UP Cebu identity comes from the existing seals, the
-university wordmark, the formal page titles and the existing green palette.
+The design borrows the layout grammar of Firebase Console: one grouped
+navigation column, a slim utility bar, underlined tabs, card-based content
+and a right-side properties rail. It does not copy their branding. UP Cebu
+identity comes from the existing seals, the university wordmark, the formal
+page titles and the existing green palette.
 
 ## 3. Role-driven visibility
 
@@ -71,12 +77,15 @@ role rules with utility classes, and `css/console.css` hides the elements a
 role may not use. The elements are hidden, not disabled, and the backend
 guard still refuses the operation if it is called directly.
 
-| Role | Rail destinations | Hidden in the interface |
+| Role | Sidebar destinations | Hidden in the interface |
 |---|---|---|
-| Office Requester | Dashboard, My Requests, New Request, Office Register, Notifications | staff, technician and coordinator panels; cost and labour columns; internal notes; technician, office and scope filters; bulk selection; assignment and scheduling controls |
-| IT Technician | Dashboard, My Tickets, My Jobs, Office Register, Notifications | coordinator and administration panels; schedule create, edit and pause controls; office and scope filters; bulk selection |
-| IT Coordinator | Dashboard, Tickets, New Request, Maintenance, Office Register, Reports, Notifications | administration panels |
-| System Administrator | Dashboard, Service Records, Administration, Maintenance, Office Register, Reports, Notifications | operational technician panels; coordination-only controls such as creating a maintenance schedule; edit and pause remain because the permission map allows them |
+| Office Requester | Dashboard, My Requests, New Request, Confirmation, Office Register, Reports, Workflow Guide, Roles and Access | staff, technician and coordinator panels; cost and labour columns; internal notes; technician, office and scope filters; bulk selection; assignment and scheduling controls |
+| IT Technician | Dashboard, My Tickets, My Maintenance Jobs, Office Register, Reports, Workflow Guide, Roles and Access | coordinator and administration panels; schedule create, edit and pause controls; office and scope filters; bulk selection |
+| IT Coordinator | Dashboard, Tickets, New Request, Review and Assign, Confirmation, Maintenance, Office Register, Reports, Workflow Guide, Roles and Access | administration panels |
+| System Administrator | Dashboard, Service Records, Maintenance, Office Register, Reports, Users, Offices, Configuration, Audit Log, Workflow Guide, Roles and Access | operational technician panels; coordination-only controls such as creating a maintenance schedule; edit and pause remain because the permission map allows them |
+
+Notifications and Profile sit in the "Your account" block of every sidebar.
+A group with nothing permitted is omitted, so no heading renders empty.
 
 Additional rules:
 
@@ -91,14 +100,19 @@ Additional rules:
 
 `tools/rolepages_test.js` asserts the computed display value of the
 visibility classes on representative pages for all four roles, checks that
-rail links agree with the permission map, checks requester plain language,
+sidebar links agree with the permission map, checks requester plain language,
 and opens forbidden URLs to confirm the neutral panel appears.
 
 ## 4. Screen treatment
 
-- **Dashboard.** Greeting, role-specific action panel, KPI tiles, queue and
-  activity cards, and a side column of role-appropriate panels. The grid is
-  two columns on desktop and one column from 1279 px down.
+- **Dashboard.** Greeting, four role-specific tiles (for example "To review",
+  "Active work", "Dependency holds" and "Overdue" for the coordinator), the
+  eight status labels plus Overdue as compact links into the filtered ticket
+  queue, four quick actions for the role, the activity chart, the status
+  breakdown and a paginated "Needs your action" list. The data is scoped the
+  same way the backend scopes it, so a role never sees another office's
+  figures. The grid is two columns on desktop and one column from 1024 px
+  down.
 - **Tickets.** Queue tabs, search, filter drawer, removable filter chips,
   sortable table and a card layout on phones. The coordinator also gets row
   selection and the bulk action bar.
@@ -118,12 +132,19 @@ and opens forbidden URLs to confirm the neutral panel appears.
 - **States.** Empty, loading and not-available screens use the existing
   outline icon set and formal copy. No emoji, no slang, no exclamation
   marks.
+- **Pagination.** Every list and table that can grow uses `UI.paginate`
+  with `UI.renderPagination`: 12 to 18 rows per page, first and last page
+  buttons, a range label and the total, and the control only appears when
+  there is more than one page. It covers the dashboard queues, service
+  records, users, offices, reference data, the register tabs, reports,
+  review, confirmation and notifications. The register audit tab now pages
+  instead of stopping at 60 entries.
 
 ## 5. Themes and responsive behaviour
 
 - Light and dark both use the existing tokens in `app.css`, `green.css` and
   `kit.css`. `console.css` adds no brand colour; it uses the existing
-  tokens plus white and black alpha overlays for the dark rail, matching
+  tokens plus white and black alpha overlays for the dark sidebar, matching
   the existing shell.
 - The theme picker offers Light, Dark and System. Dark mode was exercised on
   the dashboards, ticket detail and maintenance screens.
@@ -135,8 +156,9 @@ and opens forbidden URLs to confirm the neutral panel appears.
   and up, with the two-column content grid engaging at 1280 px.
   `tools/responsive.py` exercises 71 pages at 8 widths from 320 px to
   1440 px and reports 0 problems, including 0 sub-36 px tap targets.
-- Breadcrumbs hide below 600 px, bulk selection hides on phones, and bottom
-  tab labels are set to a single line at 10.5 px.
+- Breadcrumbs live in the top bar only and are hidden below 600 px; bulk
+  selection hides on phones, and bottom tab labels are set to a single line
+  at 10.5 px. Status links in the dashboard strip are at least 36 px tall.
 
 ## 6. Visual evidence
 
@@ -162,8 +184,8 @@ Results from this working tree. Commands are listed with their outcome.
 |---|---|---|
 | Backend suite | `python server/tests.py` | 335 passed, 0 failed |
 | Workflow smoke | `node tools/smoke.js` | 60 passed, 0 failed |
-| Page integration | `node tools/pagetest.js` | 355 passed, 0 failed |
-| Role page suite | `node tools/rolepages_test.js` | 173 passed, 0 failed |
+| Page integration | `node tools/pagetest.js` | 361 passed, 0 failed |
+| Role page suite | `node tools/rolepages_test.js` | 174 passed, 0 failed |
 | API integration | `python tools/api_check.py` | 17 passed, 0 failed |
 | Markup and DOM ids | `python tools/validate.py` | PASSED |
 | UI house rules | `python tools/ui_check.py` | PASSED, 71 pages |
@@ -188,15 +210,12 @@ All six values match `docs/login-baseline.sha256`. `css/app.css`,
 
 These are deliberate and are not hidden in the summary table above.
 
-- **The requester rail has no Maintenance Visits page.** The permission map
-  does not grant `maintenance.html` to the requester, and Section 25.0
+- **The requester sidebar has no Maintenance Visits page.** The permission
+  map does not grant `maintenance.html` to the requester, and Section 25.0
   forbids changing security rules. The requester still sees upcoming visits
   on the dashboard and answers availability on `confirm.html`. The old
   report claimed a read-only Maintenance Visits page; that claim was not
   true of this tree.
-- **Reports are not in the requester and technician rails.** Section 25.2.1
-  and 25.2.3 do not list Reports for those lanes, even though the permission
-  map permits the page. Direct access still works for a permitted role.
 - **The System Administrator does not see the create-schedule control.**
   `create_schedule` is coordinator-only in the permission map. The
   administrator keeps Edit and Pause because `update_schedule` and

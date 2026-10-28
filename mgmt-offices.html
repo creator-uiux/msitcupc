@@ -54,6 +54,7 @@
           <tbody id="oBody"></tbody>
         </table>
         <div class="empty" id="oEmpty" hidden><img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No offices match these filters.</div>
+        <div id="oPagination"></div>
       </div>
     </main>
 
@@ -73,6 +74,8 @@
 UI.mountChrome({ title: 'Office directory', sub: 'Maintain the offices the IT service supports' });
 
 var O_F = { q: '', active: '' };
+var oPage = 1;
+const O_PER_PAGE = 12;
 
 function offices() {
   var db = Store.db;
@@ -119,7 +122,11 @@ function render() {
   document.getElementById('oCount').textContent = rows.length + ' of ' + offices().length;
   document.getElementById('oEmpty').hidden = rows.length > 0;
 
-  document.getElementById('oBody').innerHTML = rows.map(function (o, i) {
+  var pages = Math.max(1, Math.ceil(rows.length / O_PER_PAGE));
+  if (oPage > pages) oPage = pages;
+  var pg = UI.paginate(rows, oPage, O_PER_PAGE);
+
+  document.getElementById('oBody').innerHTML = pg.items.map(function (o, i) {
     var s = stats(o.name), off = o.active === false;
     return '<tr style="--row-index:' + i + '">' +
       '<td data-label="Office"><div class="t-title">' + UI.esc(o.name) + '</div>' +
@@ -143,6 +150,7 @@ function render() {
       UI.toast(r.msg, r.ok ? 'ok' : 'err');
     };
   });
+  UI.renderPagination(document.getElementById('oPagination'), pg, function (p) { oPage = p; render(); });
 }
 
 function findOffice(name) {
@@ -175,8 +183,8 @@ function officeModal(o) {
 }
 function editOffice(name) { officeModal(findOffice(name) || { name: name }); }
 
-document.getElementById('oQ').addEventListener('input', UI.debounce(function (e) { O_F.q = e.target.value; render(); }, 200));
-document.getElementById('oActive').addEventListener('change', function (e) { O_F.active = e.target.value; render(); });
+document.getElementById('oQ').addEventListener('input', UI.debounce(function (e) { O_F.q = e.target.value; oPage = 1; render(); }, 200));
+document.getElementById('oActive').addEventListener('change', function (e) { O_F.active = e.target.value; oPage = 1; render(); });
 document.getElementById('btnNewOffice').addEventListener('click', function () { officeModal(null); });
 
 Store.subscribe(render);

@@ -831,234 +831,80 @@
     'roles.html': { section: 'Reference', label: 'Roles and access' }
   };
 
-  /* The role names for the two record screens.  The permission map decides
-     whether the screen exists; this only decides what the role calls it. */
-  function ticketLabel(role) {
-    if (role === 'requester') return 'My Requests';
-    if (role === 'technician') return 'My Tickets';
-    if (role === 'management') return 'Service Records';
-    return 'Tickets';
-  }
-  function maintenanceLabel(role) {
-    if (role === 'requester') return 'Maintenance Visits';
-    if (role === 'technician') return 'My Maintenance Jobs';
-    return 'Maintenance';
-  }
-
-  /* ---------- the rail: a short, role-specific list ----------------------
-     Section 25.2 asks for one purpose-built rail per role instead of one
-     shared menu with disabled items.  Every entry is still filtered through
-     the permission map, which the backend enforces. */
-  function railModel(role) {
-    var rail;
+  /* ---------- the sidebar: one labeled, grouped list --------------------
+     Firebase-style navigation: every screen a role may open appears exactly
+     once, grouped by what the person is trying to do.  Entries are still
+     filtered through the permission map, which the backend enforces. */
+  function navModel(role) {
+    var groups = [];
+    function add(label, items) {
+      var keep = (items || []).filter(function (n) { return can(n.href, role); });
+      if (keep.length) groups.push({ label: label, items: keep });
+    }
+    add('Workspace', [
+      { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' }
+    ]);
     if (role === 'requester') {
-      rail = [
-        { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
-        { href: 'tickets.html?queue=mine', label: ticketLabel(role), ic: 'ticket', pill: 'pillTickets' },
+      add('Requests', [
+        { href: 'tickets.html?queue=mine', label: 'My Requests', ic: 'ticket', pill: 'pillTickets' },
         { href: 'request.html', label: 'New Request', ic: 'plus' },
+        { href: 'confirm.html', label: 'Confirmation', ic: 'checkCircle' }
+      ]);
+      add('Records', [
         { href: 'register.html', label: 'Office Register', ic: 'case' },
-        { href: 'notifications.html', label: 'Notifications', ic: 'bell', pill: 'pillNotif' }
-      ];
+        { href: 'reports.html', label: 'Reports', ic: 'chart' }
+      ]);
     } else if (role === 'technician') {
-      rail = [
-        { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
-        { href: 'technician.html', label: ticketLabel(role), ic: 'ticket', pill: 'pillTickets' },
-        { href: 'maintenance.html', label: 'My Jobs', ic: 'cal', pill: 'pillMaint' },
+      add('Service', [
+        { href: 'technician.html', label: 'My Tickets', ic: 'ticket', pill: 'pillTickets' },
+        { href: 'maintenance.html', label: 'My Maintenance Jobs', ic: 'cal', pill: 'pillMaint' }
+      ]);
+      add('Records', [
         { href: 'register.html', label: 'Office Register', ic: 'case' },
-        { href: 'notifications.html', label: 'Notifications', ic: 'bell', pill: 'pillNotif' }
-      ];
+        { href: 'reports.html', label: 'Reports', ic: 'chart' }
+      ]);
     } else if (role === 'management') {
-      rail = [
-        { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
-        { href: 'tickets.html', label: ticketLabel(role), ic: 'ticket', pill: 'pillTickets' },
-        { href: 'users.html', label: 'Administration', ic: 'shield' },
-        { href: 'maintenance.html', label: maintenanceLabel(role), ic: 'cal', pill: 'pillMaint' },
+      add('Service', [
+        { href: 'tickets.html', label: 'Service Records', ic: 'ticket', pill: 'pillTickets' },
+        { href: 'maintenance.html', label: 'Maintenance', ic: 'cal', pill: 'pillMaint' }
+      ]);
+      add('Records', [
         { href: 'register.html', label: 'Office Register', ic: 'case' },
-        { href: 'reports.html', label: 'Reports', ic: 'chart' },
-        { href: 'notifications.html', label: 'Notifications', ic: 'bell', pill: 'pillNotif' }
-      ];
+        { href: 'reports.html', label: 'Reports', ic: 'chart' }
+      ]);
+      add('Administration', [
+        { href: 'users.html', label: 'Users', ic: 'users' },
+        { href: 'offices.html', label: 'Offices', ic: 'building' },
+        { href: 'settings.html', label: 'Configuration', ic: 'sliders' },
+        { href: 'audit.html', label: 'Audit Log', ic: 'shield' }
+      ]);
     } else {
-      rail = [
-        { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
-        { href: 'tickets.html', label: ticketLabel(role), ic: 'ticket', pill: 'pillTickets' },
+      add('Service Requests', [
+        { href: 'tickets.html', label: 'Tickets', ic: 'ticket', pill: 'pillTickets' },
         { href: 'request.html', label: 'New Request', ic: 'plus' },
-        { href: 'maintenance.html', label: maintenanceLabel(role), ic: 'cal', pill: 'pillMaint' },
+        { href: 'review.html', label: 'Review and Assign', ic: 'shield' },
+        { href: 'confirm.html', label: 'Confirmation', ic: 'checkCircle' }
+      ]);
+      add('Maintenance', [
+        { href: 'maintenance.html', label: 'Maintenance', ic: 'cal', pill: 'pillMaint' }
+      ]);
+      add('Records', [
         { href: 'register.html', label: 'Office Register', ic: 'case' },
-        { href: 'reports.html', label: 'Reports', ic: 'chart' },
-        { href: 'notifications.html', label: 'Notifications', ic: 'bell', pill: 'pillNotif' }
-      ];
+        { href: 'reports.html', label: 'Reports', ic: 'chart' }
+      ]);
     }
-    return rail.filter(function (n) { return can(n.href, role); });
+    add('Reference', [
+      { href: 'flow.html', label: 'Workflow Guide', ic: 'flow' },
+      { href: 'roles.html', label: 'Roles and Access', ic: 'users' }
+    ]);
+    return groups;
   }
 
-  /* ---------- the contextual menu inside the current section ------------- */
-  function countOpen() {
-    var states = window.Query ? window.Query.OPEN_STATES : ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved'];
-    return S.db.tickets.filter(function (t) { return states.indexOf(t.status) > -1; }).length;
-  }
-  function countClosed() {
-    return S.db.tickets.filter(function (t) { return t.status === 'closed'; }).length;
-  }
-  function countMine(role) {
-    if (role === 'technician') {
-      return S.db.tickets.filter(function (t) { return t.status === 'assigned' || t.status === 'in_progress'; }).length;
-    }
-    if (role === 'requester') {
-      return S.db.tickets.filter(function (t) { return t.status === 'needs_info' || t.status === 'resolved'; }).length;
-    }
-    return countOpen();
-  }
-  function countJobs() {
-    return S.db.jobs.filter(function (j) { return j.status !== 'closed' && j.status !== 'cancelled'; }).length;
-  }
-  function countNotif() {
-    return visibleNotifs().filter(function (n) { return !notifRead(n); }).length;
-  }
-
-  function ctxModel(page, role) {
-    var queues = [
-      { href: 'tickets.html?queue=open', label: 'Open', ic: 'inbox', count: countOpen() },
-      { href: 'tickets.html?queue=mine', label: role === 'requester' ? 'My Requests' : 'My Tickets', ic: 'user', count: countMine(role) },
-      { href: 'tickets.html?queue=closed', label: 'Closed', ic: 'archive', count: countClosed() },
-      { href: 'tickets.html?queue=all', label: 'All', ic: 'layers' },
-      { href: 'tickets.html?queue=cancelled', label: 'Cancelled', ic: 'ban' }
-    ];
-    if (page === 'tickets.html' || page === 'ticket.html') {
-      return {
-        kicker: 'Tickets',
-        title: ticketLabel(role),
-        groups: [
-          { label: 'Queues', items: queues },
-          { label: 'Actions', items: [
-            { href: 'request.html', label: 'New request', ic: 'plus' },
-            { href: 'tickets.html?queue=overdue', label: 'Overdue', ic: 'alert' }
-          ] }
-        ]
-      };
-    }
-    if (page === 'maintenance.html') {
-      return {
-        kicker: 'Maintenance',
-        title: maintenanceLabel(role),
-        groups: [
-          { label: 'Maintenance', items: [
-            { href: 'maintenance.html#schedules', label: 'Schedules', ic: 'cal' },
-            { href: 'maintenance.html#jobs', label: 'Jobs', ic: 'toolbox', count: countJobs() },
-            { href: 'maintenance.html#check', label: 'Schedule check log', ic: 'history' }
-          ] },
-          { label: 'Related', items: [
-            { href: 'tickets.html', label: role === 'requester' ? 'My Requests' : 'Tickets', ic: 'ticket' },
-            { href: 'register.html', label: 'Office Register', ic: 'case' }
-          ] }
-        ]
-      };
-    }
-    if (page === 'register.html') {
-      return {
-        kicker: 'Records',
-        title: 'Office register',
-        groups: [
-          { label: 'Register', items: [
-            { href: 'register.html#history', label: 'Service history', ic: 'history' },
-            { href: 'register.html#assets', label: 'Assets', ic: 'server' },
-            { href: 'register.html#maintenance', label: 'Maintenance', ic: 'cal' },
-            { href: 'register.html#audit', label: 'Audit trail', ic: 'shield' }
-          ] },
-          { label: 'Related', items: [
-            { href: 'reports.html', label: 'Reports', ic: 'chart' },
-            { href: 'tickets.html', label: role === 'requester' ? 'My Requests' : 'Tickets', ic: 'ticket' }
-          ] }
-        ]
-      };
-    }
-    if (page === 'reports.html') {
-      return {
-        kicker: 'Records',
-        title: 'Reports',
-        groups: [
-          { label: 'Reports', items: [
-            { href: 'reports.html#rCatBody', label: 'Report catalogue', ic: 'list' },
-            { href: 'reports.html', label: 'Service history', ic: 'history' },
-            { href: 'register.html', label: 'Office Register', ic: 'case' }
-          ] },
-          { label: 'Reference', items: [
-            { href: 'flow.html', label: 'Workflow guide', ic: 'flow' },
-            { href: 'roles.html', label: 'Roles and access', ic: 'users' }
-          ] }
-        ]
-      };
-    }
-    if (page === 'users.html' || page === 'offices.html' || page === 'settings.html' || page === 'audit.html') {
-      return {
-        kicker: 'Administration',
-        title: 'System administration',
-        groups: [
-          { label: 'Administration', items: [
-            { href: 'users.html', label: 'Users and roles', ic: 'users' },
-            { href: 'offices.html', label: 'Offices and membership', ic: 'building' },
-            { href: 'settings.html', label: 'Configuration', ic: 'sliders' },
-            { href: 'audit.html', label: 'Audit log (read-only)', ic: 'shield' }
-          ] },
-          { label: 'Reference', items: [
-            { href: 'flow.html', label: 'Workflow guide', ic: 'flow' },
-            { href: 'roles.html', label: 'Roles and access', ic: 'users' }
-          ] }
-        ]
-      };
-    }
-    if (page === 'notifications.html' || page === 'profile.html') {
-      return {
-        kicker: 'Account',
-        title: 'Your account',
-        groups: [
-          { label: 'Account', items: [
-            { href: 'profile.html', label: 'Profile', ic: 'user' },
-            { href: 'notifications.html', label: 'Notifications', ic: 'bell', count: countNotif() }
-          ] },
-          { label: 'Reference', items: [
-            { href: 'flow.html', label: 'Workflow guide', ic: 'flow' },
-            { href: 'roles.html', label: 'Roles and access', ic: 'users' }
-          ] }
-        ]
-      };
-    }
-    if (page === 'flow.html' || page === 'roles.html') {
-      return {
-        kicker: 'Reference',
-        title: 'Workflow reference',
-        groups: [
-          { label: 'Reference', items: [
-            { href: 'flow.html', label: 'Workflow guide', ic: 'flow' },
-            { href: 'roles.html', label: 'Roles and access', ic: 'users' }
-          ] },
-          { label: 'Back to work', items: [
-            { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
-            { href: 'tickets.html', label: ticketLabel(role), ic: 'ticket' }
-          ] }
-        ]
-      };
-    }
-    /* dashboard, request, review, technician, confirm */
-    var requests = [
-      { href: 'request.html', label: 'New request', ic: 'plus' },
-      { href: 'review.html', label: 'Review and assign', ic: 'shield' },
-      { href: 'confirm.html', label: 'Confirmation', ic: 'check' }
+  function accountItems(role) {
+    return [
+      { href: 'notifications.html', label: 'Notifications', ic: 'bell', pill: 'pillNotif' },
+      { href: 'profile.html', label: 'Profile and Account', ic: 'user' }
     ].filter(function (n) { return can(n.href, role); });
-    return {
-      kicker: PAGE_META[page] ? PAGE_META[page].section : 'Workspace',
-      title: PAGE_META[page] ? PAGE_META[page].label : 'Workspace',
-      groups: [
-        { label: 'My work', items: [
-          { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
-          { href: 'maintenance.html#upcoming', label: 'Coming up', ic: 'clock' }
-        ] },
-        { label: 'Service requests', items: requests },
-        { label: 'Reference', items: [
-          { href: 'flow.html', label: 'Workflow guide', ic: 'flow' },
-          { href: 'roles.html', label: 'Roles and access', ic: 'users' }
-        ] }
-      ]
-    };
   }
 
   function bellHTML(id) {
@@ -1167,51 +1013,43 @@
   function renderSide() {
     var side = document.getElementById('chromeSide');
     if (!side) return;
-    var role = roleKey(), page = pageId();
-    var rail = railModel(role).map(function (n) {
-      return '<a class="rail-item' + (isActiveHref(n.href, page) ? ' active' : '') + '"' +
-        ' href="' + urlFor(n.href, role) + '"' + (isActiveHref(n.href, page) ? ' aria-current="page"' : '') + '>' +
-        icon(n.ic) + '<span>' + esc(n.label) + '</span>' +
+    var role = roleKey(), page = pageId(), a = auth();
+
+    function link(n) {
+      var active = isActiveHref(n.href, page, true);
+      return '<a class="side-link' + (active ? ' active' : '') + '" href="' + urlFor(n.href, role) + '"' +
+        (active ? ' aria-current="page"' : '') + '>' + icon(n.ic) +
+        '<span class="side-label">' + esc(n.label) + '</span>' +
         (n.pill ? '<span class="pill" id="' + n.pill + '">0</span>' : '') + '</a>';
+    }
+
+    var groups = navModel(role).map(function (g) {
+      return '<div class="side-group-wrap">' +
+        '<span class="side-group">' + esc(g.label) + '</span>' +
+        g.items.map(link).join('') + '</div>';
     }).join('');
 
-    var model = ctxModel(page, role);
-    var ctx = '<div class="ctx">' +
-      '<div class="ctx-head"><div class="ctx-head-text">' +
-      '<span class="ctx-kicker">' + esc(model.kicker) + '</span>' +
-      '<span class="ctx-title">' + esc(model.title) + '</span></div>' +
-      '<button type="button" class="ctx-close" id="ctxClose" aria-label="Close navigation">' + icon('x') + '</button></div>' +
-      model.groups.map(function (g) {
-        var items = (g.items || []).filter(function (n) { return can(n.href, role); });
-        if (!items.length) return '';
-        return '<span class="ctx-group">' + esc(g.label) + '</span>' + items.map(function (n) {
-          var active = isActiveHref(n.href, page, true);
-          return '<a class="ctx-item' + (active ? ' active' : '') + '" href="' + urlFor(n.href, role) + '"' +
-            (active ? ' aria-current="page"' : '') + '>' + icon(n.ic) + '<span>' + esc(n.label) + '</span>' +
-            (n.count ? '<span class="count">' + n.count + '</span>' : '') + '</a>';
-        }).join('');
-      }).join('') +
-      '<div class="ctx-note"><b>' + esc(currentRole().title) + '</b>' +
-      'Signed in as ' + esc(auth().name) + '<br>Role-based access active</div>' +
-      '</div>';
+    side.innerHTML =
+      '<div class="side-head">' +
+      '<a class="side-brand" href="' + urlFor('dashboard.html', role) + '">' +
+      '<img src="img/up-seal.png" alt="University of the Philippines seal" width="24" height="24" loading="lazy">' +
+      '<img src="img/upc-seal.png" alt="University of the Philippines Cebu seal" width="24" height="24" loading="lazy">' +
+      '<span class="side-brand-text"><strong>UP Cebu</strong>' +
+      '<small>IT Service and Maintenance</small></span></a>' +
+      '<button type="button" class="side-close" id="sideClose" aria-label="Close navigation">' + icon('x') + '</button>' +
+      '</div>' +
+      '<button type="button" class="side-user" id="sideAccount" aria-label="Account and role">' +
+      '<span class="side-avatar">' + esc(initials(a.name)) + '</span>' +
+      '<span class="side-user-text"><b>' + esc(a.name) + '</b>' +
+      '<i>' + esc(currentRole().title) + '</i></span>' + icon('sliders') + '</button>' +
+      '<nav class="side-nav" aria-label="Primary">' + groups + '</nav>' +
+      '<div class="side-foot"><span class="side-group">Your account</span>' +
+      accountItems(role).map(link).join('') + '</div>';
 
-    side.innerHTML = '<nav class="rail" aria-label="Primary">' +
-      '<button type="button" class="rail-avatar" id="railAccount" title="Account" aria-label="Account">' +
-      esc(initials(auth().name)) + '</button>' +
-      '<div class="rail-nav">' + rail + '</div>' +
-      '<div class="rail-foot">' +
-      '<a class="rail-item" href="' + urlFor('flow.html', role) + '" title="Workflow guide">' +
-      icon('flow') + '<span>Workflow</span></a>' +
-      '<button type="button" class="rail-item" id="railAccountFoot" title="Account">' +
-      icon('user') + '<span>Account</span></button>' +
-      '</div></nav>' + ctx;
-
-    var close = document.getElementById('ctxClose');
+    var close = document.getElementById('sideClose');
     if (close) close.addEventListener('click', function () { document.body.classList.remove('nav-open'); });
-    ['railAccount', 'railAccountFoot'].forEach(function (id) {
-      var b = document.getElementById(id);
-      if (b) b.addEventListener('click', openAccount);
-    });
+    var acct = document.getElementById('sideAccount');
+    if (acct) acct.addEventListener('click', openAccount);
   }
 
   function openAccount() {
@@ -1265,7 +1103,6 @@
     var topbar = document.getElementById('chromeTopbar');
     if (!topbar) return;
     topbar.innerHTML =
-      sealLockup() +
       '<nav class="tb-crumbs" aria-label="Breadcrumb">' + crumbInner(true) + '</nav>' +
       '<span class="spacer"></span>' +
       '<form class="tb-search" id="tbSearch" role="search">' + icon('search') +
@@ -1290,13 +1127,6 @@
   function renderPageFrame() {
     var content = document.querySelector('.content');
     if (!content) return;
-    if (!content.querySelector('.crumbs')) {
-      var crumbs = document.createElement('nav');
-      crumbs.className = 'crumbs';
-      crumbs.setAttribute('aria-label', 'Breadcrumb');
-      crumbs.innerHTML = crumbInner(false);
-      content.insertBefore(crumbs, content.firstChild);
-    }
     var main = content.parentNode;
     if (main && !main.querySelector('.app-foot')) {
       var foot = document.createElement('footer');
@@ -1362,13 +1192,8 @@
   }
 
   /* The destinations that do not fit the four bottom tabs.  They live in the
-     More sheet on a phone.  The list is derived from the same rail model the
+     More sheet on a phone.  The list is derived from the same sidebar model the
      desktop uses, so a destination the role cannot open is never offered. */
-  var EXTRA_DESTINATIONS = [
-    { href: 'notifications.html', label: 'Notifications', ic: 'bell' },
-    { href: 'profile.html', label: 'Profile', ic: 'user' }
-  ];
-
   function moreDestinations(role) {
     var inBar = bottomItems(role).map(function (i) { return hrefPage(i.href); });
     var out = [];
@@ -1380,14 +1205,10 @@
       seen[page] = 1;
       out.push({ href: href, label: label, ic: ic });
     }
-    railModel(role).forEach(function (n) { add(n.href, n.label, n.ic); });
-    add('flow.html', 'Workflow guide', 'flow');
-    add('roles.html', 'Roles and access', 'users');
-    if (role === 'management') {
-      add('settings.html', 'Configuration', 'sliders');
-      add('audit.html', 'Audit log', 'shield');
-    }
-    EXTRA_DESTINATIONS.forEach(function (n) { add(n.href, n.label, n.ic); });
+    navModel(role).forEach(function (g) {
+      g.items.forEach(function (n) { add(n.href, n.label, n.ic); });
+    });
+    accountItems(role).forEach(function (n) { add(n.href, n.label, n.ic); });
     return out;
   }
 
@@ -1522,14 +1343,23 @@
     return { intake: UI.icon('inbox'), assign: UI.icon('wrench'), confirm: UI.icon('checkCircle'), remind: UI.icon('clock'), cancel: UI.icon('ban'), dep: UI.icon('pause'), job: UI.icon('toolbox'), sched: UI.icon('cal'), test: UI.icon('flask'), comment: UI.icon('message'), attachment: UI.icon('paperclip') }[k] || UI.icon('bell');
   }
   function renderPills() {
-    var db = S.db;
+    var db = S.db, role = roleKey();
     var open = db.tickets.filter(function (t) {
       return (window.Query ? window.Query.OPEN_STATES : ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved']).indexOf(t.status) > -1;
     }).length;
-    var work = db.tickets.filter(function (t) { return t.technician === ROLES.technician.name && ['assigned', 'in_progress', 'on_hold'].indexOf(t.status) > -1; }).length +
-      db.jobs.filter(function (j) { return j.technician === ROLES.technician.name && j.status !== 'closed'; }).length;
-    var maint = db.jobs.filter(function (j) { return j.status !== 'closed'; }).length;
-    set('#pillTickets', open); set('#pillWork', work); set('#pillMaint', maint);
+    var tickets = open;
+    if (role === 'requester') {
+      tickets = db.tickets.filter(function (t) { return t.status === 'needs_info' || t.status === 'resolved'; }).length;
+    } else if (role === 'technician') {
+      tickets = db.tickets.filter(function (t) {
+        return t.technician === ROLES.technician.name && ['assigned', 'in_progress', 'on_hold'].indexOf(t.status) > -1;
+      }).length;
+    }
+    var maint = db.jobs.filter(function (j) {
+      if (j.status === 'closed' || j.status === 'cancelled') return false;
+      return role !== 'technician' || j.technician === ROLES.technician.name;
+    }).length;
+    set('#pillTickets', tickets); set('#pillMaint', maint);
     function set(sel, v) { document.querySelectorAll(sel).forEach(function (e) { e.textContent = v; }); }
   }
   function applyRole() {
@@ -1765,7 +1595,7 @@
 
   function activeNav() {
     var page = pageId();
-    document.querySelectorAll('.rail-item[href],.ctx-item[href],.bottomnav a[href]').forEach(function (a) {
+    document.querySelectorAll('.side-link[href],.bottomnav a[href]').forEach(function (a) {
       var href = a.getAttribute('href') || '';
       var on = hrefPage(href) === page;
       if (on && href.indexOf('?') > -1) {

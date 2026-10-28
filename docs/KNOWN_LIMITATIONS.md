@@ -86,15 +86,12 @@ current commit. Blocked or unverified items are listed first.
   name and the details and the viewer says that the file itself is not kept
   here. The intake form records the names of the files it was given for the
   same reason: it does not upload the bytes.
-- **The requester has no Maintenance Visits page in the rail.** The
+- **The requester has no Maintenance Visits page in the sidebar.** The
   permission map does not grant `maintenance.html` to the requester, and the
-  Phase 10 rules forbid changing security rules. Upcoming visits still
-  appear on the dashboard and availability is still answered on
-  `confirm.html`. A read-only maintenance page for the office would require
-  a permission map change and a backend review.
-- **Reports are not in the requester and technician rails.** Section 25.2.1
-  and 25.2.3 do not list Reports for those lanes even though the permission
-  map permits the page. A permitted role can still open the page directly.
+  frozen security rules forbid changing it. Upcoming visits still appear on
+  the dashboard and availability is still answered on `confirm.html`. A
+  read-only maintenance page for the office would require a permission map
+  change and a backend review.
 - **The System Administrator does not see the create-schedule control.**
   `create_schedule` is coordinator-only. Edit and pause remain visible
   because `update_schedule` and `set_schedule_active` include that role.

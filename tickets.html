@@ -141,8 +141,8 @@ function isLive() { return !!(window.ApiMode && window.Api && window.Api.tickets
 /* ------------------------------- filters ------------------------------- */
 function paramBag() {
   var p = {
-    q: F.q || '', status: chip === 'open' ? 'open' : chip === 'closed' ? 'closed'
-      : chip === 'cancelled' ? 'cancelled' : '',
+    q: F.q || '', status: F.status || (chip === 'open' ? 'open' : chip === 'closed' ? 'closed'
+      : chip === 'cancelled' ? 'cancelled' : ''),
     office: F.office || '', priority: F.priority || '', category: F.category || '',
     technician: F.tech || '', source: F.source || '',
     from: F.from || '', to: F.to || '', overdue: chip === 'overdue' ? '1' : (F.overdue || ''),
@@ -298,7 +298,9 @@ document.getElementById('tkExport').addEventListener('click', function () {
 document.getElementById('tkChips').addEventListener('click', function (e) {
   var l = e.target.closest('[data-chip]');
   if (!l) return;
-  chip = l.dataset.chip; page = 1; render();
+  chip = l.dataset.chip; F.status = '';
+  document.getElementById('fStatus').value = '';
+  page = 1; render();
 });
 ['fOffice', 'fStatus', 'fPriority', 'fCategory', 'fTech', 'fSource', 'fFrom', 'fTo', 'fMine', 'fOverdue', 'fSort', 'fOrder'].forEach(function (id) {
   document.getElementById(id).addEventListener('change', function () { readFilters(); page = 1; render(); });
@@ -351,8 +353,8 @@ document.getElementById('tkBulkAssign').addEventListener('click', function () {
   };
 });
 
-/* A search from the top bar, or a queue from the contextual menu, opens the
-   register already filtered. */
+/* A search from the top bar, a queue from the sidebar, or a status chip on the
+   dashboard opens the register already filtered. */
 (function readUrlState() {
   var q = UI.qs('q');
   if (q) { F.q = q; document.getElementById('tkQ').value = q; }
@@ -360,6 +362,8 @@ document.getElementById('tkBulkAssign').addEventListener('click', function () {
   if (['open', 'mine', 'closed', 'all', 'cancelled', 'overdue'].indexOf(queue) > -1) {
     chip = queue === 'all' ? '' : queue;
   }
+  var status = UI.qs('status');
+  if (Query.ALL_STATES.indexOf(status) > -1) { F.status = status; chip = ''; }
   if (UI.roleKey() === 'requester') CHIPS[1][1] = 'My requests';
 })();
 

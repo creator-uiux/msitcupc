@@ -57,6 +57,7 @@
           <tbody id="uBody"></tbody>
         </table>
         <div class="empty" id="uEmpty" hidden><img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No users match these filters.</div>
+        <div id="uPagination"></div>
       </div>
     </main>
 
@@ -75,6 +76,8 @@
 UI.mountChrome({ title: 'Users & roles', sub: 'Create accounts and assign roles (RBAC)' });
 
 var U_F = { q: '', role: '', office: '', active: '' };
+var uPage = 1;
+const U_PER_PAGE = 12;
 var SERVER_USERS = null;   /* GET /api/users result when the backend is live */
 
 function people() {
@@ -135,7 +138,11 @@ function render() {
   document.getElementById('uCount').textContent = rows.length + ' of ' + people().length;
   document.getElementById('uEmpty').hidden = rows.length > 0;
 
-  document.getElementById('uBody').innerHTML = rows.map(function (p, i) {
+  var pages = Math.max(1, Math.ceil(rows.length / U_PER_PAGE));
+  if (uPage > pages) uPage = pages;
+  var pg = UI.paginate(rows, uPage, U_PER_PAGE);
+
+  document.getElementById('uBody').innerHTML = pg.items.map(function (p, i) {
     var off = p.active === false;
     return '<tr style="--row-index:' + i + '">' +
       '<td data-label="Person"><div class="row row-tight"><span class="avatar sm">' + UI.initials(p.name) + '</span>' +
@@ -157,6 +164,7 @@ function render() {
       UI.toast(r.msg, r.ok ? 'ok' : 'err');
     };
   });
+  UI.renderPagination(document.getElementById('uPagination'), pg, function (p) { uPage = p; render(); });
 }
 
 function findPerson(key) {
@@ -210,11 +218,12 @@ function refreshServer() {
   }
 }
 
-document.getElementById('uQ').addEventListener('input', UI.debounce(function (e) { U_F.q = e.target.value; render(); }, 200));
+document.getElementById('uQ').addEventListener('input', UI.debounce(function (e) { U_F.q = e.target.value; uPage = 1; render(); }, 200));
 ['uRole', 'uOffice', 'uActive'].forEach(function (id) {
   document.getElementById(id).addEventListener('change', function () {
     U_F = { q: document.getElementById('uQ').value, role: document.getElementById('uRole').value,
       office: document.getElementById('uOffice').value, active: document.getElementById('uActive').value };
+    uPage = 1;
     render();
   });
 });

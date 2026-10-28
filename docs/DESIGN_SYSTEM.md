@@ -10,11 +10,11 @@ frozen.
 | `css/app.css` | the structure: the shell, the components, the responsive tiers |
 | `css/green.css` | the token layer: the green palette, the radii, the shadows, the type scale |
 | `css/kit.css` | the shared kit: the page composition, the utilities and the parity rules |
-| `css/console.css` | the authenticated shell: icon rail, contextual panel, slim top bar and the role visibility rules |
+| `css/console.css` | the authenticated shell: grouped sidebar, slim top bar, role-focused dashboards and the role visibility rules |
 
 `css/kit.css` is the single place where "how a screen is put together" is
 decided, so a screen looks the same whichever role opens it. `css/console.css`
-adds the Phase 10 shell and the hide-not-disable rules only. A page that needs
+adds the Phase 11 shell and the hide-not-disable rules only. A page that needs
 a new arrangement takes a class from the kit -- **there are no inline styles in
 the markup**. The only exceptions are values that are computed at run time
 (a bar width, a row index, a role accent colour), and those live in CSS
@@ -306,17 +306,23 @@ theme.
 
 ## 7. Shell and navigation
 
-- **Desktop**: fixed 250px sidebar in deep green with white text, grouped
-  navigation (Workspace, Service requests, Service delivery, Closure and
-  oversight, Administration). Only the items the role may use are rendered.
-- **Top bar**: page title and helper text on the left, notification bell with
-  an unread count, avatar with the account menu on the right.
-- **Tablet and phone**: the sidebar is replaced by a green app bar, and a
-  bottom tab bar carries the role's four most used destinations plus a
-  **More** sheet with the rest, so nothing is unreachable. The two dense
-  reference screens, the **Workflow Guide** and **Roles & Access**, are not
-  part of the phone navigation: the sidebar never offered them either, so
-  they stay hidden on a phone and are reached by their own link.
+- **Desktop**: one 256px sidebar in deep green with white text and a grouped
+  list of every screen the role may open: Workspace, Service Requests,
+  Maintenance, Records, Administration and Reference. Group headings are
+  plain labels, the active screen carries a left accent bar, and count pills
+  follow the role's own queue. Only permitted items are rendered.
+- **Sidebar identity block**: the two existing seals, "UP Cebu" and the
+  system name at the top; the signed-in person, role and account shortcut
+  below it; Notifications and Profile in a "Your account" block at the foot.
+  There is no second navigation column.
+- **Top bar**: breadcrumbs, ticket search, Workflow Guide link, role chip,
+  notification bell and account menu. Breadcrumbs are the single page
+  location indicator; the page body does not repeat them.
+- **Tablet and phone**: the sidebar becomes a slide-in drawer opened from the
+  app bar, with a scrim and an explicit close control. A bottom tab bar
+  carries the role's four most used destinations plus a **More** sheet with
+  the rest, so nothing is unreachable. The Workflow Guide and Roles & Access
+  are in the More sheet and in the drawer.
 - **Phone**: 44px touch targets, safe-area padding, tables become cards, the
   primary action sticks to the bottom.
 - **The More sheet holds the notices.**  The sheet covers the screen, so a
@@ -333,6 +339,15 @@ theme.
 - The mobile app bar carries the notification panel and the account menu, so
   it needs a stacking context of its own above the page content: without it
   the panel is painted under the cards and the two show through each other.
+
+### Pagination
+
+Lists and tables that can grow use one pattern: `UI.paginate` and
+`UI.renderPagination`, 12 to 18 rows per page, page buttons with first and
+last, a visible range and the total. The control only renders when there is
+more than one page, so short lists stay clean. Dashboard queues, service
+records, users, offices, reference data, the register tabs, reports, review,
+confirmation and notifications use it.
 
 ---
 

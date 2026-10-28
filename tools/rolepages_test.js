@@ -322,11 +322,11 @@ tests.push(async function rolePagesRenderOwnRole() {
     var side = p.d.querySelector('.role-chip');
     ok(side && side.textContent.trim() === TITLE[role], pfx + ': header shows the role title ("' + (side ? side.textContent.trim() : '') + '")');
     /* nav hrefs must carry the same prefix */
-    var hrefs = Array.prototype.slice.call(p.d.querySelectorAll('.rail-item[href]')).map(function (a) { return a.getAttribute('href'); });
+    var hrefs = Array.prototype.slice.call(p.d.querySelectorAll('.side-link[href]')).map(function (a) { return a.getAttribute('href'); });
     ok(hrefs.length > 0 && hrefs.every(function (h) { return h.indexOf(pfx + '-') === 0; }),
        pfx + ': every nav link is ' + pfx + '-prefixed');
     /* the active page is marked */
-    var active = p.d.querySelector('.rail-item.active');
+    var active = p.d.querySelector('.side-link.active');
     ok(active && active.getAttribute('href') === pfx + '-dashboard.html', pfx + ': dashboard is the active nav item');
     close(p);
   }
@@ -495,17 +495,17 @@ tests.push(async function roleVisibility() {
 
 tests.push(async function roleNavigationMatchesPermissionMap() {
   var CASES = [
-    ['requester', 'or-dashboard.html', ['my requests', 'new request', 'office register'], ['maintenance', 'reports', 'users']],
-    ['technician', 'itc-dashboard.html', ['my tickets', 'my jobs', 'office register'], ['reports', 'users', 'new request']],
-    ['coordinator', 'ic-dashboard.html', ['tickets', 'maintenance', 'reports'], ['users']],
-    ['management', 'mgmt-dashboard.html', ['service records', 'administration', 'reports'], ['new request']]
+    ['requester', 'or-dashboard.html', ['my requests', 'new request', 'office register'], ['maintenance', 'users']],
+    ['technician', 'itc-dashboard.html', ['my tickets', 'my maintenance jobs', 'office register'], ['users', 'new request']],
+    ['coordinator', 'ic-dashboard.html', ['tickets', 'maintenance', 'reports'], ['users', 'offices', 'audit log']],
+    ['management', 'mgmt-dashboard.html', ['service records', 'users', 'reports'], ['new request', 'review and assign']]
   ];
   for (var i = 0; i < CASES.length; i++) {
     var role = CASES[i][0], page = CASES[i][1];
     var p = await open(BASE + page, role);
-    var labels = Array.prototype.slice.call(p.d.querySelectorAll('.rail-item[href] span'))
+    var labels = Array.prototype.slice.call(p.d.querySelectorAll('.side-link[href] .side-label'))
       .map(function (s) { return s.textContent.trim().toLowerCase(); });
-    var hrefs = Array.prototype.slice.call(p.d.querySelectorAll('.rail-item[href]'))
+    var hrefs = Array.prototype.slice.call(p.d.querySelectorAll('.side-link[href]'))
       .map(function (a) { return a.getAttribute('href'); });
     CASES[i][2].forEach(function (want) {
       ok(labels.indexOf(want) > -1, role + ': rail shows "' + want + '" (' + labels.join(', ') + ')');
@@ -546,7 +546,7 @@ tests.push(async function forbiddenUrlShowsNeutralPanel() {
       ok(/This page is not available/.test(text), role + ' on ' + page + ': panel uses the neutral heading');
       ok(text.indexOf(page) === -1, role + ' on ' + page + ': panel does not name the page');
     }
-    ok(p.d.querySelector('.rail') !== null, role + ' on ' + page + ': the rail still works');
+    ok(p.d.querySelector('.side-nav') !== null, role + ' on ' + page + ': the sidebar still works');
     close(p);
   }
 });

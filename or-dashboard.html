@@ -37,8 +37,10 @@
       <div class="dash-grid">
         <div class="dash-main">
 
-          <!-- KPIs (computed live) -->
+          <!-- four role-specific highlights, then the full status strip -->
           <section class="grid grid-kpi" id="kpiGrid"></section>
+          <section class="status-strip" id="statusStrip" aria-label="Ticket status at a glance"></section>
+          <section class="quick-row" id="quickActions" aria-label="Quick actions"></section>
 
           <!-- ticket activity over the selected period, and the status split -->
           <section class="mt">
@@ -99,6 +101,7 @@
               <span class="hint" id="mineHint">the records waiting on your role</span>
             </div>
             <ul class="list" id="mineList"></ul>
+            <div id="minePagination"></div>
             <div class="empty" id="mineEmpty" hidden><img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">Nothing is waiting on you right now.</div>
           </div>
 
@@ -223,12 +226,134 @@ UI.mountChrome({ title: 'Service Dashboard', sub: 'Office IT Service Request, Ma
 
 var LIVE = ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved', 'closed', 'cancelled'];
 var queuePage = 1;
+var minePage = 1;
 const QUEUE_PER_PAGE = 10;
+const MINE_PER_PAGE = 5;
 
-function kpi(label, value, delta, cls, dot) {
-  return '<div class="card kpi ' + cls + '"><div class="dot">' + dot + '</div>' +
+function isOpen(t) { return t.status !== 'closed' && t.status !== 'cancelled'; }
+
+/* The dashboard follows the same tenancy the server applies: an office user
+   sees their own office, a technician sees their own work, IT leads see all. */
+function scopedTickets(db) {
+  var role = UI.roleKey();
+  if (role === 'requester') {
+    return db.tickets.filter(function (t) { return t.office === UI.ROLES.requester.office; });
+  }
+  if (role === 'technician') {
+    return db.tickets.filter(function (t) { return t.technician === UI.ROLES.technician.name; });
+  }
+  return db.tickets;
+}
+function scopedJobs(db) {
+  var role = UI.roleKey();
+  if (role === 'requester') {
+    return db.jobs.filter(function (j) { return j.office === UI.ROLES.requester.office; });
+  }
+  if (role === 'technician') {
+    return db.jobs.filter(function (j) { return j.technician === UI.ROLES.technician.name; });
+  }
+  return db.jobs;
+}
+function scopedSchedules(db) {
+  var role = UI.roleKey();
+  if (role === 'requester') {
+    return db.schedules.filter(function (s) { return s.office === UI.ROLES.requester.office; });
+  }
+  if (role === 'technician') {
+    return db.schedules.filter(function (s) { return s.technician === UI.ROLES.technician.name; });
+  }
+  return db.schedules;
+}
+
+function kpi(label, value, delta, cls, dot, href) {
+  var tag = href ? 'a' : 'div';
+  return '<' + tag + ' class="card kpi ' + cls + '"' +
+    (href ? ' href="' + UI.urlFor(href, UI.roleKey()) + '"' : '') + '>' +
+    '<div class="dot">' + dot + '</div>' +
     '<div class="label">' + label + '</div><div class="value">' + value + '</div>' +
-    '<div class="delta">' + delta + '</div></div>';
+    '<div class="delta">' + delta + '</div></' + tag + '>';
+}
+
+/* Four highlights that answer the role's first question, instead of the same
+   nine status cards for everybody. */
+function roleKpis(role, counts, overdue, jobs) {
+  var open = counts.submitted + counts.needs_info + counts.assigned + counts.in_progress + counts.on_hold + counts.resolved;
+  var activeJobs = jobs.filter(isOpen).length;
+  if (role === 'requester') {
+    return [
+      { label: 'Open requests', value: open, delta: 'Everything currently with IT', cls: 'k-brand', ic: 'inbox', href: 'tickets.html?queue=open' },
+      { label: 'Awaiting your reply', value: counts.needs_info, delta: 'IT needs more information', cls: 'k-warn', ic: 'pen', href: 'tickets.html?status=needs_info' },
+      { label: 'Ready to confirm', value: counts.resolved, delta: 'Resolved by IT, awaiting your answer', cls: 'k-ok', ic: 'checkCircle', href: 'confirm.html' },
+      { label: 'Maintenance visits', value: activeJobs, delta: 'Scheduled for your office', cls: 'k-brand', ic: 'cal', href: 'confirm.html' }
+    ];
+  }
+  if (role === 'technician') {
+    return [
+      { label: 'Assigned to me', value: counts.assigned, delta: 'Ready to start', cls: 'k-brand', ic: 'wrench', href: 'technician.html' },
+      { label: 'In progress', value: counts.in_progress, delta: 'Work under way', cls: 'k-brand', ic: 'refresh', href: 'technician.html' },
+      { label: 'On hold', value: counts.on_hold, delta: 'Waiting on a dependency', cls: 'k-hold', ic: 'pause', href: 'technician.html' },
+      { label: 'Maintenance jobs', value: activeJobs, delta: 'Open visits assigned to me', cls: 'k-ok', ic: 'cal', href: 'maintenance.html' }
+    ];
+  }
+  if (role === 'coordinator') {
+    return [
+      { label: 'To review', value: counts.submitted, delta: 'New requests waiting for triage', cls: 'k-brand', ic: 'inbox', href: 'tickets.html?status=submitted' },
+      { label: 'Active work', value: counts.assigned + counts.in_progress, delta: 'Assigned or in progress', cls: 'k-brand', ic: 'refresh', href: 'tickets.html?queue=open' },
+      { label: 'Dependency holds', value: counts.on_hold, delta: 'Parts, approval or support', cls: 'k-hold', ic: 'pause', href: 'review.html' },
+      { label: 'Overdue', value: overdue, delta: 'Past the target completion date', cls: 'k-warn', ic: 'alert', href: 'tickets.html?queue=overdue' }
+    ];
+  }
+  return [
+    { label: 'Open requests', value: open, delta: 'Across every office', cls: 'k-brand', ic: 'inbox', href: 'tickets.html?queue=open' },
+    { label: 'Resolved', value: counts.resolved, delta: 'Awaiting office confirmation', cls: 'k-ok', ic: 'checkCircle', href: 'tickets.html?status=resolved' },
+    { label: 'Closed', value: counts.closed, delta: 'Service records retained', cls: 'k-brand', ic: 'check', href: 'tickets.html?status=closed' },
+    { label: 'Overdue', value: overdue, delta: 'Past the target completion date', cls: 'k-warn', ic: 'alert', href: 'tickets.html?queue=overdue' }
+  ];
+}
+
+function renderStatusStrip(counts, overdue) {
+  var bits = LIVE.map(function (s) {
+    return '<a class="status-bit" href="' + UI.urlFor('tickets.html?status=' + s, UI.roleKey()) + '">' +
+      '<span class="status-bit-name">' + UI.esc(UI.STATUS[s][0]) + '</span>' +
+      '<b>' + counts[s] + '</b></a>';
+  });
+  bits.push('<a class="status-bit is-warn" href="' + UI.urlFor('tickets.html?queue=overdue', UI.roleKey()) + '">' +
+    '<span class="status-bit-name">Overdue</span><b>' + overdue + '</b></a>');
+  document.getElementById('statusStrip').innerHTML = bits.join('');
+}
+
+function renderQuickActions(role) {
+  var sets = {
+    requester: [
+      ['request.html', 'New Request', 'plus'],
+      ['tickets.html?queue=mine', 'My Requests', 'ticket'],
+      ['confirm.html', 'Confirmation', 'checkCircle'],
+      ['reports.html', 'Reports', 'chart']
+    ],
+    technician: [
+      ['technician.html', 'My Tickets', 'ticket'],
+      ['maintenance.html', 'My Maintenance Jobs', 'cal'],
+      ['register.html', 'Office Register', 'case'],
+      ['reports.html', 'Reports', 'chart']
+    ],
+    coordinator: [
+      ['review.html', 'Review and Assign', 'shield'],
+      ['request.html', 'New Request', 'plus'],
+      ['maintenance.html', 'Maintenance', 'cal'],
+      ['reports.html', 'Reports', 'chart']
+    ],
+    management: [
+      ['users.html', 'Users', 'users'],
+      ['offices.html', 'Offices', 'building'],
+      ['settings.html', 'Configuration', 'sliders'],
+      ['audit.html', 'Audit Log', 'shield']
+    ]
+  };
+  var items = (sets[role] || sets.coordinator).filter(function (a) { return UI.can(a[0], role); });
+  document.getElementById('quickActions').innerHTML = items.map(function (a) {
+    return '<a class="quick-action" href="' + UI.urlFor(a[0], role) + '">' +
+      UI.icon(a[2]) + '<span>' + UI.esc(a[1]) + '</span></a>';
+  }).join('');
 }
 
 function statusLabel(st) {
@@ -237,37 +362,33 @@ function statusLabel(st) {
 
 function render() {
   var db = Store.db;
+  var role = UI.roleKey();
+  var tickets = scopedTickets(db);
+  var jobs = scopedJobs(db);
+  var schedules = scopedSchedules(db);
 
-  /* ---- KPIs ---- */
+  /* ---- role highlights and the compact status strip ---- */
   var counts = { submitted: 0, needs_info: 0, assigned: 0, in_progress: 0, on_hold: 0, resolved: 0, closed: 0, cancelled: 0 };
-  db.tickets.forEach(function (t) { if (counts[t.status] !== undefined) counts[t.status]++; });
-  var open = db.tickets.filter(function (t) { return t.status !== 'closed' && t.status !== 'cancelled'; }).length;
-  var dueMaint = db.schedules.filter(function (s) { return s.active && new Date(s.dueDate) <= new Date(Date.now() + 7 * 864e5); }).length;
-  var overdue = db.tickets.filter(function (t) {
+  tickets.forEach(function (t) { if (counts[t.status] !== undefined) counts[t.status]++; });
+  var overdue = tickets.filter(function (t) {
     if (t.status === 'closed' || t.status === 'cancelled' || t.status === 'resolved') return false;
     return t.target && new Date(t.target).getTime() < UI.nowMs();
   }).length;
-  document.getElementById('kpiGrid').innerHTML =
-    kpi('Submitted', counts.submitted, '', 'k-brand', UI.icon('inbox')) +
-    kpi('Needs Information', counts.needs_info, 'Awaiting office reply  --  same ticket, no duplicates', 'k-warn', UI.icon('pen')) +
-    kpi('Assigned', counts.assigned, 'Technician assigned  --  Section 7', 'k-brand', UI.icon('wrench')) +
-    kpi('In Progress', counts['in_progress'], 'Work in progress  --  Section 8', 'k-brand', UI.icon('refresh')) +
-    kpi('On Hold · dependency', counts.on_hold, 'Parts / approval / external support', 'k-hold', UI.icon('pause')) +
-    kpi('Resolved awaiting confirmation', counts.resolved, 'Testing passed · closure pending', 'k-ok', UI.icon('checkCircle')) +
-    kpi('Closed', counts.closed, 'Service record retained', 'k-brand', UI.icon('check')) +
-    kpi('Cancelled', counts.cancelled, 'Preserved separate from completed', 'k-warn', UI.icon('ban')) +
-    kpi('Overdue', overdue, 'Past the target completion date', 'k-warn', UI.icon('alert'));
+  document.getElementById('kpiGrid').innerHTML = roleKpis(role, counts, overdue, jobs).map(function (k) {
+    return kpi(k.label, k.value, k.delta, k.cls, UI.icon(k.ic), k.href);
+  }).join('');
+  renderStatusStrip(counts, overdue);
+  renderQuickActions(role);
 
   /* ---- the records that wait on the signed-in role (specification 4A.3) ---- */
-  var role = UI.roleKey();
   var mine = [];
-  db.tickets.forEach(function (t) {
+  tickets.forEach(function (t) {
     if (UI.waitsOnMe(t.status, false, role)) {
       mine.push({ kind: 'Ticket', id: t.id, title: t.issue, where: t.office,
                   status: t.status, href: 'ticket.html?id=' + encodeURIComponent(t.id) });
     }
   });
-  db.jobs.forEach(function (j) {
+  jobs.forEach(function (j) {
     if (UI.waitsOnMe(j.status, true, role)) {
       /* An office answers a visit on the confirmation screen; IT roles open
          the maintenance job itself. */
@@ -281,15 +402,20 @@ function render() {
   document.getElementById('mineCount').textContent = mine.length + (mine.length === 1 ? ' record' : ' records');
   document.getElementById('mineHint').textContent = 'the records waiting on ' + UI.currentRole().title;
   document.getElementById('mineEmpty').hidden = mine.length > 0;
-  document.getElementById('mineList').innerHTML = mine.map(function (m) {
+
+  var minePages = Math.max(1, Math.ceil(mine.length / MINE_PER_PAGE));
+  if (minePage > minePages) minePage = minePages;
+  var minePg = UI.paginate(mine, minePage, MINE_PER_PAGE);
+  document.getElementById('mineList').innerHTML = minePg.items.map(function (m) {
     return '<li><span class="ico ok">' + UI.icon(m.kind === 'Ticket' ? 'ticket' : 'toolbox') + '</span>' +
       '<a class="body" href="' + m.href + '"><strong>' + UI.esc(m.id) + '  --  ' + UI.esc(m.title) + '</strong>' +
       '<span>' + UI.esc(m.kind) + ' · ' + UI.esc(m.where) + ' · ' + statusLabel(m.status) + '</span>' +
       UI.waitingOn(m.status, m.kind === 'Maintenance') + '</a></li>';
   }).join('');
+  UI.renderPagination(document.getElementById('minePagination'), minePg, function (p) { minePage = p; render(); });
 
   /* ---- queue ---- */
-  var allRows = db.tickets.slice().filter(function (t) { return t.status !== 'closed' && t.status !== 'cancelled'; }).sort(function (a, b) {
+  var allRows = tickets.filter(isOpen).sort(function (a, b) {
     return String(a.target || '9999').localeCompare(String(b.target || '9999'));
   });
   document.getElementById('queueCount').textContent = allRows.length + ' active';
@@ -314,7 +440,7 @@ function render() {
   UI.renderPagination(document.getElementById('queuePagination'), pg, function (p) { queuePage = p; render(); });
 
   /* ---- on-hold summary (actioned in Review & Assign) ---- */
-  var holds = db.tickets.filter(function (t) { return t.status === 'on_hold' && t.dependency; });
+  var holds = tickets.filter(function (t) { return t.status === 'on_hold' && t.dependency; });
   var depMount = document.getElementById('depMount');
   depMount.innerHTML = '<div class="card card-pad"><div class="card-head-row">' +
     '<h3 class="card-title">On hold · dependency</h3>' +
@@ -329,24 +455,24 @@ function render() {
     '</div>';
 
   /* ---- maintenance due ---- */
-  var soon = db.schedules.filter(function (s) { return s.active; }).sort(function (a, b) {
+  var soon = schedules.filter(function (s) { return s.active; }).sort(function (a, b) {
     return String(a.dueDate).localeCompare(String(b.dueDate));
   }).slice(0, 4);
   var jobBySched = {};
-  db.jobs.forEach(function (j) { if (j.status !== 'closed') jobBySched[j.scheduleId] = j; });
+  jobs.forEach(function (j) { if (j.status !== 'closed') jobBySched[j.scheduleId] = j; });
   document.getElementById('maintDue').innerHTML = soon.map(function (s) {
     var overdue = new Date(s.dueDate).getTime() < UI.nowMs();
     var j = jobBySched[s.id];
     return '<li><span class="ico ' + (overdue ? 'warn' : '') + '">' + (j ? UI.icon('toolbox') : UI.icon('cal')) + '</span>' +
       '<div class="body"><strong>' + UI.esc(s.office) + '  --  ' + UI.esc(s.category) + ' PM</strong>' +
       '<span>' + UI.esc(s.frequency) + ' · ' + s.assets.length + ' asset(s) · ' + UI.esc(s.technician) +
-      (j ? ' · job <span class="mono">' + UI.esc(j.id) + '</span> exists  --  not duplicated' : '') + '</span></div>' +
-      '<span class="when">' + UI.dateOnly(s.dueDate) + (overdue ? ' · due' : '') + '</span></li>';
+      (j ? ' · job <span class="mono">' + UI.esc(j.id) + '</span> exists  --  not duplicated' : '') + '</span>' +
+      '<span class="when">' + UI.dateOnly(s.dueDate) + (overdue ? ' · due' : '') + '</span></div></li>';
   }).join('') || '<li><div class="body"><strong>No active schedules</strong></div></li>';
 
   /* ---- live audit feed ---- */
   var feed = [];
-  db.tickets.forEach(function (t) {
+  tickets.forEach(function (t) {
     t.history.forEach(function (h) { feed.push({ at: h.at, text: h.text, by: h.by, role: h.role, kind: h.kind, id: t.id }); });
   });
   feed.sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
@@ -359,18 +485,17 @@ function render() {
       '<span class="when">' + UI.timeAgo(h.at) + '</span></li>';
   }).join('') || '<li><div class="body"><strong>No activity yet</strong></div></li>';
 
-  renderActivity();
-  renderBreakdown();
-  renderStatusBars();
-  renderCosts();
+  renderActivity(tickets);
+  renderBreakdown(tickets);
+  renderStatusBars(tickets);
+  renderCosts(tickets, jobs);
 }
 
 /* ---------- the status breakdown ---------- */
-function renderStatusBars() {
-  var db = Store.db;
+function renderStatusBars(tickets) {
   var counts = {};
   LIVE.forEach(function (s) { counts[s] = 0; });
-  db.tickets.forEach(function (t) { if (counts[t.status] !== undefined) counts[t.status]++; });
+  tickets.forEach(function (t) { if (counts[t.status] !== undefined) counts[t.status]++; });
   var max = 1;
   LIVE.forEach(function (s) { if (counts[s] > max) max = counts[s]; });
   document.getElementById('statusBars').innerHTML = LIVE.map(function (s) {
@@ -382,27 +507,23 @@ function renderStatusBars() {
 }
 
 /* ---------- costs, recurrence and preventive compliance ---------- */
-function renderCosts() {
-  var db = Store.db;
+function renderCosts(tickets, jobs) {
   var cost = 0;
-  db.tickets.forEach(function (t) {
+  tickets.forEach(function (t) {
     cost += (t.diagnosis && t.diagnosis.cost) ? Number(t.diagnosis.cost) : 0;
   });
-  var recurring = db.tickets.filter(function (t) { return t.recurring; }).length;
-  var jobsDue = db.jobs.length;
-  var jobsOk = db.jobs.filter(function (j) { return j.status === 'closed' && j.outcome === 'success'; }).length;
+  var recurring = tickets.filter(function (t) { return t.recurring; }).length;
+  var jobsDue = jobs.length;
+  var jobsOk = jobs.filter(function (j) { return j.status === 'closed' && j.outcome === 'success'; }).length;
   var compliance = jobsDue ? Math.round(jobsOk / jobsDue * 1000) / 10 : 0;
-  var openJobs = db.jobs.filter(function (j) { return j.status !== 'closed' && j.status !== 'cancelled'; }).length;
+  var openJobs = jobs.filter(function (j) { return j.status !== 'closed' && j.status !== 'cancelled'; }).length;
   document.getElementById('costInfo').innerHTML =
     (UI.roleKey() === 'requester' ? '' : '<div><div class="k">Service cost recorded</div><div class="v">₱' + cost.toLocaleString('en-PH', { minimumFractionDigits: 2 }) + '</div></div>') +
     '<div><div class="k">Recurring issues</div><div class="v">' + recurring + '</div></div>' +
     '<div><div class="k">Preventive compliance</div><div class="v">' + compliance + '%</div></div>' +
     '<div><div class="k">Successful visits</div><div class="v">' + jobsOk + ' of ' + jobsDue + '</div></div>' +
     '<div><div class="k">Open maintenance visits</div><div class="v">' + openJobs + '</div></div>' +
-    '<div><div class="k">Completed services</div><div class="v">' + counts_closed(db) + '</div></div>';
-}
-function counts_closed(db) {
-  return db.tickets.filter(function (t) { return t.status === 'closed'; }).length;
+    '<div><div class="k">Completed services</div><div class="v">' + tickets.filter(function (t) { return t.status === 'closed'; }).length + '</div></div>';
 }
 
 /* ---------- ticket activity over the selected period ---------- */
@@ -449,8 +570,7 @@ var ACT_KINDS = [
   { key: 'cancelled', label: 'Cancelled', cls: 'c-cancelled' }
 ];
 
-function renderActivity() {
-  var db = Store.db;
+function renderActivity(tickets) {
   var win = actWindow();
   var days = [], seen = {};
   var dayMs = 864e5;
@@ -461,7 +581,7 @@ function renderActivity() {
     days.push({ key: key, label: Time.date(new Date(d).toISOString()), counts: { submitted: 0, resolved: 0, closed: 0, cancelled: 0 } });
     seen[key] = days.length - 1;
   }
-  db.tickets.forEach(function (t) {
+  tickets.forEach(function (t) {
     ACT_KINDS.forEach(function (k) {
       var at = actInstant(t, k.key);
       if (!at) return;
@@ -509,10 +629,9 @@ function renderActivity() {
 }
 
 /* ---------- the breakdown tables ---------- */
-function breakdownRows(key) {
-  var db = Store.db;
+function breakdownRows(key, tickets) {
   var groups = {};
-  db.tickets.forEach(function (t) {
+  tickets.forEach(function (t) {
     var name = key === 'office' ? t.office : key === 'category' ? t.category : (t.technician || 'Unassigned');
     var g = groups[name] || (groups[name] = { name: name, submitted: 0, assigned: 0, overdue: 0, resolved: 0, closed: 0, cancelled: 0, recurring: 0, turn: [], assign: [] });
     g.submitted++;
@@ -544,10 +663,10 @@ function isOverdue(t) {
   if (!t.target) return false;
   return new Date(t.target).getTime() < UI.nowMs();
 }
-function renderBreakdown() {
+function renderBreakdown(tickets) {
   var labels = { office: 'Office', category: 'Category', technician: 'Technician' };
   ['office', 'category', 'technician'].forEach(function (key) {
-    var rows = breakdownRows(key);
+    var rows = breakdownRows(key, tickets);
     var head = '<tr><th>' + labels[key] + '</th><th>Submitted</th><th>Assigned</th><th>Overdue</th>' +
       '<th>Resolved</th><th>Closed</th><th>Cancelled</th><th>Recurring</th>' +
       '<th>Avg turnaround</th><th>Avg time to assignment</th></tr>';
@@ -588,13 +707,13 @@ document.getElementById('actRange').addEventListener('change', function (e) {
   var custom = actRange === 'custom';
   document.getElementById('actFromWrap').hidden = !custom;
   document.getElementById('actToWrap').hidden = !custom;
-  renderActivity();
+  renderActivity(scopedTickets(Store.db));
 });
 ['actFrom', 'actTo'].forEach(function (id) {
-  document.getElementById(id).addEventListener('change', function () { renderActivity(); });
+  document.getElementById(id).addEventListener('change', function () { renderActivity(scopedTickets(Store.db)); });
 });
 document.getElementById('actRefresh').addEventListener('click', function () {
-  renderActivity();
+  renderActivity(scopedTickets(Store.db));
   UI.toast('Activity refreshed.', 'ok');
 });
 document.getElementById('actTable').addEventListener('click', function () {
@@ -610,7 +729,7 @@ document.getElementById('actExport').addEventListener('click', function () {
   function db_activity() {
     var out = [];
     var days = {};
-    Store.db.tickets.forEach(function (t) {
+    scopedTickets(Store.db).forEach(function (t) {
       ACT_KINDS.forEach(function (k) {
         var at = actInstant(t, k.key);
         if (!at) return;

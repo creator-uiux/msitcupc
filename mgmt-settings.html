@@ -83,6 +83,16 @@ var GROUPS = [
   { key: 'frequencies', label: 'Frequencies', hint: 'preventive maintenance interval' }
 ];
 
+var REF_PER = 8, FREQ_PER = 8;
+var refPage = {}, refStates = {}, freqPage = 1;
+
+function paginateSafe(items, page, per) {
+  var pages = Math.max(1, Math.ceil(items.length / per));
+  var state = UI.paginate(items, Math.min(Math.max(1, page), pages), per);
+  state.pages = pages;
+  return state;
+}
+
 function settings() { return Store.db.settings || {}; }
 
 function render() {
@@ -90,8 +100,11 @@ function render() {
 
   document.getElementById('refGroups').innerHTML = GROUPS.map(function (g) {
     var items = s[g.key] || [];
+    var pg = paginateSafe(items, refPage[g.key] || 1, REF_PER);
+    refPage[g.key] = pg.page;
+    refStates[g.key] = pg;
     var isPrio = g.key === 'priorities', isFreq = g.key === 'frequencies';
-    var rows = items.map(function (row) {
+    var rows = pg.items.map(function (row) {
       var label = isPrio || isFreq ? row[1] : row;
       var extra = isPrio ? '<span class="t-sub mono">' + UI.esc(row[0]) + '</span>'
         : isFreq ? '<span class="t-sub">every ' + row[2] + ' days</span>' : '';
@@ -102,18 +115,24 @@ function render() {
       '<div class="card-head-row">' +
       '<b class="card-title">' + g.label + '</b><span class="hint">' + g.hint + '</span></div>' +
       '<ul class="list">' + rows + '</ul>' +
+      '<div id="refPg-' + g.key + '"></div>' +
       '<div class="row row-tight mt-sm">' +
       '<input type="text" class="ref-new grow" data-group="' + g.key + '" placeholder="Add ' + g.label.toLowerCase().replace(/s$/, '') + '…">' +
       (isFreq ? '<input type="number" class="ref-days input-days" data-group="frequencies" placeholder="days" min="1" max="730">' : '') +
       '<button class="btn btn-soft btn-sm" data-add="' + g.key + '">Add</button></div></div>';
   }).join('');
 
+  GROUPS.forEach(function (g) {
+    var el = document.getElementById('refPg-' + g.key);
+    if (el) UI.renderPagination(el, refStates[g.key], function (p) { refPage[g.key] = p; render(); });
+  });
+
   /* operational settings */
   document.getElementById('opSettings').innerHTML =
     '<div class="grid grid-form">' +
     UI.field('Follow-up reminder interval (minutes)', UI.numberInput('reminderMinutes', s.reminderMinutes || 2, { min: 1, max: 1440 })) +
     UI.field('First reminder after (business days)', UI.numberInput('reminderBusinessDays', s.reminderBusinessDays || 3, { min: 1, max: 60 })) +
-    UI.field('Simulation', UI.select('simulate', [['1', 'On  --  generate demo intake'], ['0', 'Off  --  deterministic']], s.simulate ? '1' : '0', true)) +
+    UI.field('Simulation (demo intake)', UI.select('simulate', [['1', 'On'], ['0', 'Off']], s.simulate ? '1' : '0', true)) +
     '</div><div class="form-actions">' +
     '<button class="btn btn-primary" id="saveOp">Save settings</button></div>';
 
@@ -170,12 +189,16 @@ function render() {
     '<button class="btn btn-primary" id="savePolicy">Save policy</button></div>';
 
   /* frequency table (the single source of the next-due rule) */
+  var fr = paginateSafe(s.frequencies || [], freqPage, FREQ_PER);
+  freqPage = fr.page;
   document.getElementById('freqTable').innerHTML =
     '<table class="table"><thead><tr><th>Frequency</th><th>Key</th><th>Days</th></tr></thead><tbody>' +
-    (s.frequencies || []).map(function (row) {
+    fr.items.map(function (row) {
       return '<tr><td data-label="Frequency">' + UI.esc(row[1]) + '</td><td data-label="Key"><span class="mono">' + UI.esc(row[0]) + '</span></td><td data-label="Days">' + row[2] + '</td></tr>';
     }).join('') + '</tbody></table>' +
+    '<div id="freqPagination"></div>' +
     '<p class="card-sub mt">The next due date is <b>previous due date + days</b>  --  a late visit never drifts the whole plan.</p>';
+  UI.renderPagination(document.getElementById('freqPagination'), fr, function (p) { freqPage = p; render(); });
 
   /* bind */
   document.querySelectorAll('[data-rm]').forEach(function (b) {
@@ -200,6 +223,7 @@ function render() {
       var r = window.Admin.saveRef(body);
       UI.toast(r.msg, r.ok ? 'ok' : 'err');
       if (r.ok && input) input.value = '';
+      if (r.ok) refPage[group] = 999;
     };
   });
   var so = document.getElementById('saveOp');

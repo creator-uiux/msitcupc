@@ -44,7 +44,7 @@ the shell changes, so a release reaches the phones that installed it.
 | `index.html` | Gallery / preview |  --  |
 | `login.html` | **UPMail sign-in**: real Google Identity Services when the backend has a client id; the development account chooser appears only when the explicit demo flag is on |  --  |
 | `roles.html` | **Roles & Access**: the four roles, what each can do, full feature matrix | 28, 28.1, 28.2 |
-| `dashboard.html` | Role-aware summary: KPIs, the active ticket queue, maintenance due, audit feed, on-hold pointers | steps 2–8, 26, 28 |
+| `dashboard.html` | Role-focused summary: four role tiles, the eight status labels as links, quick actions, the active ticket queue, maintenance due, audit feed, on-hold pointers | steps 2–8, 26, 28 |
 | `ticket.html` | **Read-only service record**: status & audit history, impact/urgency, dependency hold, diagnosis/parts/costs, testing, confirmation  --  with links into the section screens | steps 3–18 |
 | `request.html` | Office requester submits a service request (all 4 intake channels), replies to *Needs information*, withdraws an active request | steps 1–2 |
 | `review.html` | **IT Coordinator review & assign**: request missing details, assess, prioritise, assign, monitor dependency holds | steps 3–8, 10 |
@@ -123,7 +123,7 @@ actions. Every role can read `roles.html`.
 
 One layout system, three layout tiers, all tested:
 
-- **Desktop** → **≥ 1024 px** (targets: 1440 × 900, 1024 × 768)  --  persistent sidebar rail, wide tables and grids. The two-column *main + side* canvas engages at **≥ 1280 px**; from 1024–1279 px the content stacks to one full-width column so the wide ticket/report tables never spill into the adjacent column.
+- **Desktop** → **≥ 1024 px** (targets: 1440 × 900, 1024 × 768)  --  persistent grouped sidebar, wide tables and grids. The two-column *main + side* canvas engages at **≥ 1280 px**; from 1024–1279 px the content stacks to one full-width column so the wide ticket/report tables never spill into the adjacent column.
 - **Tablet** → **600–1023 px** (target: 768 × 1024)  --  collapsible navigation, compact grids
 - **Mobile** → **≤ 599 px** (targets: 390 × 844, 360 × 800)  --  bottom navigation, stacked cards
 
@@ -174,7 +174,7 @@ sign-in page loads the first three plus `css/login.css` and is frozen:
 | `css/app.css` | the structure: the shell, the components, the responsive tiers |
 | `css/green.css` | the token layer: the green palette, the radii, the shadows, the type scale |
 | `css/kit.css` | the shared kit: the page composition, the utilities, the parity rules |
-| `css/console.css` | the Phase 10 shell: icon rail, contextual panel, slim top bar, role visibility rules |
+| `css/console.css` | the Phase 11 shell: grouped sidebar, slim top bar, role-focused dashboards, pagination and role visibility rules |
 
 `css/kit.css` is the single place where "how a screen is put together" is
 decided, so every page and every role page looks the same. The house rule is
