@@ -125,7 +125,7 @@ The authoritative workflow is the 29 step SOP in the bundled
 | 8.7 | `KNOWN_LIMITATIONS.md` | DONE | honest gap list |
 | 8.8 | `ROLE_MATRIX.md` | DONE | pages, actions, transitions and data scope per role |
 | 8.9 | `DESIGN_SYSTEM.md` | DONE | tokens, components and page patterns |
-| 8.10 | `docs/screenshots/` evidence | DONE | 60 captures at 390, 768 and 1440 in light and dark |
+| 8.10 | `docs/screenshots/` evidence | DONE | 108 captures: 60 base screens at 390, 768 and 1440 in light and dark, plus 48 role captures of dashboard and ticket detail |
 
 ## Phase 9. Verification
 
@@ -133,20 +133,21 @@ The authoritative workflow is the 29 step SOP in the bundled
 |---|---|---|---|
 | 9.1 | Backend suite | DONE | `python server/tests.py`: 335 passed, 0 failed |
 | 9.2 | Workflow smoke | DONE | `node tools/smoke.js`: 60 passed, 0 failed |
-| 9.3 | Page integration | DONE | `node tools/pagetest.js`: 347 passed, 0 failed |
-| 9.4 | Role page tests | DONE | `node tools/rolepages_test.js`: 64 passed, 0 failed |
+| 9.3 | Page integration | DONE | `node tools/pagetest.js`: 355 passed, 0 failed |
+| 9.4 | Role page tests | DONE | `node tools/rolepages_test.js`: 173 passed, 0 failed, including computed-display checks for the role visibility classes |
 | 9.5 | API integration | DONE | `python tools/api_check.py`: 17 passed, 0 failed |
 | 9.6 | Markup and DOM ids | DONE | `python tools/validate.py`: PASSED |
 | 9.7 | UI house rules | DONE | `python tools/ui_check.py`: PASSED (71 pages) |
-| 9.8 | JavaScript syntax | DONE | `python tools/js_syntax_check.py`: PASS (25 files, 188 inline blocks) |
-| 9.9 | Permission parity | DONE | Python and Node parity checks pass |
+| 9.8 | JavaScript syntax | DONE | `python tools/js_syntax_check.py`: PASS (24 files, 188 inline blocks) |
+| 9.9 | Permission parity | DONE | Python and Node parity checks pass; `node tools/parity_check.js` 54 passed |
 | 9.10 | Appendix C coverage | DONE | `python tools/appendix_c_check.py`: PASS (81 nodes, 106 edges) |
 | 9.11 | Responsive audit | DONE | `python tools/responsive.py`: 0 problems |
-| 9.12 | Visual gate | DONE | `python tools/gate_shots.py`: 60 captures, no overflow, no clipped text |
+| 9.12 | Visual gate | DONE | `python tools/gate_shots.py`: 60 captures, no overflow, no clipped text; 48 additional role captures in `docs/screenshots/` |
 | 9.13 | Static structure and content audits | DONE | `html_check.js` 355 passed; `ui_audit.js` 335 passed; `script_order_check.js` 67 passed; `deep_audit.js` 628 passed; `content_check.js` 174 passed |
 | 9.14 | Time zone behavior | DONE | `node tools/time_check.js`: PASS under three host timezones |
-| 9.15 | Visual review of the captures | DONE | login at 1440 light and dark, 390 light and dark, 320x720, 531x553 and 768 reviewed; ticket, dashboard and login captures read during this pass |
-| 9.16 | Full designer review of every capture | PARTIAL | the machine gate passed and the key screens were read, but not all 60 images were re-reviewed individually |
+| 9.15 | Visual review of the captures | DONE | login at 1440 light and dark, 390 light and dark, 320x720, 531x553 and 768 reviewed; the 48 role captures of dashboard and ticket detail read at all three widths in both themes |
+| 9.16 | Full designer review of every capture | PARTIAL | the machine gate passed and the key screens were read, but not all 108 images were re-reviewed individually |
+| 9.17 | Role visibility in the interface | DONE | `rolepages_test.js` asserts hidden-not-disabled classes per role, rail links against the permission map, requester plain language and the neutral forbidden-page panel; `docs/UI_POLISH_REPORT.md` records the matrix |
 
 ## Known gaps
 

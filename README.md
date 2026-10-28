@@ -61,7 +61,7 @@ the shell changes, so a release reaches the phones that installed it.
 | `offices.html` | **Offices** (System Administrator): office records, codes, contacts, active state; renaming cascades everywhere | 28.2 |
 | `settings.html` | **Settings & reference data** (System Administrator): categories, priorities, sources, maintenance frequencies, reminder interval |  --  |
 | `profile.html` | **My profile**: contact details, password change, appearance / session preferences |  --  |
-| `flow.html` | Swimlane flowchart rebuilt from the PDF: 89 nodes in 4 lanes, connector table with every Yes/No branch, and a node-by-node coverage proof | all steps (reference) |
+| `flow.html` | Swimlane flowchart rebuilt from the PDF: 81 nodes in four lanes (one legend artifact excluded) and 106 connectors, with every Yes/No branch and a node-by-node coverage proof | all steps (reference) |
 
 ## Role URLs
 
@@ -121,7 +121,7 @@ actions. Every role can read `roles.html`.
 
 ## Responsive tiers
 
-One stylesheet, three layout tiers, all tested:
+One layout system, three layout tiers, all tested:
 
 - **Desktop** → **≥ 1024 px** (targets: 1440 × 900, 1024 × 768)  --  persistent sidebar rail, wide tables and grids. The two-column *main + side* canvas engages at **≥ 1280 px**; from 1024–1279 px the content stacks to one full-width column so the wide ticket/report tables never spill into the adjacent column.
 - **Tablet** → **600–1023 px** (target: 768 × 1024)  --  collapsible navigation, compact grids
@@ -166,13 +166,15 @@ separate from completed totals and are preserved with audit history.
 
 ## Styling
 
-Three stylesheets, no framework, no build step:
+Four stylesheets on authenticated pages, no framework, no build step. The
+sign-in page loads the first three plus `css/login.css` and is frozen:
 
 | File | Role |
 |---|---|
 | `css/app.css` | the structure: the shell, the components, the responsive tiers |
 | `css/green.css` | the token layer: the green palette, the radii, the shadows, the type scale |
 | `css/kit.css` | the shared kit: the page composition, the utilities, the parity rules |
+| `css/console.css` | the Phase 10 shell: icon rail, contextual panel, slim top bar, role visibility rules |
 
 `css/kit.css` is the single place where "how a screen is put together" is
 decided, so every page and every role page looks the same. The house rule is
@@ -204,11 +206,11 @@ Zero-config checkers under `tools/` (plus the backend suite):
 
 | Command | What it proves |
 |---|---|
-| `python tools/ui_check.py` | **the UI house rules** on all 71 pages: the three stylesheets load in order, no inline style survives, the shell placeholders and the page head are always there, every class used in the markup is defined in the stylesheets, and no page carries its own `<style>` block |
+| `python tools/ui_check.py` | **the UI house rules** on all 71 pages: the four authenticated stylesheets (three plus `login.css` on the sign-in page) load in order, no inline style survives, the shell placeholders and the page head are always there, every class used in the markup is defined in the stylesheets, and no page carries its own `<style>` block |
 | `python tools/validate.py` | HTML well-formedness, duplicate ids, `label for` → id, dead internal links, `getElementById` targets exist |
 | `node tools/smoke.js` | **60 workflow assertions**  --  the whole SOP engine (`store/ui/flow/live`) in a VM: every branch of the flowchart |
-| `node tools/pagetest.js` | **347 page assertions**  --  serves the pages and drives every screen in jsdom: forms, modals, sign-in, page guard, role-lane separation, filters, schedule check, plus a load+sentinel check for every Phase-C screen in each role and a reply-composer regression guard; fails on any console/window error |
-| `node tools/rolepages_test.js` | **64 role-URL assertions**  --  every legal role page exists, no forbidden combo does, each page pins its own role and prefixes its nav links, a **sessionless** load renders the URL's role (never login  --  the import/share path), a signed-in wrong-role URL redirects, and bare pages still work |
+| `node tools/pagetest.js` | **355 page assertions**  --  serves the pages and drives every screen in jsdom: forms, modals, sign-in, page guard, role-lane separation, filters, schedule check, plus a load+sentinel check for every Phase-C screen in each role and a reply-composer regression guard; fails on any console/window error |
+| `node tools/rolepages_test.js` | **173 role-URL assertions**  --  every legal role page exists, no forbidden combo does, each page pins its own role and prefixes its nav links, a **sessionless** load renders the URL's role (never login  --  the import/share path), a signed-in wrong-role URL redirects, bare pages still work, role visibility classes are hidden or shown as the permission map says, and a forbidden URL shows the neutral panel |
 | `python tools/responsive.py` | **responsive checks** (71 pages × 8 viewports)  --  drives headless Chrome over the DevTools Protocol and flags horizontal overflow, elements past the viewport, clipped text and sub-36 px tap targets (content inside an intentional horizontal scroller is exempt) |
 | `python server/tests.py` | **335 backend assertions**  --  engine, RBAC, requester office-tenancy, technician data scope, Google OIDC verification, notification delivery, SQLite persistence, HTTP API, SSE, seed shape, site serving |
 | `python tools/api_check.py` | **17 end-to-end assertions**  --  real Chrome loads the site served by the backend and verifies the UI talks to it (live by default) |
@@ -278,8 +280,10 @@ data still persists to `localStorage` and syncs across tabs.
 
 ## Design exports
 
-The checked-in visual evidence is `docs/screenshots/`, 60 captures at 390, 768
-and 1440 px in both themes, produced by `python tools/gate_shots.py`. For a
-larger export, `python tools/shots.py` renders 20 pages at six viewports into
-the generated `shots/` directory, and `shots/index.html` is the review gallery.
+The checked-in visual evidence is `docs/screenshots/`, 108 captures: 60 base
+screens at 390, 768 and 1440 px in both themes, plus 48 role captures of the
+dashboard and ticket detail for each role at the same widths and themes. The
+base set is produced by `python tools/gate_shots.py`. For a larger export,
+`python tools/shots.py` renders 20 pages at six viewports into the generated
+`shots/` directory, and `shots/index.html` is the review gallery.
 

@@ -32,10 +32,11 @@ current commit. Blocked or unverified items are listed first.
   only; no component was copied from it, and the styling follows the design
   system in `docs/DESIGN_SYSTEM.md`.
 - **The visual review was a machine check plus a read of the captures.** The
-  60 captures in `docs/screenshots/` were produced with headless Chrome,
-  checked for horizontal overflow and clipped text, and the login, ticket,
-  dashboard, mobile and dark captures were read individually. Every one of
-  the 60 was not read by a designer, so this is not a full design review.
+  108 captures in `docs/screenshots/` were produced with headless Chrome;
+  the 60 base captures were checked for horizontal overflow and clipped
+  text, and the login, ticket, dashboard, role, mobile and dark captures
+  were read individually. Not every one of the 108 was read by a designer,
+  so this is not a full design review.
 
 ## Platform constraints
 
@@ -85,6 +86,28 @@ current commit. Blocked or unverified items are listed first.
   name and the details and the viewer says that the file itself is not kept
   here. The intake form records the names of the files it was given for the
   same reason: it does not upload the bytes.
+- **The requester has no Maintenance Visits page in the rail.** The
+  permission map does not grant `maintenance.html` to the requester, and the
+  Phase 10 rules forbid changing security rules. Upcoming visits still
+  appear on the dashboard and availability is still answered on
+  `confirm.html`. A read-only maintenance page for the office would require
+  a permission map change and a backend review.
+- **Reports are not in the requester and technician rails.** Section 25.2.1
+  and 25.2.3 do not list Reports for those lanes even though the permission
+  map permits the page. A permitted role can still open the page directly.
+- **The System Administrator does not see the create-schedule control.**
+  `create_schedule` is coordinator-only. Edit and pause remain visible
+  because `update_schedule` and `set_schedule_active` include that role.
+- **System resolves to light on authenticated app pages.** The frozen
+  `js/theme.js` applies the pre-paint default before the page styles load.
+  Dark mode and an explicit Light choice work; changing the System result
+  would require editing a frozen shared file.
+- **Role visibility is a presentation layer.** Elements a role cannot use
+  are hidden with body-class rules, not removed from the markup. The
+  permission map and the backend guards remain the security boundary, and
+  the parity checks prove they agree with the mirror.
+- **The demo account chooser is development-only.** It appears only behind
+  the explicit demo flag; it is never shown in a network-facing deployment.
 - **The page test suite is flaky while another process edits the same tree.**
   The suite takes a free port, serves through a threaded server and answers
   the external font request locally, so it is stable on a quiet tree. When a

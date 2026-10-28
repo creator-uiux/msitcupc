@@ -1,16 +1,20 @@
 # Design system
 
 The ITC Service and Maintenance Management System is a calm, institutional green
-product. Three stylesheets define it, loaded in this order on every page:
+product. Four stylesheets define it on authenticated pages, loaded in this
+order. The sign-in page loads the first three plus `css/login.css` and is
+frozen.
 
 | File | Role |
 |---|---|
 | `css/app.css` | the structure: the shell, the components, the responsive tiers |
 | `css/green.css` | the token layer: the green palette, the radii, the shadows, the type scale |
 | `css/kit.css` | the shared kit: the page composition, the utilities and the parity rules |
+| `css/console.css` | the authenticated shell: icon rail, contextual panel, slim top bar and the role visibility rules |
 
 `css/kit.css` is the single place where "how a screen is put together" is
-decided, so a screen looks the same whichever role opens it. A page that needs
+decided, so a screen looks the same whichever role opens it. `css/console.css`
+adds the Phase 10 shell and the hide-not-disable rules only. A page that needs
 a new arrangement takes a class from the kit -- **there are no inline styles in
 the markup**. The only exceptions are values that are computed at run time
 (a bar width, a row index, a role accent colour), and those live in CSS
@@ -353,7 +357,7 @@ informative image carries alt text (decorative artwork is `alt=""`).
 
 | Tool | What it proves |
 |---|---|
-| `python tools/ui_check.py` | every page loads the three stylesheets in order, carries no inline style, keeps the shell and the page head, uses only classes the stylesheets define, and has no page-local `<style>` block |
+| `python tools/ui_check.py` | every page loads its stylesheets in order (four on authenticated pages, three plus `login.css` on the sign-in page), carries no inline style, keeps the shell and the page head, uses only classes the stylesheets define, and has no page-local `<style>` block |
 | `python tools/responsive.py` | no overflow, no clipping, no tap target under 36px across 320 / 375 / 390 / 430 / 768 / 1024 / 1280 / 1440 |
 | `node tools/pagetest.js` | every page renders, every control is wired, icons and badges behave |
 | `node tools/smoke.js` | the workflow still runs end to end in the browser |

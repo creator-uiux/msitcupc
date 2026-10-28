@@ -120,19 +120,19 @@ that was not run is not listed.
 |---|---|---|
 | Backend | `python server/tests.py` | 335 passed, 0 failed |
 | Workflow smoke | `node tools/smoke.js` | 60 passed, 0 failed |
-| Page integration | `node tools/pagetest.js` | 347 passed, 0 failed on a quiet tree |
-| Role pages | `node tools/rolepages_test.js` | 64 passed, 0 failed |
+| Page integration | `node tools/pagetest.js` | 355 passed, 0 failed on a quiet tree |
+| Role pages | `node tools/rolepages_test.js` | 173 passed, 0 failed |
 | API | `python tools/api_check.py` | 17 passed, 0 failed |
 | Markup and DOM ids | `python tools/validate.py` | PASSED |
 | UI house rules | `python tools/ui_check.py` | PASSED (71 pages) |
-| JavaScript syntax | `python tools/js_syntax_check.py` | PASS (25 files, 188 inline blocks) |
+| JavaScript syntax | `python tools/js_syntax_check.py` | PASS (24 files, 188 inline blocks) |
 | Em dash sweep | `python tools/em_dash_check.py` | PASS (0 in the tree) |
 | Appendix C coverage | `python tools/appendix_c_check.py` | PASS (81 nodes, 106 edges) |
 | Permission parity | `python tools/permission_parity_check.py` | PASS |
 | Permission parity (Node.js) | `node tools/parity_check.js` | 54 passed, 0 failed |
 | Role page generation | `python tools/role_pages.py --check` | PASS (49 files) |
 | Asia/Manila display | `node tools/time_check.js` | PASS under three host timezones |
-| Visual gate | `python tools/gate_shots.py` | PASS (60 captures, no overflow, no clipping) |
+| Visual gate | `python tools/gate_shots.py` | PASS (60 captures, no overflow, no clipping); 48 role captures also checked in |
 | Responsive | `python tools/responsive.py` | 0 problems at 1440, 1280, 1024, 768, 430, 390, 375 and 320 px |
 | HTML markup check | `node tools/html_check.js` | 355 passed, 0 failed across 71 pages |
 | UI structure audit | `node tools/ui_audit.js` | 335 passed, 0 issues |

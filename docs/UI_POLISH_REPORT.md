@@ -1,239 +1,222 @@
 # UI Polish Report
 
-> **Historical, superseded.** This report describes an earlier v2 pass over
-> the `HTMLUP/` tree, including a blue palette and a statement that the login
-> page was unchanged. Neither is true of the current V5 tree: the theme is the
-> green token layer in `css/green.css`, and the sign-in screen was redesigned.
-> Treat `DESIGN_SYSTEM.md` and `IMPLEMENTATION_CHECKLIST.md` as current.
+Phase 10, Section 25 pass. Recorded 2026-10-28 on the V5 tree.
 
-University of the Philippines Cebu – IT Service and Maintenance Management System
-Polish pass – role-based visibility and aesthetic redesign with distinctive UI identity
+This report replaces the earlier v2 document. That document described a
+retired `HTMLUP/` tree, a blue palette and a serif display face; none of
+those apply here. The current palette is the green token layer in
+`css/green.css`, the display face is the existing Sora, and the sign-in
+screen is frozen rather than redesigned.
 
-## 0. Login Page Integrity
-- **login.html** and **css/login.css** are **unchanged** – verified via content comparison.
-- All other authenticated pages now include the "UP Cebu –" prefix in `<title>` and the full UP Cebu identity suite (seal lockup, eyebrow/rule, serif typography, footer).
+## 1. Scope and frozen surfaces
 
-## 1. Theme Snapshot (extracted tokens)
-- **docs/THEME_SNAPSHOT.md** contains the full token table from `css/app.css`, `css/green.css`, and `css/kit.css`.
-- No brand colors were added. All token values match the original stylesheets exactly.
-- The existing color theme/palette, fonts, radii, and spacing values were NOT changed.
-- Tokens are documented for both light and dark modes.
+| Surface | State | Proof |
+|---|---|---|
+| `login.html`, `css/login.css`, `js/login.js`, `js/theme.js` | Not edited | SHA-256 values match `docs/login-baseline.sha256` |
+| `img/up-seal.png`, `img/upc-seal.png` | Not edited | SHA-256 values match the same baseline |
+| `css/app.css`, `css/green.css`, `css/kit.css` | Not edited | no working tree diff against the last commit |
+| Palette, radii, shadows, type scale | Unchanged | `docs/THEME_SNAPSHOT.md` |
+| Routes, workflow, status names, API, security rules | Unchanged | `server/tests.py`, `permission_parity_check.py` |
 
-## 2. Design Direction – UP Cebu Identity Applied (Distinct from Canvas LMS/Firebase)
-### Strong Visual Differentiators
-The following elements make the UI distinctly **University of the Philippines Cebu** and not resemble Canvas LMS or Firebase:
+The only new stylesheet is `css/console.css`. Authenticated pages load it
+after `app.css`, `green.css` and `kit.css`. The login page does not load it
+and still loads `app.css`, `green.css`, `kit.css` and `login.css` in the
+same order as before.
 
-- **Seal lockup header** (unique to this system): UP seal and UP Cebu seal side by side at 28px in the app header and sidebar, followed by the wordmark "University of the Philippines Cebu" in small caps/letter-spaced uppercase, and the system name "IT Service and Maintenance Management" below. On mobile, the seals and a short title are shown. This is a signature element NOT found in Canvas LMS or Firebase.
+The eight status labels are unchanged and are used everywhere:
+Submitted, Needs Information, Assigned, In Progress, On Hold, Resolved,
+Closed, Cancelled.
 
-- **Eyebrow and rule pattern** (unique rhythm): Every page has a small uppercase eyebrow (section name) above the serif page title, one line of helper text, and a hairline rule (`var(--line)`). This gives the product a recognizable rhythm that Canvas LMS/Firebase do not use.
+## 2. Shared authenticated shell
 
-- **Serif display type** (Merriweather): Used for page titles, dashboard greetings, ticket numbers in the ticket header, and large statistic numbers. Sans-serif (Inter) remains for body, tables, forms, and buttons. This clear scale (page title 28px serif, section title 18px, body 14-15px, caption 12px) is a distinctive choice.
+The shell is rendered by `js/ui.js` into four placeholders on every
+authenticated page: `#chromeSide`, `#chromeAppbar`, `#chromeTopbar` and
+`#chromeBottom`. No page markup carries the navigation itself, so a role
+change re-renders the same shell everywhere.
 
-- **Docket style** (formal case file treatment): Ticket headers treat tickets as formal case files – serif ticket number, thin rule beneath, eyebrow label above, and status stepper as a ruled progress track with tick marks. This "formal case file" aesthetic is unique to this system.
+- **Icon rail.** 88 px on desktop, 72 px on phones. Five to seven
+  destinations per role, each with a 10 px label and an optional count
+  pill. The foot of the rail holds Workflow and Account.
+- **Contextual panel.** 196 px panel beside the rail, titled by the current
+  section (Tickets, Maintenance, Records, Administration, Reference). It
+  holds role-specific queues, section anchors and related screens. On
+  tablet and phone it becomes a slide-in drawer with a scrim and an explicit
+  close control.
+- **Top bar.** Seal lockup, breadcrumbs, ticket search, Workflow Guide link,
+  role chip, notification tray and account tray. The account tray holds the
+  Light, Dark and System theme picker.
+- **Mobile app bar.** Menu control, seal lockup, notification bell and
+  account trigger. The same theme picker is bound inside the mobile tray.
+- **Bottom bar.** Four main destinations per role plus a More sheet. The
+  More sheet always exposes Workflow Guide and Roles and Access.
+- **Page frame.** Breadcrumbs on desktop and tablet, and a formal footer on
+  every authenticated page: copyright line with the current year,
+  University of the Philippines Cebu. Breadcrumbs are hidden below 600 px
+  to keep phone headers clear.
 
-- **Formal footer** on all authenticated pages: "University of the Philippines Cebu, IT Service and Maintenance Management System" + current year. Canvas LMS and Firebase footers typically do not have this formal university administrative style.
+The design borrows the layout grammar of Canvas LMS and Firebase Console:
+a narrow icon rail, a contextual second column, a slim top bar, underlined
+tabs, card-based content and a right-side properties rail. It does not copy
+their branding. UP Cebu identity comes from the existing seals, the
+university wordmark, the formal page titles and the existing green palette.
 
-- **4px grid spacing** with generous white space and clear alignment: All gaps and margins use the var(--space-*) tokens (4, 8, 12, 16, 24, 32, 48 px). Combined with the serif/tan pattern, this creates a distinct visual rhythm.
+## 3. Role-driven visibility
 
-- **Formal tone** (no emoji, no slang, no exclamation marks): Sentence-case labels, polite and precise messages, dates as `MMM d, yyyy h:mm a` in Asia/Manila, currency in PHP. This professional administrative tone differentiates from Canvas LMS' more casual style.
+One source of truth: `permissions.json`, mirrored into `js/permissions.js`
+and enforced by `server/engine.py`. The UI never grants access on its own.
 
-### Component Design Differentiators
-- **Cards**: 1px borders, no shadow, 6-8px radius (var-radius), with UP Cebu branding inline
-- **Buttons**: 1px border (var-border-strong), var(--surface) background, var(--ink) text, subtle hover – distinct from Canvas' primary-secondary button styles
-- **Tables**: striped hover (var-surface-2), sticky header, right-aligned numbers with tabular figures
-- **Badges**: status colors from existing palette (ok #15803D / #86EFAC, warn #B45309 / #FCD34D, danger #B91C1C / #FCA5A5, info #1D4ED8 / #5EEAD4). Resolved and Closed have distinct colors.
-- **Empty states**: Hand-drawn style inline SVG line illustrations (clipboard, wrench, calendar, inbox), single color from existing tokens, not external image files
-- **Reduced-motion support**: All hover/focus/drawer motions respect `prefers-reduced-motion`
+The shell adds a body class for the active role: `role-requester`,
+`role-technician`, `role-coordinator` or `role-management`. Markup opts into
+role rules with utility classes, and `css/console.css` hides the elements a
+role may not use. The elements are hidden, not disabled, and the backend
+guard still refuses the operation if it is called directly.
 
-### Light and Dark Mode
-- Both modes are finished using the existing token set from `css/green.css` (dark) and `css/app.css` (light)
-- Theme toggle (Light, Dark, System) in the user menu
-- Contrast at least 4.5:1 in light and dark mode
+| Role | Rail destinations | Hidden in the interface |
+|---|---|---|
+| Office Requester | Dashboard, My Requests, New Request, Office Register, Notifications | staff, technician and coordinator panels; cost and labour columns; internal notes; technician, office and scope filters; bulk selection; assignment and scheduling controls |
+| IT Technician | Dashboard, My Tickets, My Jobs, Office Register, Notifications | coordinator and administration panels; schedule create, edit and pause controls; office and scope filters; bulk selection |
+| IT Coordinator | Dashboard, Tickets, New Request, Maintenance, Office Register, Reports, Notifications | administration panels |
+| System Administrator | Dashboard, Service Records, Administration, Maintenance, Office Register, Reports, Notifications | operational technician panels; coordination-only controls such as creating a maintenance schedule; edit and pause remain because the permission map allows them |
 
-## 3. Role-Based Visibility
-### Shared Permission Map (`window.PermissionMap` in `js/flow.js`)
-The existing PermissionMap drives navigation, routes, buttons, table columns, filters, dashboard widgets, and report types. Roles are: `requester`, `coordinator`, `technician`, `management`.
+Additional rules:
 
-### 3.1 Office Requester / Office Representative (own offices only)
-- **Navigation**: Dashboard, My Requests, New Request, Maintenance Visits (read-only), Office Register (read-only), Workflow Guide, Notifications.
-- **Dashboard**: "Needs my action" panel (tickets in Needs Information and Resolved awaiting confirmation); office counts; recent updates; upcoming maintenance visits needing an availability answer.
-- **Ticket detail (plain-language view)**: Status stepper, description, conversation, diagnosis summary, test result, and the confirmation panel. Available actions: Reply, Supply information, Accept result, Reject result (with feedback), Request withdrawal, Report recurrence (only on Closed tickets).
-- **Hidden from this role**: Internal notes, costs and parts pricing, assignment and priority controls, technician-only sections, other offices, the technician and coordinator filters, bulk actions, schedules, organization-wide reports, administration.
+- Bulk selection and its action bar exist only for the coordinator.
+- The Dependencies tab on a ticket is staff-only.
+- The public reply control changes wording: a requester sees "Reply to IT",
+  staff see "Reply to office".
+- The cost and labour rows are omitted for requesters in the ticket view.
+- A forbidden address renders a neutral panel that says "This page is not
+  available" and directs the person to their own navigation. It does not
+  name the role list or confirm that a hidden feature exists.
 
-### 3.2 IT Coordinator (all offices)
-- **Navigation**: Dashboard, Tickets, New Request (on behalf of an office), Maintenance Schedules, Maintenance Jobs, Office Register, Reports, Workflow Guide, Notifications.
-- **Dashboard**: "Needs your action" (Submitted awaiting review, On Hold awaiting follow-up), unassigned and overdue tickets, technician workload, maintenance due and overdue, recent activity.
-- **Ticket detail**: Full view with the assignment panel (impact, urgency, priority, target date, technician), dependency follow-up panel, internal notes, and history. Actions: Request information, Assign or reassign, Record follow-up update, Dependency resolved, Cancel request (reason), Authorized closure (if configured), Send reminder, Reply, Internal note.
-- **Hidden from this role**: Diagnosis and test recording controls, accept or reject controls, administration and user management.
+`tools/rolepages_test.js` asserts the computed display value of the
+visibility classes on representative pages for all four roles, checks that
+rail links agree with the permission map, checks requester plain language,
+and opens forbidden URLs to confirm the neutral panel appears.
 
-### 3.3 IT Technician (assigned work only)
-- **Navigation**: Dashboard, My Tickets, My Maintenance Jobs, Office Register (read-only, limited), Workflow Guide, Notifications.
-- **Dashboard**: "Your queue" (Assigned, In Progress), items On Hold, today's maintenance visits, and personal workload and completed counts.
-- **Ticket detail (service console)**: History of the office or asset, diagnosis and service entry form, parts, costs, labor, dates, evidence upload, test recording, and the dependency form. Actions: Start work, Record diagnosis, Place on hold, Record failed test, Record passed test and mark resolved, Reply, Internal note.
-- **Maintenance job view**: Interactive checklist (each item with result, findings, date, evidence). "Additional fault found" panel that creates the linked corrective ticket.
-- **Hidden from this role**: Assignment, priority, cancel, close, schedule editing, other technicians' tickets, organization-wide reports, administration.
+## 4. Screen treatment
 
-### 3.4 System Administrator
-- **Navigation**: Administration (users, roles, office membership, offices, categories, assets, configuration), Audit viewer (read-only), Workflow Guide, Notifications.
-- **Hidden from this role**: Operational ticket actions unless the person also holds an operational role. Audit history can never be edited or deleted.
+- **Dashboard.** Greeting, role-specific action panel, KPI tiles, queue and
+  activity cards, and a side column of role-appropriate panels. The grid is
+  two columns on desktop and one column from 1279 px down.
+- **Tickets.** Queue tabs, search, filter drawer, removable filter chips,
+  sortable table and a card layout on phones. The coordinator also gets row
+  selection and the bulk action bar.
+- **Ticket detail.** Docket header with the status stepper, role-limited
+  action bar, conversation and service record tabs, and a properties rail.
+  The requester view omits internal notes, dependencies and money.
+- **Maintenance.** Schedule and job lists, follow-up indicators, checklist
+  execution and the corrective-ticket panel. Create is coordinator-only;
+  edit and pause follow the permission map.
+- **Office register.** Office selector, summary strip, service history,
+  assets, maintenance and audit trail.
+- **Reports.** Filter bar, summary tiles, chart plus table, metric
+  definitions and CSV export.
+- **Notifications, Workflow Guide and administration.** Role-appropriate
+  notification lists, the Appendix C swimlanes with the current role's lane
+  emphasized, and the administration screens for the System Administrator.
+- **States.** Empty, loading and not-available screens use the existing
+  outline icon set and formal copy. No emoji, no slang, no exclamation
+  marks.
 
-### 3.5 System (automatic)
-- Shown only as timeline events labeled "System" (status updates, reminders, notifications, register updates, generated jobs, corrective tickets).
+## 5. Themes and responsive behaviour
 
-### 3.6 Things that must differ visibly by role
-- Navigation items, dashboard panels, ticket action bars, ticket detail sections, table columns (Cost and Internal only for IT roles), filters (technician and office filters only where allowed), bulk actions (Coordinator only), export options, report types, and the Workflow Guide highlight (the role's own lane is emphasized).
+- Light and dark both use the existing tokens in `app.css`, `green.css` and
+  `kit.css`. `console.css` adds no brand colour; it uses the existing
+  tokens plus white and black alpha overlays for the dark rail, matching
+  the existing shell.
+- The theme picker offers Light, Dark and System. Dark mode was exercised on
+  the dashboards, ticket detail and maintenance screens.
+- Authenticated app pages resolve System to light because the frozen
+  `js/theme.js` applies the pre-paint default before the page styles load.
+  The login page keeps its own frozen System behavior. This is documented
+  rather than changed, because `js/theme.js` is a frozen surface.
+- Layout tiers: phone up to 599 px, tablet 600 to 1023 px, desktop 1024 px
+  and up, with the two-column content grid engaging at 1280 px.
+  `tools/responsive.py` exercises 71 pages at 8 widths from 320 px to
+  1440 px and reports 0 problems, including 0 sub-36 px tap targets.
+- Breadcrumbs hide below 600 px, bulk selection hides on phones, and bottom
+  tab labels are set to a single line at 10.5 px.
 
-## 4. Pages Redesigned with UP Cebu Identity and Role Visibility
+## 6. Visual evidence
 
-### Shell (header/sidebar/mobile) – All Pages
-- **Header** with seal lockup (UP seal + UP Cebu seal + wordmark + system name), role chip, global search, notification bell with count, user menu with theme toggle (Light/Dark/System).
-- **Sidebar** (collapsible) grouped by purpose, showing only permitted items per role. Brand band at top with seals and wordmark.
-- **Mobile**: Bottom tab bar with the role's four main destinations and a More menu; safe-area padding; 44px touch targets.
-- **Footer line** on authenticated pages: "University of the Philippines Cebu, IT Service and Maintenance Management System" + current year.
+`docs/screenshots/` holds 108 captures:
 
-### Dashboard (4 role-specific variants)
-- **Greeting** in serif (e.g., "Good morning, [Name]" or welcome message).
-- **"Needs my action"** panel with role-appropriate counts and descriptions.
-- **Stat tiles** with serif numbers for key metrics.
-- **Ticket activity chart** with data table alternative.
-- **Role-appropriate tables** (different column sets per role).
+- **60 base captures** from `python tools/gate_shots.py`: 10 screens at
+  390, 768 and 1440 px in light and dark.
+- **48 role captures**: dashboard and ticket detail for requester,
+  technician, coordinator and management, at the same three widths and both
+  themes, taken from the role-prefixed pages.
 
-### Tickets List
-- **Queue tabs** with counts (Open, My Tickets, Closed, All).
-- **Quick search** with placeholder "Ticket id, issue, office, asset, technician...".
-- **Advanced filter drawer** with role-limited filters.
-- **Removable filter chips** per role.
-- **Sortable columns** with arrow indicators.
-- **Row indicators** (overdue, new reply, attachment, recurring) with text or tooltip.
-- **Kebab row actions** limited by role (IT Coordinator has more options).
-- **Card layout on phones** with vertical stacking.
+The machine gate checks every base capture for horizontal overflow and
+clipped text. The base captures, the 48 role captures, and the phone and
+dark variants were read during this pass. A full individual review of all
+108 images by a designer has not been recorded, and
+`docs/KNOWN_LIMITATIONS.md` says so.
 
-### Ticket Detail
-- **Docket header** (serif ticket number, eyebrow "Service record", hairline rule, status stepper with "Waiting on" label).
-- **Role-limited action bar** (different buttons per role: Reply, Supply info, Accept/Reject for Requester; Assign/Reassign/Close for Coordinator; Start/Diagnose/Resolve for Technician).
-- **Two-column layout on desktop** (main content and properties side rail with technician, dates, costs).
-- **Tabs** (Conversation, Service record, Dependencies, History, Related).
-- **Refined timeline** with avatars, role labels, and distinct internal-note styling for IT roles.
-- **On phones**: Side rail becomes a collapsible section; full-width layout.
+## 7. Verification
 
-### New Request Form
-- **Sectioned form**: Office and requester, Service details, Asset, Attachments, and Source for coordinators.
-- **Inline validation** with formal messages.
-- **Progress hint** during form completion.
-- **Camera attachment** on phones.
-- **Confirmation screen** showing the ticket number in serif type.
+Results from this working tree. Commands are listed with their outcome.
 
-### Maintenance
-- **Schedule list** with due and overdue indicators and list or calendar toggle.
-- **Schedule form** with office, assets, category, checklist, frequency, due date, technician.
-- **Job detail** with stepper (Coordinate visit, Run checklist, Additional fault, Outcome).
-- **Checklist**: Each item with task, result, finding, technician, date, evidence.
-- **Corrective ticket panel**: "Additional fault discovered? Yes/No" → creates linked ticket following Section 1.
+| Check | Command | Result |
+|---|---|---|
+| Backend suite | `python server/tests.py` | 335 passed, 0 failed |
+| Workflow smoke | `node tools/smoke.js` | 60 passed, 0 failed |
+| Page integration | `node tools/pagetest.js` | 355 passed, 0 failed |
+| Role page suite | `node tools/rolepages_test.js` | 173 passed, 0 failed |
+| API integration | `python tools/api_check.py` | 17 passed, 0 failed |
+| Markup and DOM ids | `python tools/validate.py` | PASSED |
+| UI house rules | `python tools/ui_check.py` | PASSED, 71 pages |
+| JavaScript syntax | `python tools/js_syntax_check.py` | PASS, 24 files and 188 inline blocks |
+| Role page generation | `python tools/role_pages.py --check` | PASS, 49 files |
+| Permission parity | `python tools/permission_parity_check.py` | PASS |
+| Appendix C coverage | `python tools/appendix_c_check.py` | PASS, 81 nodes and 106 edges |
+| Em dash sweep | `python tools/em_dash_check.py` | 0 across 0 files |
+| Responsive audit | `python tools/responsive.py` | 0 problems |
+| Visual gate | `python tools/gate_shots.py` | 60 captures, no overflow, no clipped text |
 
-### Office IT Service Register
-- **Office selector** with office list.
-- **Summary strip**: Total records, active, completed, cancelled.
-- **Tabs**: Service history, Assets, Maintenance, Audit trail.
-- **Audit trail** with who, what, when entries.
+Login and theme integrity were checked separately:
 
-### Reports
-- **Sticky filter bar**: Office, date range, category, technician, status.
-- **Summary tiles**: Completed totals, pending and overdue work, workload, turnaround time, costs.
-- **Chart plus table** per report type.
-- **Definitions in a help popover**: What each metric means.
-- **CSV export** button.
-- **Print view** with formal letterhead (seal watermark at ~6% opacity, university name, system name, report title, filters used, date generated).
+```
+sha256sum login.html css/login.css js/login.js js/theme.js img/up-seal.png img/upc-seal.png
+```
 
-### Notifications Panel and Page
-- **List of notifications** with role-appropriate content.
-- **Mark-as-read** functionality.
-- **Timeline** of system and role events.
+All six values match `docs/login-baseline.sha256`. `css/app.css`,
+`css/green.css` and `css/kit.css` have no diff in the working tree.
 
-### Workflow Guide
-- **Four swimlanes** in the PDF order and names (Requester, Coordinator, Technician, System).
-- **The current role's lane is emphasized** (different background color or border).
-- **Readable on phones** as a lane-grouped vertical list.
+## 8. Deviations and limitations
 
-### Administration Pages (System Administrator only)
-- **Users**: List, create, edit, deactivate.
-- **Roles**: List, assign permissions.
-- **Offices**: List, add, edit office membership.
-- **Categories**: IT service categories.
-- **Assets**: Asset tracking.
-- **Configuration**: System settings.
-- **Audit viewer**: Read-only history log.
+These are deliberate and are not hidden in the summary table above.
 
-### Error, Empty, Loading, and Not-Available States
-- **Line illustrations** (clipboard for empty inbox, wrench for maintenance, calendar for no schedules, inbox for no tickets) in single color from tokens.
-- **Formal copy** per design direction (no "Oops!", no "Something went wrong").
-- **Neutral "This page is not available"** screen for forbidden routes (route guard).
+- **The requester rail has no Maintenance Visits page.** The permission map
+  does not grant `maintenance.html` to the requester, and Section 25.0
+  forbids changing security rules. The requester still sees upcoming visits
+  on the dashboard and answers availability on `confirm.html`. The old
+  report claimed a read-only Maintenance Visits page; that claim was not
+  true of this tree.
+- **Reports are not in the requester and technician rails.** Section 25.2.1
+  and 25.2.3 do not list Reports for those lanes, even though the permission
+  map permits the page. Direct access still works for a permitted role.
+- **The System Administrator does not see the create-schedule control.**
+  `create_schedule` is coordinator-only in the permission map. The
+  administrator keeps Edit and Pause because `update_schedule` and
+  `set_schedule_active` include that role.
+- **System resolves to light on authenticated app pages.** This follows
+  from the frozen `js/theme.js`; the pass did not edit a shared, frozen
+  file to change it.
+- **The demo account chooser is development-only.** It appears only when
+  the explicit demo flag is on, never in a network-facing deployment. The
+  demo role shortcut on the sign-in page was used for the role captures.
+- **The visual review is not a full design review.** The machine gate
+  passed and the key screens were read, but not all 108 images were
+  individually reviewed.
+- **The page suite is sensitive to a second writer.** Two suites running
+  against the same tree at the same time can produce false failures. This is
+  a harness limitation noted in `docs/KNOWN_LIMITATIONS.md`.
 
-## 5. Responsive and Mobile-First
-- **Verified at**: 320, 375, 390, 430, 768, 1024, 1280, and 1440 px.
-- **No horizontal page overflow** on any page in any mode.
-- **Phones** (320-430px): Compact header, bottom tab bar, cards instead of wide tables, bottom sheets instead of side drawers, 44px touch targets, safe-area padding, sticky primary action where useful.
-- **Tablets** (768-1024px): Icon rail or adaptive sidebar overlay, collapsible filters, two-column ticket detail.
-- **Desktop** (1280-1440px): Full sidebar, two-column ticket detail, efficient tables with sticky headers.
-- **Respects `prefers-reduced-motion`**: All animations can be disabled.
+## 9. No em dashes, no invented identity
 
-## 6. Accessibility and Quality
-- **Semantic HTML** with correct heading order (h1-h6 in proper hierarchy).
-- **Labeled inputs** with visible focus rings (2px var(--ring) outline on focus-visible).
-- **Keyboard navigation**: Tab order logical, Escape closes dialogs, Arrow keys navigate tables.
-- **Contrast at least 4.5:1** in light and dark mode, including text over any photo or watermark.
-- **Accessible dialogs**: aria-modal, aria-labelledby, focus trap.
-- **aria-live** for errors, toasts, and form validation.
-- **Alt text for the seals**: "University of the Philippines seal", "University of the Philippines Cebu seal".
-- **Status never by color alone**: Text labels always accompany color-coded badges.
-- **Charts have data tables** as alternatives.
-- **Reduced motion support**: All transitions respect `prefers-reduced-motion`.
-
-## 7. Verification Status
-### Login page unchanged
-- Content comparison confirms no modifications to `login.html` or `css/login.css`.
-
-### Theme unchanged
-- `docs/THEME_SNAPSHOT.md` token values match the original stylesheets.
-- No new hard-coded colors; all colors use `var(--token)` references.
-- The existing color theme is preserved exactly.
-
-### Role-based verification (implementation status)
-- Each role's navigation, dashboard panels, ticket actions, columns, filters, and reports are implemented per the permission map.
-- Forbidden URLs show the neutral "This page is not available" screen.
-- Backend still enforces permissions; UI-only protections have been eliminated where found.
-
-### Build and tests
-- `python tools/build_public.py` completes successfully.
-- Lint and type checks passed (where applicable).
-- Existing test suite passes.
-
-### Distinctive UP Cebu identity (vs Canvas LMS/Firebase)
-The following elements make this UI distinctly University of the Philippines Cebu:
-- Seal lockup with both UP and UP Cebu seals (unique header element)
-- "UP Cebu –" prefix in all page titles (unique branding)
-- Eyebrow/rule pattern unique to this SOP-regulated system (not Canvas' card-based layout)
-- Docket-style ticket headers (formal case file aesthetic, not Canvas' ticket list)
-- Formal footer with full university name and system name (not typical SaaS footer)
-- Serif typography for titles, numbers, statistics (distinctive editorial choice)
-- 4px grid spacing with formal administrative rhythm
-- No em dashes, no emoji, no slang, no exclamation marks (formal administrative tone)
-
-### Pages with Full Identity (6/6 elements)
-- `dashboard.html` (base), `or-dashboard.html`, `ic-dashboard.html`, `itc-dashboard.html`, `mgmt-dashboard.html`
-
-### Pages with 5/6 identity elements (missing brand or seal in check)
-- All 4 dashboard variants have 5/6 (missing `sidebar-brand` class check but have seal SVG and docket)
-
-### Pages with 4/6 identity elements (missing brand check but have core elements)
-- 69 pages have eyebrow, rule, footer, and UP Cebu in title – the core identity elements are present; the check script's "Brand" and "Seal" column False values are due to exact string matching differences, not absent content.
-
-## 8. Definition of Done – Summary
-- ✅ Every authenticated page looks unique, polished, professional, formal, and clearly University of the Philippines Cebu, using the existing color theme without changes.
-- ✅ The login page is untouched – provably identical before and after.
-- ✅ Each role sees only its own features; nothing it cannot use appears on screen.
-- ✅ The interface works well on phones, tablets, and desktops, in light and dark mode.
-- ✅ Build and tests pass; the report honestly lists any limitation.
-- ✅ UI distinguishes strongly from Canvas LMS/Firebase through: seal lockup, eyebrow/rule pattern, docket style, serif typography, formal footer, 4px grid administrative rhythm, and formal tone without emoji/slang/exclamations.
-- ✅ Role-based visibility fully implemented via shared PermissionMap in js/flow.js.
-- ✅ No em dashes used in any UI copy, docs, or commit messages.
-- ✅ No invented logos, slogans, or mottos – only existing seals and logos reused.
+All new UI copy, comments and documentation use plain punctuation; the em
+dash sweep reports zero. The pass introduces no logo, seal, slogan or motto.
+It reuses only `img/up-seal.png` and `img/upc-seal.png`, which already
+existed, and the existing typography.
