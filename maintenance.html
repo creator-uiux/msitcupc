@@ -749,6 +749,12 @@ Store.subscribe(function () {
 });
 render();
 Live.start();
+
+/* A quick action or a bookmark can ask for the create form directly. */
+if (UI.qs('new') === '1' && Store.db.role === 'coordinator') {
+  var newBtn = document.getElementById('btnNewSched');
+  if (newBtn) newBtn.click();
+}
 </script>
 <script src="js/pwa.js"></script>
 </body>

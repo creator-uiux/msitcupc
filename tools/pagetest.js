@@ -863,6 +863,69 @@ tests.push(async function dashboardActivity() {
   close(p);
 });
 
+tests.push(async function dashboardWidgets() {
+  /* Section 25.5A: the seven day sparkline on every highlight, the office
+     health strip, the technician load bars and the compliance ring. */
+  var p = await open(BASE + 'dashboard.html');
+  asRole(p, 'coordinator');
+  p.w.render();
+
+  var sparks = $$('#kpiGrid .kpi .spark');
+  ok(sparks.length === 4, 'every highlight carries a sparkline (' + sparks.length + ')');
+  ok(sparks.every(function (s) { return s.querySelector('.spark-line') && s.querySelector('.spark-area'); }),
+     'each sparkline draws a line and a filled area');
+  ok($$('#kpiGrid .spark-wrap[title]').length === 4, 'each sparkline names the series it counts');
+
+  var hcards = $$('#healthStrip .health-card');
+  ok(hcards.length === 6, 'the health strip lists one card per office (' + hcards.length + ')');
+  ok(hcards.every(function (c) { return /tickets\.html\?office=/.test(c.getAttribute('href')); }),
+     'each office card opens the register filtered to that office');
+  var overdue = hcards.map(function (c) {
+    return parseInt(/(\d+) overdue/.exec(c.querySelector('.health-nums').textContent)[1], 10);
+  });
+  ok(overdue.join(',') === overdue.slice().sort(function (a, b) { return b - a; }).join(','),
+     'the offices with the most overdue work come first (' + overdue.join(',') + ')');
+  ok(hcards.every(function (c) { return /^(ok|warn|danger)$/.test(c.getAttribute('data-tone')); }),
+     'each office states a risk tone');
+  ok(hcards.every(function (c) {
+    return /width:\s*[\d.]+%/.test(c.querySelector('.health-meter i').getAttribute('style'));
+  }), 'each office draws a completion meter');
+
+  var load = $$('#workloadBars .hbar');
+  ok(load.length === 2, 'the load card lists each technician holding open work (' + load.length + ')');
+  ok(load.some(function (r) { return /Unassigned/.test(r.textContent); }),
+     'unassigned work is named, not hidden');
+  ok(load.every(function (r) { return r.querySelectorAll('.wl-seg').length > 0; }),
+     'each load bar is split by stage');
+  var total = parseInt(load[0].querySelector('.hbar-num').textContent, 10);
+  var segs = Array.prototype.map.call(load[0].querySelectorAll('.wl-seg'), function (s) {
+    return parseInt(s.getAttribute('title'), 10);
+  });
+  ok(segs.reduce(function (a, b) { return a + b; }, 0) === total,
+     'the stage segments add up to the printed total');
+
+  var gauge = $('#complianceGauge .gauge');
+  ok(gauge !== null, 'preventive compliance is drawn as a ring');
+  var num = $('#complianceGauge .g-num').textContent;
+  ok(/^\d+%$/.test(num), 'the ring prints its value (' + num + ')');
+  ok(gauge.getAttribute('aria-label').indexOf(parseInt(num, 10) + ' percent') > -1,
+     'the ring carries the same value to assistive technology');
+  ok($('#healthStrip').classList.contains('staff-only'),
+     'the health strip is limited to IT staff');
+  ok($('#complianceGauge').closest('section').classList.contains('staff-only'),
+     'preventive compliance follows the same staff scope');
+  ok($('#workloadBars').closest('section').classList.contains('lead-only'),
+     'technician load is limited to the roles that dispatch work');
+
+  /* an office user is one office by design, so the cross office strip goes */
+  asRole(p, 'requester');
+  p.w.render();
+  ok($('#healthStrip').hidden === true,
+     'an office user does not see the cross office health strip');
+  ok(p.errors.length === 0, 'no errors from the dashboard widgets' + (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));
+  close(p);
+});
+
 tests.push(async function nextActionOwner() {
   /* Section 4A.3: a "Needs my action" queue per role and a "Waiting on"
      label on every ticket, matching the owner table. */

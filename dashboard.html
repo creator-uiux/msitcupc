@@ -39,6 +39,7 @@
           <!-- four role-specific highlights, then the full status strip -->
           <section class="grid grid-kpi" id="kpiGrid"></section>
           <section class="status-strip" id="statusStrip" aria-label="Ticket status at a glance"></section>
+          <section class="health-strip staff-only" id="healthStrip" aria-label="Office health"></section>
           <section class="quick-row" id="quickActions" aria-label="Quick actions"></section>
 
           <!-- ticket activity over the selected period, and the status split -->
@@ -84,6 +85,24 @@
                 </div>
                 <div class="card-pad">
                   <div class="bars hbar-list" id="statusBars"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- technician load, read by the roles that dispatch the work -->
+          <section class="mt lead-only">
+            <div class="card">
+              <div class="card-head">
+                <h3>Technician workload</h3>
+                <span class="hint">open records by technician</span>
+              </div>
+              <div class="card-pad">
+                <div class="bars hbar-list" id="workloadBars"></div>
+                <div class="legend-line mt-sm" aria-hidden="true">
+                  <span><i class="s-assigned"></i>Assigned</span>
+                  <span><i class="s-progress"></i>In progress</span>
+                  <span><i class="s-hold"></i>On hold</span>
                 </div>
               </div>
             </div>
@@ -159,7 +178,13 @@
             <span class="hint">from the same records the reports use</span>
           </div>
           <div class="card-pad">
-            <div class="info" id="costInfo"></div>
+            <div class="gauge-row">
+              <div class="gauge-block">
+                <div id="complianceGauge"></div>
+                <span class="gauge-cap">Preventive compliance</span>
+              </div>
+              <div class="info grow" id="costInfo"></div>
+            </div>
           </div>
         </div>
       </section>
@@ -266,50 +291,191 @@ function scopedSchedules(db) {
   return db.schedules;
 }
 
-function kpi(label, value, delta, cls, dot, href) {
+function kpi(label, value, delta, cls, dot, href, spark, sparkTitle) {
   var tag = href ? 'a' : 'div';
   return '<' + tag + ' class="card kpi ' + cls + '"' +
     (href ? ' href="' + UI.urlFor(href, UI.roleKey()) + '"' : '') + '>' +
     '<div class="dot">' + dot + '</div>' +
     '<div class="label">' + label + '</div><div class="value">' + value + '</div>' +
-    '<div class="delta">' + delta + '</div></' + tag + '>';
+    '<div class="delta">' + delta + '</div>' +
+    (spark ? '<span class="spark-wrap" title="' + UI.attr(sparkTitle || '') + '">' + spark + '</span>' : '') +
+    '</' + tag + '>';
 }
 
 /* Four highlights that answer the role's first question, instead of the same
-   nine status cards for everybody. */
+   nine status cards for everybody. The spark key names the seven day series
+   drawn under the value; the title says what that series counts. */
 function roleKpis(role, counts, overdue, jobs) {
   var open = counts.submitted + counts.needs_info + counts.assigned + counts.in_progress + counts.on_hold + counts.resolved;
   var activeJobs = jobs.filter(isOpen).length;
   if (role === 'requester') {
     return [
-      { label: 'Open requests', value: open, delta: 'Everything currently with IT', cls: 'k-brand', ic: 'inbox', href: 'tickets.html?queue=open' },
-      { label: 'Awaiting your reply', value: counts.needs_info, delta: 'IT needs more information', cls: 'k-warn', ic: 'pen', href: 'tickets.html?status=needs_info' },
-      { label: 'Ready to confirm', value: counts.resolved, delta: 'Resolved by IT, awaiting your answer', cls: 'k-ok', ic: 'checkCircle', href: 'confirm.html' },
-      { label: 'Maintenance visits', value: activeJobs, delta: 'Scheduled for your office', cls: 'k-brand', ic: 'cal', href: 'confirm.html' }
+      { label: 'Open requests', value: open, delta: 'Everything currently with IT', cls: 'k-brand', ic: 'inbox', href: 'tickets.html?queue=open', spark: 'intake' },
+      { label: 'Awaiting your reply', value: counts.needs_info, delta: 'IT needs more information', cls: 'k-warn', ic: 'pen', href: 'tickets.html?status=needs_info', spark: 'needs' },
+      { label: 'Ready to confirm', value: counts.resolved, delta: 'Resolved by IT, awaiting your answer', cls: 'k-ok', ic: 'checkCircle', href: 'confirm.html', spark: 'resolved' },
+      { label: 'Maintenance visits', value: activeJobs, delta: 'Scheduled for your office', cls: 'k-brand', ic: 'cal', href: 'confirm.html', spark: 'visits' }
     ];
   }
   if (role === 'technician') {
     return [
-      { label: 'Assigned to me', value: counts.assigned, delta: 'Ready to start', cls: 'k-brand', ic: 'wrench', href: 'technician.html' },
-      { label: 'In progress', value: counts.in_progress, delta: 'Work under way', cls: 'k-brand', ic: 'refresh', href: 'technician.html' },
-      { label: 'On hold', value: counts.on_hold, delta: 'Waiting on a dependency', cls: 'k-hold', ic: 'pause', href: 'technician.html' },
-      { label: 'Maintenance jobs', value: activeJobs, delta: 'Open visits assigned to me', cls: 'k-ok', ic: 'cal', href: 'maintenance.html' }
+      { label: 'Assigned to me', value: counts.assigned, delta: 'Ready to start', cls: 'k-brand', ic: 'wrench', href: 'technician.html', spark: 'assigned' },
+      { label: 'In progress', value: counts.in_progress, delta: 'Work under way', cls: 'k-brand', ic: 'refresh', href: 'technician.html', spark: 'progress' },
+      { label: 'On hold', value: counts.on_hold, delta: 'Waiting on a dependency', cls: 'k-hold', ic: 'pause', href: 'technician.html', spark: 'hold' },
+      { label: 'Maintenance jobs', value: activeJobs, delta: 'Open visits assigned to me', cls: 'k-ok', ic: 'cal', href: 'maintenance.html', spark: 'jobvisits' }
     ];
   }
   if (role === 'coordinator') {
     return [
-      { label: 'To review', value: counts.submitted, delta: 'New requests waiting for triage', cls: 'k-brand', ic: 'inbox', href: 'tickets.html?status=submitted' },
-      { label: 'Active work', value: counts.assigned + counts.in_progress, delta: 'Assigned or in progress', cls: 'k-brand', ic: 'refresh', href: 'tickets.html?queue=open' },
-      { label: 'Dependency holds', value: counts.on_hold, delta: 'Parts, approval or support', cls: 'k-hold', ic: 'pause', href: 'review.html' },
-      { label: 'Overdue', value: overdue, delta: 'Past the target date', cls: 'k-warn', ic: 'alert', href: 'tickets.html?queue=overdue' }
+      { label: 'To review', value: counts.submitted, delta: 'New requests waiting for triage', cls: 'k-brand', ic: 'inbox', href: 'tickets.html?status=submitted', spark: 'intake' },
+      { label: 'Active work', value: counts.assigned + counts.in_progress, delta: 'Assigned or in progress', cls: 'k-brand', ic: 'refresh', href: 'tickets.html?queue=open', spark: 'active' },
+      { label: 'Dependency holds', value: counts.on_hold, delta: 'Parts, approval or support', cls: 'k-hold', ic: 'pause', href: 'tickets.html?status=on_hold', spark: 'hold' },
+      { label: 'Overdue', value: overdue, delta: 'Past the target date', cls: 'k-warn', ic: 'alert', href: 'tickets.html?queue=overdue', spark: 'due' }
     ];
   }
   return [
-    { label: 'Open requests', value: open, delta: 'Across every office', cls: 'k-brand', ic: 'inbox', href: 'tickets.html?queue=open' },
-    { label: 'Resolved', value: counts.resolved, delta: 'Awaiting office confirmation', cls: 'k-ok', ic: 'checkCircle', href: 'tickets.html?status=resolved' },
-    { label: 'Closed', value: counts.closed, delta: 'Service records retained', cls: 'k-brand', ic: 'check', href: 'tickets.html?status=closed' },
-    { label: 'Overdue', value: overdue, delta: 'Past the target date', cls: 'k-warn', ic: 'alert', href: 'tickets.html?queue=overdue' }
+    { label: 'Open requests', value: open, delta: 'Across every office', cls: 'k-brand', ic: 'inbox', href: 'tickets.html?queue=open', spark: 'intake' },
+    { label: 'Resolved', value: counts.resolved, delta: 'Awaiting office confirmation', cls: 'k-ok', ic: 'checkCircle', href: 'tickets.html?status=resolved', spark: 'resolved' },
+    { label: 'Closed', value: counts.closed, delta: 'Service records retained', cls: 'k-brand', ic: 'check', href: 'tickets.html?status=closed', spark: 'closed' },
+    { label: 'Overdue', value: overdue, delta: 'Past the target date', cls: 'k-warn', ic: 'alert', href: 'tickets.html?queue=overdue', spark: 'due' }
   ];
+}
+
+var SPARK_LABEL = {
+  intake: 'Records submitted per day, last 7 days',
+  needs: 'Moved to Needs Information per day, last 7 days',
+  resolved: 'Resolved per day, last 7 days',
+  closed: 'Closed per day, last 7 days',
+  assigned: 'Assigned per day, last 7 days',
+  progress: 'Work started per day, last 7 days',
+  hold: 'Put on hold per day, last 7 days',
+  active: 'Assigned or started per day, last 7 days',
+  due: 'Target dates falling in the last 7 days',
+  visits: 'Scheduled visits per day, last 7 days',
+  jobvisits: 'Job visits per day, last 7 days'
+};
+
+function shiftKey(key, n) {
+  var d = new Date(key + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function lastDays(n) {
+  var today = Time.day(new Date(UI.nowMs()).toISOString());
+  var out = [];
+  for (var i = n - 1; i >= 0; i--) out.push(shiftKey(today, -i));
+  return out;
+}
+function sparkSeries(key, tickets, jobs, schedules) {
+  var keys = lastDays(7);
+  function perStamp(stamp) {
+    var byDay = {};
+    tickets.forEach(function (t) {
+      var at = stamp(t);
+      if (!at) return;
+      var k = Time.day(at);
+      byDay[k] = (byDay[k] || 0) + 1;
+    });
+    return keys.map(function (k) { return byDay[k] || 0; });
+  }
+  function perHistory(status) {
+    var byDay = {};
+    tickets.forEach(function (t) {
+      (t.history || []).forEach(function (h) {
+        if (h.status !== status || !h.at) return;
+        var k = Time.day(h.at);
+        byDay[k] = (byDay[k] || 0) + 1;
+      });
+    });
+    return keys.map(function (k) { return byDay[k] || 0; });
+  }
+  if (key === 'intake') return perStamp(function (t) { return t.createdAt; });
+  if (key === 'resolved') return perStamp(function (t) { return t.resolvedAt; });
+  if (key === 'closed') return perStamp(function (t) { return t.closedAt; });
+  if (key === 'needs') return perHistory('needs_info');
+  if (key === 'assigned') return perHistory('assigned');
+  if (key === 'progress') return perHistory('in_progress');
+  if (key === 'hold') return perHistory('on_hold');
+  if (key === 'active') {
+    var a = perHistory('assigned'), b = perHistory('in_progress');
+    return a.map(function (v, i) { return v + b[i]; });
+  }
+  if (key === 'due') {
+    return perStamp(function (t) {
+      if (!t.target || t.status === 'closed' || t.status === 'cancelled' || t.status === 'resolved') return null;
+      return t.target;
+    });
+  }
+  if (key === 'visits') {
+    return keys.map(function (k) {
+      return schedules.filter(function (s) { return s.active && Time.day(s.dueDate) === k; }).length;
+    });
+  }
+  if (key === 'jobvisits') {
+    return keys.map(function (k) {
+      return jobs.filter(function (j) { return j.visitDate && Time.day(j.visitDate) === k; }).length;
+    });
+  }
+  return keys.map(function () { return 0; });
+}
+
+/* Office health: one compact card per office, ordered by risk. The strip is
+   hidden for an office user, whose scope is a single office by design, and
+   for any scope that resolves to one office. */
+function renderHealth(tickets) {
+  var groups = {};
+  tickets.forEach(function (t) {
+    var g = groups[t.office] || (groups[t.office] = { name: t.office, total: 0, open: 0, overdue: 0, done: 0 });
+    g.total++;
+    if (t.status !== 'closed' && t.status !== 'cancelled') g.open++;
+    if (t.status === 'closed' || t.status === 'resolved') g.done++;
+    if (t.status !== 'closed' && t.status !== 'cancelled' && t.status !== 'resolved' && isOverdue(t)) g.overdue++;
+  });
+  var rows = Object.keys(groups).map(function (k) { return groups[k]; });
+  var el = document.getElementById('healthStrip');
+  if (rows.length < 2) { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  rows.sort(function (a, b) { return b.overdue - a.overdue || b.open - a.open || a.name.localeCompare(b.name); });
+  var top = rows.slice(0, 6);
+  el.innerHTML = top.map(function (g) {
+    var tone = g.overdue > 2 ? 'danger' : g.overdue > 0 ? 'warn' : 'ok';
+    var pct = g.total ? Math.round(g.done / g.total * 100) : 0;
+    return '<a class="health-card" data-tone="' + tone + '" href="' +
+      UI.urlFor('tickets.html?office=' + encodeURIComponent(g.name), UI.roleKey()) + '">' +
+      '<span class="health-top"><i class="health-dot" aria-hidden="true"></i><b>' + UI.esc(g.name) + '</b>' +
+      '<span class="health-nums">' + g.open + ' open · ' + g.overdue + ' overdue</span></span>' +
+      '<span class="health-meter" aria-hidden="true"><i style="width:' + pct + '%"></i></span>' +
+      '<span class="health-foot">' + pct + '% resolved or closed</span></a>';
+  }).join('') + (rows.length > top.length
+    ? '<span class="health-more">+' + (rows.length - top.length) + ' more offices in the register</span>' : '');
+}
+
+/* Technician load: open records stacked by stage, so a dispatcher can see who
+   is carrying the queue. */
+function renderWorkload(tickets) {
+  var groups = {};
+  tickets.forEach(function (t) {
+    if (t.status === 'closed' || t.status === 'cancelled') return;
+    var n = t.technician || 'Unassigned';
+    var g = groups[n] || (groups[n] = { name: n, assigned: 0, in_progress: 0, on_hold: 0, other: 0 });
+    if (t.status === 'assigned') g.assigned++;
+    else if (t.status === 'in_progress') g.in_progress++;
+    else if (t.status === 'on_hold') g.on_hold++;
+    else g.other++;
+  });
+  var rows = Object.keys(groups).map(function (k) { return groups[k]; });
+  rows.forEach(function (g) { g.total = g.assigned + g.in_progress + g.on_hold + g.other; });
+  rows.sort(function (a, b) { return b.total - a.total || a.name.localeCompare(b.name); });
+  var max = 1;
+  rows.forEach(function (g) { if (g.total > max) max = g.total; });
+  document.getElementById('workloadBars').innerHTML = rows.map(function (g) {
+    function seg(cls, n) {
+      return n ? '<i class="wl-seg ' + cls + '" style="width:' + (n / max * 100).toFixed(1) + '%" title="' + n + '"></i>' : '';
+    }
+    return '<div class="hbar"><span class="hbar-lbl">' + UI.esc(g.name) + '</span>' +
+      '<span class="hbar-track wl-track">' + seg('s-assigned', g.assigned) + seg('s-progress', g.in_progress) +
+      seg('s-hold', g.on_hold) + seg('s-other', g.other) + '</span>' +
+      '<span class="hbar-num">' + g.total + '</span></div>';
+  }).join('') || '<p class="hint">No open records are assigned yet.</p>';
 }
 
 function renderStatusStrip(counts, overdue) {
@@ -340,6 +506,7 @@ function renderQuickActions(role) {
     coordinator: [
       ['review.html', 'Review and Assign', 'shield'],
       ['request.html', 'New Request', 'plus'],
+      ['maintenance.html?new=1', 'New Schedule', 'cal'],
       ['maintenance.html', 'Maintenance', 'cal'],
       ['reports.html', 'Reports', 'chart']
     ],
@@ -376,9 +543,12 @@ function render() {
     return t.target && new Date(t.target).getTime() < UI.nowMs();
   }).length;
   document.getElementById('kpiGrid').innerHTML = roleKpis(role, counts, overdue, jobs).map(function (k) {
-    return kpi(k.label, k.value, k.delta, k.cls, UI.icon(k.ic), k.href);
+    var series = sparkSeries(k.spark, tickets, jobs, schedules);
+    return kpi(k.label, k.value, k.delta, k.cls, UI.icon(k.ic), k.href,
+      UI.sparkline(series), SPARK_LABEL[k.spark]);
   }).join('');
   renderStatusStrip(counts, overdue);
+  renderHealth(tickets);
   renderQuickActions(role);
 
   /* ---- the records that wait on the signed-in role (specification 4A.3) ---- */
@@ -493,6 +663,7 @@ function render() {
   renderActivity(tickets);
   renderBreakdown(tickets);
   renderStatusBars(tickets);
+  renderWorkload(tickets);
   renderCosts(tickets, jobs);
 }
 
@@ -522,10 +693,11 @@ function renderCosts(tickets, jobs) {
   var jobsOk = jobs.filter(function (j) { return j.status === 'closed' && j.outcome === 'success'; }).length;
   var compliance = jobsDue ? Math.round(jobsOk / jobsDue * 1000) / 10 : 0;
   var openJobs = jobs.filter(function (j) { return j.status !== 'closed' && j.status !== 'cancelled'; }).length;
+  var gaugeHost = document.getElementById('complianceGauge');
+  if (gaugeHost) gaugeHost.innerHTML = UI.gauge(compliance, 'Preventive compliance');
   document.getElementById('costInfo').innerHTML =
     (UI.roleKey() === 'requester' ? '' : '<div><div class="k">Service cost recorded</div><div class="v">₱' + cost.toLocaleString('en-PH', { minimumFractionDigits: 2 }) + '</div></div>') +
     '<div><div class="k">Recurring issues</div><div class="v">' + recurring + '</div></div>' +
-    '<div><div class="k">Preventive compliance</div><div class="v">' + compliance + '%</div></div>' +
     '<div><div class="k">Successful visits</div><div class="v">' + jobsOk + ' of ' + jobsDue + '</div></div>' +
     '<div><div class="k">Open maintenance visits</div><div class="v">' + openJobs + '</div></div>' +
     '<div><div class="k">Completed services</div><div class="v">' + tickets.filter(function (t) { return t.status === 'closed'; }).length + '</div></div>';

@@ -275,8 +275,78 @@ html[data-theme="dark"] .dash-side .card-head{background:var(--brand-soft)}
 .status-bit b{font-family:var(--sora);font-size:12px;font-weight:600;color:var(--ink)}
 .status-bit.is-warn b{color:var(--danger)}
 
-.quick-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
-.quick-action{
+/* seven day sparkline under each highlight; the series is decorative, the
+   value and delta above it carry the meaning */
+.kpi .spark-wrap{display:block;height:26px;margin-top:9px;pointer-events:none}
+.spark{display:block;width:100%;height:100%;overflow:visible}
+.spark-area{fill:var(--brand-soft);stroke:none}
+.spark-line{fill:none;stroke:var(--brand);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.kpi.k-warn .spark-line{stroke:var(--warn)}
+.kpi.k-warn .spark-area{fill:var(--warn-bg)}
+.kpi.k-hold .spark-line{stroke:var(--warn)}
+.kpi.k-hold .spark-area{fill:var(--warn-bg)}
+.kpi.k-ok .spark-line{stroke:var(--ok)}
+.kpi.k-ok .spark-area{fill:var(--ok-bg)}
+
+/* office health strip: compact cards ordered by risk, one line of numbers,
+   a completion meter, then the percentage in words */
+.health-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:14px}
+.health-strip[hidden]{display:none}
+.health-card{
+  display:flex;flex-direction:column;gap:6px;min-width:0;
+  padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--surface);color:inherit;text-decoration:none;
+  box-shadow:inset 3px 0 0 var(--ok);
+}
+.health-card:hover{border-color:var(--brand);color:inherit;text-decoration:none;background:var(--surface-2)}
+.health-card[data-tone="warn"]{box-shadow:inset 3px 0 0 var(--warn)}
+.health-card[data-tone="danger"]{box-shadow:inset 3px 0 0 var(--danger)}
+.health-top{display:flex;align-items:center;gap:6px;min-width:0}
+.health-top b{
+  flex:1 1 auto;min-width:0;font-size:12px;font-weight:600;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.health-dot{flex:0 0 8px;width:8px;height:8px;border-radius:50%;background:var(--ok);font-style:normal}
+.health-card[data-tone="warn"] .health-dot{background:var(--warn)}
+.health-card[data-tone="danger"] .health-dot{background:var(--danger)}
+.health-nums{flex:0 0 auto;font-family:var(--font-mono);font-size:10px;color:var(--muted);white-space:nowrap}
+.health-meter{display:block;height:5px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.health-meter>i{display:block;height:100%;border-radius:99px;background:var(--ok)}
+.health-card[data-tone="warn"] .health-meter>i{background:var(--warn)}
+.health-card[data-tone="danger"] .health-meter>i{background:var(--danger)}
+.health-foot{font-size:10.5px;color:var(--muted)}
+.health-more{align-self:center;padding:6px 2px;font-size:11px;color:var(--muted)}
+
+/* technician load: one stacked bar per person, scaled to the busiest queue */
+.wl-track{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--surface-2)}
+.wl-seg{display:block;height:100%;min-width:0}
+.wl-seg.s-assigned{background:var(--brand-3)}
+.wl-seg.s-progress{background:var(--brand)}
+.wl-seg.s-hold{background:var(--warn)}
+.wl-seg.s-other{background:var(--line-strong)}
+.legend-line i.s-assigned{background:var(--brand-3)}
+.legend-line i.s-progress{background:var(--brand)}
+.legend-line i.s-hold{background:var(--warn)}
+
+/* preventive compliance ring, the caption repeats the number in words */
+.gauge-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.info.grow{flex:1 1 260px;min-width:0}
+.gauge-block{display:flex;flex-direction:column;align-items:center;gap:5px;flex:0 0 auto}
+.gauge{position:relative;width:84px;height:84px;flex:0 0 84px}
+.gauge svg{width:100%;height:100%;transform:rotate(-90deg)}
+.g-track{fill:none;stroke:var(--surface-2);stroke-width:8}
+.g-fill{fill:none;stroke:var(--brand);stroke-width:8;stroke-linecap:round}
+.gauge.g-ok .g-fill{stroke:var(--ok)}
+.gauge.g-warn .g-fill{stroke:var(--warn)}
+.gauge.g-danger .g-fill{stroke:var(--danger)}
+.g-num{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--sora);font-size:16px;font-weight:600;color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+.gauge-cap{max-width:104px;font-size:10.5px;line-height:1.35;color:var(--muted);text-align:center}
+
+.quick-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}.quick-action{
   display:inline-flex;align-items:center;gap:8px;
   padding:9px 13px;border:1px solid var(--line);border-radius:var(--radius-sm);
   background:var(--surface);color:var(--ink-2);
@@ -690,6 +760,15 @@ body.cmdk-open{overflow:hidden}
   .dash-greet p{font-size:12px}
   .grid-kpi{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .kpi .value{font-size:24px}
+  .kpi .spark-wrap{height:22px;margin-top:7px}
+  .health-strip{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+  .health-card{padding:8px 10px;gap:5px}
+  .health-top{flex-wrap:wrap;row-gap:2px}
+  .health-nums{flex:1 1 100%;padding-left:14px;font-size:9.5px}
+  .health-more{grid-column:1 / -1;justify-self:start}
+  .gauge-row{gap:12px}
+  .gauge{width:72px;height:72px;flex-basis:72px}
+  .g-num{font-size:14px}
   .notif,.acct{top:56px;right:8px;width:calc(100vw - 16px)}
   .app-foot{padding:12px 14px 14px;font-size:10px}
   .bottomnav a{font-size:10.5px;padding:8px 2px;white-space:nowrap}

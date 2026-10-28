@@ -441,6 +441,8 @@ document.getElementById('tkBulkAssign').addEventListener('click', function () {
   }
   var status = UI.qs('status');
   if (Query.ALL_STATES.indexOf(status) > -1) { F.status = status; chip = ''; }
+  var office = UI.qs('office');
+  if (office) F.office = office;
   var v = UI.qs('view');
   if (v === 'cards' || v === 'list' || v === 'board') view = v;
   if (UI.roleKey() === 'requester') CHIPS[1][1] = 'My requests';

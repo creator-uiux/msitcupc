@@ -125,7 +125,7 @@ The authoritative workflow is the 29 step SOP in the bundled
 | 8.7 | `KNOWN_LIMITATIONS.md` | DONE | honest gap list |
 | 8.8 | `ROLE_MATRIX.md` | DONE | pages, actions, transitions and data scope per role |
 | 8.9 | `DESIGN_SYSTEM.md` | DONE | tokens, components and page patterns |
-| 8.10 | `docs/screenshots/` evidence | DONE | 108 captures: 60 base screens at 390, 768 and 1440 in light and dark, plus 48 role captures of dashboard and ticket detail |
+| 8.10 | `docs/screenshots/` evidence | DONE | 124 captures: 64 base screens (10 screens at 390, 768 and 1440 in light and dark plus four card-view captures), 48 role captures of dashboard and ticket detail, and 12 feature captures of the board, planner and dashboard widgets |
 
 ## Phase 9. Verification
 
@@ -195,7 +195,7 @@ The authoritative workflow is the 29 step SOP in the bundled
 | 14.4 | The board uses the same work-order card and respects role privacy | DONE | `UI.workCard`; the office requester's reply count still omits internal notes |
 | 14.5 | Board is reachable by deep link, remembered, and hidden from bulk selection | DONE | `?view=board`, `itc_ticket_view`; the bulk bar only appears in the list layout |
 | 14.6 | Phones scroll one column at a time with the next column visible | DONE | horizontal snap scroll, 84 vw columns, 36 px view buttons; `responsive.py` 0 problems |
-| 14.7 | Tests and visual evidence | DONE | `pagetest.js` 416 passed, including the eight columns, counts, placement and no pager; captures at 1440 and 390 in both themes |
+| 14.7 | Tests and visual evidence | DONE | `pagetest.js` 452 passed, including the eight columns, counts, placement and no pager; captures at 1440 and 390 in both themes |
 
 ## Phase 15. Maintenance planner
 
@@ -207,7 +207,19 @@ The authoritative workflow is the 29 step SOP in the bundled
 | 15.4 | A technician sees today's route | DONE | `#techToday` lists today's visits, otherwise names the next visit; hidden for every other role |
 | 15.5 | Planner scope matches the page scope | DONE | a technician plans only their own schedules and jobs; IT leads plan the whole register |
 | 15.6 | Phones stay readable | DONE | agenda is the phone default, month falls back to dots with a per-day accessible label; tap targets 36 px; `responsive.py` 0 problems |
-| 15.7 | Tests and evidence | DONE | `pagetest.js` 432 passed, including six-week month, weekday names, chips, today, period navigation, view memory and the technician panel; captures at 1440 and 390 in both themes |
+| 15.7 | Tests and evidence | DONE | `pagetest.js` 452 passed, including six-week month, weekday names, chips, today, period navigation, view memory and the technician panel; captures at 1440 and 390 in both themes |
+
+## Phase 16. Dashboard widgets
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 16.1 | Each role highlight carries a seven day trend | DONE | `UI.sparkline` draws a line and area under the four role tiles; the series key and its plain language title come from `SPARK_LABEL` | 
+| 16.2 | Office health is visible without reading a table | DONE | `#healthStrip` lists one card per office with open and overdue counts, a completion meter and a tone; ordered by overdue then open; hidden for an office user and for any scope that resolves to one office |
+| 16.3 | Dispatchers can see who carries the queue | DONE | `#workloadBars` stacks assigned, in progress, on hold and other per technician, names Unassigned, prints the total and keeps the stage legend; limited to the roles that dispatch work |
+| 16.4 | Preventive compliance is readable at a glance | DONE | `UI.gauge` draws the ring in the costs card; the percent is printed inside it, repeated in words, and exposed through `aria-label` |
+| 16.5 | Phones stay legible | DONE | office numbers wrap under the name instead of truncating it, sparklines shorten, the ring shrinks to 72 px; `responsive.py` 0 problems |
+| 16.6 | Privacy and scope hold | DONE | the health strip is `staff-only`, the load card is `lead-only`, the ring lives in the `staff-only` costs section; the requester render hides the strip entirely |
+| 16.7 | Tests and evidence | DONE | `pagetest.js` 452 passed, including sparkline markup and titles, office ordering and links, load segments adding to the total, ring value and label, and the requester hidden strip; captures at 1440 and 390 in both themes |
 
 ## Known gaps
 

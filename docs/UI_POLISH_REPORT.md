@@ -109,11 +109,16 @@ and opens forbidden URLs to confirm the neutral panel appears.
   "Active work", "Dependency holds" and "Overdue" for the coordinator), the
   eight status labels plus Overdue as compact links into the filtered ticket
   queue, four quick actions for the role, the activity chart, the status
-  breakdown and a paginated "Needs your action" list. Management is read-only,
-  so that list is hidden there rather than shown as a permanent zero. The data
+  breakdown and a paginated "Needs your action" list. Each highlight carries a
+  seven day sparkline so a rising or falling trend is visible without opening
+  a report. A staff-only health strip then ranks the offices by overdue and
+  open work, with a completion meter per office. The roles that dispatch work
+  also get stacked technician load bars, and the costs card opens with a
+  preventive compliance ring. Management is read-only, so the "Needs your
+  action" list is hidden there rather than shown as a permanent zero. The data
   is scoped the same way the backend scopes it, so a role never sees another
-  office's figures. The grid is two columns on desktop and one column from
-  1024 px down.
+  office's figures, and an office user sees no cross office health strip at
+  all. The grid is two columns on desktop and one column from 1024 px down.
 - **Tickets.** Queue tabs, search, filter drawer, removable filter chips,
   sortable table, a card layout and a status board. The register can switch
   between rows, work-order cards and eight-column board; phones start on
@@ -184,18 +189,21 @@ and opens forbidden URLs to confirm the neutral panel appears.
 
 ## 6. Visual evidence
 
-`docs/screenshots/` holds 108 captures:
+`docs/screenshots/` holds 124 captures:
 
-- **60 base captures** from `python tools/gate_shots.py`: 10 screens at
-  390, 768 and 1440 px in light and dark.
+- **64 base captures**: 60 from `python tools/gate_shots.py` (10 screens at
+  390, 768 and 1440 px in light and dark), plus four card-view captures at
+  1440 and 390 in both themes.
 - **48 role captures**: dashboard and ticket detail for requester,
   technician, coordinator and management, at the same three widths and both
   themes, taken from the role-prefixed pages.
+- **12 feature captures**: the ticket board, the maintenance planner and the
+  dashboard widgets at 1440 and 390 in both themes.
 
 The machine gate checks every base capture for horizontal overflow and
-clipped text. The base captures, the 48 role captures, and the phone and
-dark variants were read during this pass. A full individual review of all
-108 images by a designer has not been recorded, and
+clipped text. The base captures, the 48 role captures, the feature captures,
+and the phone and dark variants were read during this pass. A full individual
+review of all 124 images by a designer has not been recorded, and
 `docs/KNOWN_LIMITATIONS.md` says so.
 
 ## 7. Verification
@@ -206,7 +214,7 @@ Results from this working tree. Commands are listed with their outcome.
 |---|---|---|
 | Backend suite | `python server/tests.py` | 335 passed, 0 failed |
 | Workflow smoke | `node tools/smoke.js` | 60 passed, 0 failed |
-| Page integration | `node tools/pagetest.js` | 432 passed, 0 failed |
+| Page integration | `node tools/pagetest.js` | 452 passed, 0 failed |
 | Role page suite | `node tools/rolepages_test.js` | 182 passed, 0 failed |
 | API integration | `python tools/api_check.py` | 17 passed, 0 failed |
 | Markup and DOM ids | `python tools/validate.py` | PASSED |

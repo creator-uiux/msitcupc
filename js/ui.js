@@ -52,6 +52,42 @@
   function categoryIcon(category) {
     return CATEGORY_ICON[category] || 'ticket';
   }
+  /* A small trend line for a KPI tile. Values are plain counts; the caller
+     supplies the title that says what the line measures. */
+  function sparkline(values, opts) {
+    opts = opts || {};
+    var w = 96, h = 28, pad = 3;
+    var max = 1;
+    values.forEach(function (v) { if (v > max) max = v; });
+    var n = values.length;
+    var pts = values.map(function (v, i) {
+      var x = pad + (w - 2 * pad) * (n > 1 ? i / (n - 1) : 0);
+      var y = h - pad - (h - 2 * pad) * (v / max);
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    });
+    var area = pad + ',' + (h - pad) + ' ' + pts.join(' ') + ' ' + (w - pad) + ',' + (h - pad);
+    return '<svg class="spark' + (opts.cls ? ' ' + opts.cls : '') +
+      '" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true">' +
+      '<polygon points="' + area + '" class="spark-area"/>' +
+      '<polyline points="' + pts.join(' ') + '" class="spark-line"/></svg>';
+  }
+
+  /* A radial completion gauge. The number is printed in the middle so the
+     ring is never the only carrier of the value. */
+  function gauge(pct, caption) {
+    pct = Math.max(0, Math.min(100, Number(pct) || 0));
+    var r = 34, c = 2 * Math.PI * r;
+    var off = c - c * pct / 100;
+    var tone = pct >= 80 ? 'ok' : pct >= 50 ? 'warn' : 'danger';
+    return '<div class="gauge g-' + tone + '" role="img" aria-label="' +
+      attr(caption + ' ' + Math.round(pct) + ' percent') + '">' +
+      '<svg viewBox="0 0 84 84" aria-hidden="true">' +
+      '<circle class="g-track" cx="42" cy="42" r="' + r + '"/>' +
+      '<circle class="g-fill" cx="42" cy="42" r="' + r + '" stroke-dasharray="' + c.toFixed(1) +
+      '" stroke-dashoffset="' + off.toFixed(1) + '"/></svg>' +
+      '<b class="g-num">' + Math.round(pct) + '%</b></div>';
+  }
+
   function workCard(t, opts) {
     opts = opts || {};
     var role = opts.role || roleKey();
@@ -1980,7 +2016,7 @@
 
   window.UI = {
     esc: esc, attr: attr, badge: badge, prio: prio, timeAgo: timeAgo, clock: clock, dateOnly: dateOnly,
-    workCard: workCard, categoryIcon: categoryIcon,
+    workCard: workCard, categoryIcon: categoryIcon, sparkline: sparkline, gauge: gauge,
     openPalette: openPalette, closePalette: closePalette, paletteResults: cmCommandResults,
     toast: toast, openModal: openModal, closeModal: closeModal, field: field, input: input,
     openAttachment: openAttachment, closeAttachment: closeAttachment,

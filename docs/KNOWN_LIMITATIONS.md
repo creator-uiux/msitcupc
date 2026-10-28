@@ -34,11 +34,11 @@ current commit. Blocked or unverified items are listed first.
   only; no component was copied from it, and the styling follows the design
   system in `docs/DESIGN_SYSTEM.md`.
 - **The visual review was a machine check plus a read of the captures.** The
-  108 captures in `docs/screenshots/` were produced with headless Chrome;
-  the 60 base captures were checked for horizontal overflow and clipped
-  text, and the login, ticket, dashboard, role, mobile and dark captures
-  were read individually. Not every one of the 108 was read by a designer,
-  so this is not a full design review.
+  124 captures in `docs/screenshots/` were produced with headless Chrome;
+  the 64 base captures were checked for horizontal overflow and clipped
+  text, and the login, ticket, dashboard, role, board, planner, widget,
+  mobile and dark captures were read individually. Not every one of the 124
+  was read by a designer, so this is not a full design review.
 
 ## Platform constraints
 
