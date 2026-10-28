@@ -115,13 +115,17 @@ and opens forbidden URLs to confirm the neutral panel appears.
   office's figures. The grid is two columns on desktop and one column from
   1024 px down.
 - **Tickets.** Queue tabs, search, filter drawer, removable filter chips,
-  sortable table and a card layout. The register can switch between the rows
-  and work-order cards, and phones start on cards; the choice is remembered.
+  sortable table, a card layout and a status board. The register can switch
+  between rows, work-order cards and eight-column board; phones start on
+  cards; the choice is remembered and can be deep linked with `?view=`.
   Each card carries the ticket number, subject, office, category icon,
   status, priority edge and text chip, assignee avatar, due or overdue chip
   and attachment and reply counts. An office requester's reply count omits
   internal notes. The coordinator also gets row selection and the bulk
-  action bar in the list layout.
+  action bar in the list layout. The board loads up to the query cap in one
+  pass, prints the true count per status in each sticky column header, and
+  says plainly when the cap is reached so the filters, not a hidden pager,
+  are the way to narrow it.
 - **Search.** Ctrl or Cmd plus K opens one palette over tickets, offices,
   assets and maintenance schedules, plus the recent items the person opened
   from it. Scope matches the role: a requester stays in their office, a
@@ -196,7 +200,7 @@ Results from this working tree. Commands are listed with their outcome.
 |---|---|---|
 | Backend suite | `python server/tests.py` | 335 passed, 0 failed |
 | Workflow smoke | `node tools/smoke.js` | 60 passed, 0 failed |
-| Page integration | `node tools/pagetest.js` | 406 passed, 0 failed |
+| Page integration | `node tools/pagetest.js` | 416 passed, 0 failed |
 | Role page suite | `node tools/rolepages_test.js` | 182 passed, 0 failed |
 | API integration | `python tools/api_check.py` | 17 passed, 0 failed |
 | Markup and DOM ids | `python tools/validate.py` | PASSED |

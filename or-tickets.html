@@ -97,6 +97,7 @@
           <div class="seg seg-view" id="tkView" role="group" aria-label="Result layout">
             <button type="button" data-view="list">List</button>
             <button type="button" data-view="cards">Cards</button>
+            <button type="button" data-view="board">Board</button>
           </div>
         </div>
         <table class="table" id="tkTable">
@@ -110,6 +111,8 @@
           <tbody id="tkBody"></tbody>
         </table>
         <div class="wo-grid" id="tkCards" hidden></div>
+        <div class="wo-board" id="tkBoard" hidden aria-label="Tickets grouped by status"></div>
+        <p class="hint board-note" id="tkBoardNote" hidden></p>
         <div id="tkPagination"></div>
         <div class="empty" id="tkEmpty" hidden><img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No tickets match these filters.</div>
       </div>
@@ -145,7 +148,7 @@ var VIEW_KEY = 'itc_ticket_view';
 var view = 'list';
 try {
   var savedView = localStorage.getItem(VIEW_KEY);
-  if (savedView === 'cards' || savedView === 'list') view = savedView;
+  if (savedView === 'cards' || savedView === 'list' || savedView === 'board') view = savedView;
   else if (window.innerWidth < 600) view = 'cards';
 } catch (e) {
   if (window.innerWidth < 600) view = 'cards';
@@ -161,7 +164,8 @@ function paramBag() {
     office: F.office || '', priority: F.priority || '', category: F.category || '',
     technician: F.tech || '', source: F.source || '',
     from: F.from || '', to: F.to || '', overdue: chip === 'overdue' ? '1' : (F.overdue || ''),
-    sort: F.sort || 'updated', order: F.order || 'desc', page: page, size: PER_PAGE
+    sort: F.sort || 'updated', order: F.order || 'desc', page: page,
+    size: view === 'board' ? Query.MAX_SIZE : PER_PAGE
   };
   if (chip === 'open') p.status = 'open';
   /* scope: requesters default to their own records; mine=0 widens to the office register */
@@ -256,6 +260,7 @@ function render() {
   document.getElementById('tkCards').innerHTML = last.items.map(function (t) {
     return UI.workCard(t, { href: 'ticket.html?id=' + encodeURIComponent(t.id) });
   }).join('');
+  renderBoard();
   applyView();
 
   document.querySelectorAll('#tkBody tr[data-href]').forEach(function (tr) {
@@ -272,15 +277,49 @@ function render() {
   });
 
   var pg = { items: last.items, total: last.total, page: last.page, perPage: last.size, pages: last.pages };
-  UI.renderPagination(document.getElementById('tkPagination'), pg, function (p) { page = p; render(); });
+  if (view === 'board') document.getElementById('tkPagination').innerHTML = '';
+  else UI.renderPagination(document.getElementById('tkPagination'), pg, function (p) { page = p; render(); });
 
   renderBulk();
 }
 
+/* The board groups the same filtered records into the eight workflow columns.
+   It loads up to the query cap in one pass, and the header count is the true
+   total for that status, so a capped board still tells the whole story. */
+function renderBoard() {
+  var counts = (last && last.counts) || {};
+  var buckets = {};
+  (last ? last.items : []).forEach(function (t) {
+    (buckets[t.status] || (buckets[t.status] = [])).push(t);
+  });
+  var cols = Query.ALL_STATES.map(function (s) {
+    var rows = buckets[s] || [];
+    var shown = rows.map(function (t) {
+      return UI.workCard(t, { href: 'ticket.html?id=' + encodeURIComponent(t.id) });
+    }).join('');
+    return '<section class="wo-col" data-board-status="' + UI.attr(s) + '" aria-label="' +
+      UI.attr(UI.STATUS[s][0]) + '">' +
+      '<header class="wo-col-head"><span class="wo-col-name">' + UI.esc(UI.STATUS[s][0]) + '</span>' +
+      '<span class="wo-col-count">' + (counts[s] || 0) + '</span></header>' +
+      '<div class="wo-col-body">' + (shown || '<p class="wo-col-empty">No tickets</p>') + '</div></section>';
+  });
+  document.getElementById('tkBoard').innerHTML = cols.join('');
+
+  var note = document.getElementById('tkBoardNote');
+  var capped = last && last.total > last.items.length;
+  note.hidden = !capped;
+  note.textContent = capped
+    ? 'Showing the first ' + last.items.length + ' of ' + last.total + ' matching tickets. Narrow the filters to reach the rest.'
+    : '';
+}
+
 function applyView() {
+  var table = view === 'list';
   var cards = view === 'cards';
-  document.getElementById('tkTable').hidden = cards;
+  var board = view === 'board';
+  document.getElementById('tkTable').hidden = !table;
   document.getElementById('tkCards').hidden = !cards;
+  document.getElementById('tkBoard').hidden = !board;
   document.querySelectorAll('#tkView [data-view]').forEach(function (b) {
     var on = b.dataset.view === view;
     b.classList.toggle('on', on);
@@ -291,7 +330,7 @@ function applyView() {
 function renderBulk() {
   var ids = Object.keys(selected);
   var bar = document.getElementById('tkBulk');
-  bar.hidden = ids.length === 0 || view === 'cards';
+  bar.hidden = ids.length === 0 || view !== 'list';
   document.getElementById('tkBulkCount').textContent = ids.length + ' selected';
   /* bulk assign is a coordinator responsibility */
   document.getElementById('tkBulkAssign').hidden = UI.roleKey() !== 'coordinator';
@@ -309,9 +348,9 @@ document.getElementById('tkView').addEventListener('click', function (e) {
   var b = e.target.closest('[data-view]');
   if (!b || b.dataset.view === view) return;
   view = b.dataset.view;
+  if (view === 'board') page = 1;
   try { localStorage.setItem(VIEW_KEY, view); } catch (err) { /* private mode */ }
-  applyView();
-  renderBulk();
+  render();
 });
 document.getElementById('tkAll').addEventListener('change', function (e) {
   if (!last) return;
@@ -403,7 +442,7 @@ document.getElementById('tkBulkAssign').addEventListener('click', function () {
   var status = UI.qs('status');
   if (Query.ALL_STATES.indexOf(status) > -1) { F.status = status; chip = ''; }
   var v = UI.qs('view');
-  if (v === 'cards' || v === 'list') view = v;
+  if (v === 'cards' || v === 'list' || v === 'board') view = v;
   if (UI.roleKey() === 'requester') CHIPS[1][1] = 'My requests';
 })();
 

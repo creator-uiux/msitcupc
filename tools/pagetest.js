@@ -1067,6 +1067,31 @@ tests.push(async function workOrderCards() {
     ok($('#tkTable').hidden === false && $('#tkCards').hidden === true, 'the list layout returns');
   }
 
+  var boardBtn = $$('#tkView [data-view="board"]')[0];
+  ok(boardBtn !== undefined, 'the board layout can be chosen');
+  if (boardBtn) {
+    boardBtn.click();
+    ok($('#tkBoard').hidden === false && $('#tkCards').hidden === true && $('#tkTable').hidden === true,
+      'the board replaces the table and the cards');
+    var cols = $$('#tkBoard .wo-col');
+    ok(cols.length === 8, 'the board has one column per workflow state (' + cols.length + ')');
+    var names = cols.map(function (c) { return c.querySelector('.wo-col-name').textContent; });
+    ok(names[0] === 'Submitted' && names[7] === 'Cancelled', 'the columns run in workflow order');
+    ok(cols.every(function (c) { return /^\d+$/.test(c.querySelector('.wo-col-count').textContent); }),
+      'each column header carries its count');
+    var placed = $$('#tkBoard .wo-card');
+    ok(placed.length > 0, 'cards are grouped into the columns (' + placed.length + ')');
+    var counts = p.w.Query.queryTickets(p.w.Store.db.tickets, { status: 'open', size: 100 }, null);
+    var shown = {};
+    placed.forEach(function (c) { shown[c.getAttribute('href')] = 1; });
+    ok(counts.items.every(function (t) { return shown['ticket.html?id=' + encodeURIComponent(t.id)]; }),
+      'every filtered ticket reaches its column');
+    ok($('#tkPagination').innerHTML === '', 'the board does not show a pager');
+    ok($('#tkBulk').hidden === true, 'bulk selection stays out of the board');
+    $$('#tkView [data-view="list"]')[0].click();
+    ok($('#tkBoard').hidden === true && $('#tkTable').hidden === false, 'the list layout returns from the board');
+  }
+
   /* an office requester counts only the replies they may read */
   var t = p.w.Store.getTicket('IT-2026-000142');
   if (t) {

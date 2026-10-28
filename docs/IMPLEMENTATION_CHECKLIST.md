@@ -185,6 +185,18 @@ The authoritative workflow is the 29 step SOP in the bundled
 | 13.7 | Responsive and writing checks | DONE | `responsive.py` 0 problems after the 36 px view toggle on phones; page suite 406 passed; role page suite 182 passed; `ui_check.py`, `validate.py`, `html_check.js`, `parity_check.js` and the visual gate pass |
 | 13.8 | Single sidebar retained | DONE (deliberate) | Section 25.5B suggests a rail plus a contextual menu at 1024 to 1919 px; the owner asked for one navigation column, so the grouped sidebar is kept and the deviation is recorded in `KNOWN_LIMITATIONS.md` |
 
+## Phase 14. Ticket board
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 14.1 | A third layout groups the filtered register into the eight workflow states | DONE | `#tkView` Board on `tickets.html`; `#tkBoard` with eight `.wo-col` sections in workflow order |
+| 14.2 | Each column states the true count and handles an empty state | DONE | the header uses the query counts for the filtered set, not just the loaded slice; an empty column reads "No tickets" |
+| 14.3 | The board is honest about the load cap and never shows a hidden pager | DONE | up to `Query.MAX_SIZE` records per pass; the note reports "Showing the first N of M"; the pager is removed in board view |
+| 14.4 | The board uses the same work-order card and respects role privacy | DONE | `UI.workCard`; the office requester's reply count still omits internal notes |
+| 14.5 | Board is reachable by deep link, remembered, and hidden from bulk selection | DONE | `?view=board`, `itc_ticket_view`; the bulk bar only appears in the list layout |
+| 14.6 | Phones scroll one column at a time with the next column visible | DONE | horizontal snap scroll, 84 vw columns, 36 px view buttons; `responsive.py` 0 problems |
+| 14.7 | Tests and visual evidence | DONE | `pagetest.js` 416 passed, including the eight columns, counts, placement and no pager; captures at 1440 and 390 in both themes |
+
 ## Known gaps
 
 The items that remain partial or unverified are listed in
