@@ -134,7 +134,7 @@ The authoritative workflow is the 29 step SOP in the bundled
 | 9.1 | Backend suite | DONE | `python server/tests.py`: 335 passed, 0 failed |
 | 9.2 | Workflow smoke | DONE | `node tools/smoke.js`: 60 passed, 0 failed |
 | 9.3 | Page integration | DONE | `node tools/pagetest.js`: 361 passed, 0 failed |
-| 9.4 | Role page tests | DONE | `node tools/rolepages_test.js`: 174 passed, 0 failed, including computed-display checks for the role visibility classes |
+| 9.4 | Role page tests | DONE | `node tools/rolepages_test.js`: 182 passed, 0 failed, including computed-display checks for the role visibility classes |
 | 9.5 | API integration | DONE | `python tools/api_check.py`: 17 passed, 0 failed |
 | 9.6 | Markup and DOM ids | DONE | `python tools/validate.py`: PASSED |
 | 9.7 | UI house rules | DONE | `python tools/ui_check.py`: PASSED (71 pages) |
@@ -147,7 +147,7 @@ The authoritative workflow is the 29 step SOP in the bundled
 | 9.14 | Time zone behavior | DONE | `node tools/time_check.js`: PASS under three host timezones |
 | 9.15 | Visual review of the captures | DONE | login at 1440 light and dark, 390 light and dark, 320x720, 531x553 and 768 reviewed; the 48 role captures of dashboard and ticket detail read at all three widths in both themes |
 | 9.16 | Full designer review of every capture | PARTIAL | the machine gate passed and the key screens were read, but not all 108 images were re-reviewed individually |
-| 9.17 | Role visibility in the interface | DONE | `rolepages_test.js` asserts hidden-not-disabled classes per role, rail links against the permission map, requester plain language and the neutral forbidden-page panel; `docs/UI_POLISH_REPORT.md` records the matrix |
+| 9.17 | Role visibility in the interface | DONE | `rolepages_test.js` asserts hidden-not-disabled classes per role, sidebar links against the permission map, requester plain language and the neutral forbidden-page panel; `docs/UI_POLISH_REPORT.md` records the matrix |
 
 ## Phase 11. One sidebar, role dashboards and pagination
 
@@ -160,7 +160,17 @@ The authoritative workflow is the 29 step SOP in the bundled
 | 11.5 | Pagination wherever a list or table can grow | DONE | `UI.paginate`/`UI.renderPagination` in dashboard queues, tickets, users, offices, settings reference data, register history/assets/maintenance/audit, reports, review, confirm, notifications |
 | 11.6 | No duplicate breadcrumb | DONE | breadcrumbs render once in the top bar; the page-frame injection was removed |
 | 11.7 | Frozen surfaces intact | DONE | no diff for `login.html`, `css/login.css`, `js/login.js`, `js/theme.js`, the seals, `app.css`, `green.css`, `kit.css`; only the phase label in `docs/THEME_SNAPSHOT.md` changed, no token values |
-| 11.8 | Tests and role pages refreshed | DONE | role pages regenerated (49); page suite 361 passed; role page suite 174 passed; responsive 0 problems; visual gate PASS |
+| 11.8 | Tests and role pages refreshed | DONE | role pages regenerated (49); page suite 361 passed; role page suite 182 passed; responsive 0 problems; visual gate PASS |
+
+## Phase 12. Dashboard clarity fixes
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 12.1 | One navigation column, no double navbar | DONE | fresh 390, 768 and 1440 captures show a single grouped sidebar; `pagetest.js` asserts the old `.rail` and `.ctx` columns are absent for every role |
+| 12.2 | Read-only management gets no empty action card | DONE | the Needs your action card carries `.actor-only`; `body.role-management .actor-only` hides it; `rolepages_test.js` checks computed display for all four roles |
+| 12.3 | Coming up items read as product copy, not debug output | DONE | office is the title; category, frequency and asset count form the meta line; technician, date and overdue form the due line; the internal "job ... exists  --  not duplicated" text is removed |
+| 12.4 | KPI copy fits its card | DONE | the Overdue delta reads "Past the target date" and stays on one line at 390 and 1440 |
+| 12.5 | Evidence refreshed | DONE | 48 role captures and 60 gate captures regenerated; page suite 361 passed; role page suite 182 passed; `ui_check.py`, `validate.py`, `responsive.py` and the visual gate all pass |
 
 ## Known gaps
 

@@ -109,10 +109,11 @@ and opens forbidden URLs to confirm the neutral panel appears.
   "Active work", "Dependency holds" and "Overdue" for the coordinator), the
   eight status labels plus Overdue as compact links into the filtered ticket
   queue, four quick actions for the role, the activity chart, the status
-  breakdown and a paginated "Needs your action" list. The data is scoped the
-  same way the backend scopes it, so a role never sees another office's
-  figures. The grid is two columns on desktop and one column from 1024 px
-  down.
+  breakdown and a paginated "Needs your action" list. Management is read-only,
+  so that list is hidden there rather than shown as a permanent zero. The data
+  is scoped the same way the backend scopes it, so a role never sees another
+  office's figures. The grid is two columns on desktop and one column from
+  1024 px down.
 - **Tickets.** Queue tabs, search, filter drawer, removable filter chips,
   sortable table and a card layout on phones. The coordinator also gets row
   selection and the bulk action bar.
@@ -185,7 +186,7 @@ Results from this working tree. Commands are listed with their outcome.
 | Backend suite | `python server/tests.py` | 335 passed, 0 failed |
 | Workflow smoke | `node tools/smoke.js` | 60 passed, 0 failed |
 | Page integration | `node tools/pagetest.js` | 361 passed, 0 failed |
-| Role page suite | `node tools/rolepages_test.js` | 174 passed, 0 failed |
+| Role page suite | `node tools/rolepages_test.js` | 182 passed, 0 failed |
 | API integration | `python tools/api_check.py` | 17 passed, 0 failed |
 | Markup and DOM ids | `python tools/validate.py` | PASSED |
 | UI house rules | `python tools/ui_check.py` | PASSED, 71 pages |

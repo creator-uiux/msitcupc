@@ -120,8 +120,8 @@ that was not run is not listed.
 |---|---|---|
 | Backend | `python server/tests.py` | 335 passed, 0 failed |
 | Workflow smoke | `node tools/smoke.js` | 60 passed, 0 failed |
-| Page integration | `node tools/pagetest.js` | 355 passed, 0 failed on a quiet tree |
-| Role pages | `node tools/rolepages_test.js` | 173 passed, 0 failed |
+| Page integration | `node tools/pagetest.js` | 361 passed, 0 failed |
+| Role pages | `node tools/rolepages_test.js` | 182 passed, 0 failed |
 | API | `python tools/api_check.py` | 17 passed, 0 failed |
 | Markup and DOM ids | `python tools/validate.py` | PASSED |
 | UI house rules | `python tools/ui_check.py` | PASSED (71 pages) |

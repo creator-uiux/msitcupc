@@ -93,8 +93,10 @@
         </div>
 
         <aside class="dash-side">
-          <!-- the records that wait on the signed-in role -->
-          <div class="card">
+          <!-- the records that wait on the signed-in role; management is
+               read-only, so it never owns the next step and this card stays
+               hidden there -->
+          <div class="card actor-only">
             <div class="card-head">
               <h3>Needs your action</h3>
               <span class="chip" id="mineCount"> -- </span>
@@ -300,14 +302,14 @@ function roleKpis(role, counts, overdue, jobs) {
       { label: 'To review', value: counts.submitted, delta: 'New requests waiting for triage', cls: 'k-brand', ic: 'inbox', href: 'tickets.html?status=submitted' },
       { label: 'Active work', value: counts.assigned + counts.in_progress, delta: 'Assigned or in progress', cls: 'k-brand', ic: 'refresh', href: 'tickets.html?queue=open' },
       { label: 'Dependency holds', value: counts.on_hold, delta: 'Parts, approval or support', cls: 'k-hold', ic: 'pause', href: 'review.html' },
-      { label: 'Overdue', value: overdue, delta: 'Past the target completion date', cls: 'k-warn', ic: 'alert', href: 'tickets.html?queue=overdue' }
+      { label: 'Overdue', value: overdue, delta: 'Past the target date', cls: 'k-warn', ic: 'alert', href: 'tickets.html?queue=overdue' }
     ];
   }
   return [
     { label: 'Open requests', value: open, delta: 'Across every office', cls: 'k-brand', ic: 'inbox', href: 'tickets.html?queue=open' },
     { label: 'Resolved', value: counts.resolved, delta: 'Awaiting office confirmation', cls: 'k-ok', ic: 'checkCircle', href: 'tickets.html?status=resolved' },
     { label: 'Closed', value: counts.closed, delta: 'Service records retained', cls: 'k-brand', ic: 'check', href: 'tickets.html?status=closed' },
-    { label: 'Overdue', value: overdue, delta: 'Past the target completion date', cls: 'k-warn', ic: 'alert', href: 'tickets.html?queue=overdue' }
+    { label: 'Overdue', value: overdue, delta: 'Past the target date', cls: 'k-warn', ic: 'alert', href: 'tickets.html?queue=overdue' }
   ];
 }
 
@@ -463,11 +465,15 @@ function render() {
   document.getElementById('maintDue').innerHTML = soon.map(function (s) {
     var overdue = new Date(s.dueDate).getTime() < UI.nowMs();
     var j = jobBySched[s.id];
+    var freq = String(s.frequency || '');
+    var assets = s.assets.length === 1 ? '1 asset' : s.assets.length + ' assets';
     return '<li><span class="ico ' + (overdue ? 'warn' : '') + '">' + (j ? UI.icon('toolbox') : UI.icon('cal')) + '</span>' +
-      '<div class="body"><strong>' + UI.esc(s.office) + '  --  ' + UI.esc(s.category) + ' PM</strong>' +
-      '<span>' + UI.esc(s.frequency) + ' · ' + s.assets.length + ' asset(s) · ' + UI.esc(s.technician) +
-      (j ? ' · job <span class="mono">' + UI.esc(j.id) + '</span> exists  --  not duplicated' : '') + '</span>' +
-      '<span class="when">' + UI.dateOnly(s.dueDate) + (overdue ? ' · due' : '') + '</span></div></li>';
+      '<div class="body"><strong>' + UI.esc(s.office) + '</strong>' +
+      '<span>' + UI.esc(s.category) + ' PM' +
+      (freq ? ' · ' + UI.esc(freq.charAt(0).toUpperCase() + freq.slice(1)) : '') +
+      ' · ' + assets + '</span>' +
+      '<span class="when">' + UI.esc(s.technician) + ' · ' + UI.dateOnly(s.dueDate) +
+      (overdue ? ' · overdue' : '') + '</span></div></li>';
   }).join('') || '<li><div class="body"><strong>No active schedules</strong></div></li>';
 
   /* ---- live audit feed ---- */

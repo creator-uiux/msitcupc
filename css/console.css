@@ -382,7 +382,8 @@ body.role-technician .coord-only,
 body.role-technician .admin-only{display:none !important}
 body.role-coordinator .admin-only{display:none !important}
 body.role-management .coord-only,
-body.role-management .tech-only{display:none !important}
+body.role-management .tech-only,
+body.role-management .actor-only{display:none !important}
 body.role-requester .lead-only,
 body.role-technician .lead-only{display:none !important}
 body.role-technician .schedule-manage{display:none !important}
