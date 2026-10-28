@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/green.css">
 <link rel="stylesheet" href="css/kit.css">
+<link rel="stylesheet" href="css/console.css">
 <script src="js/theme.js"></script>
 
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -28,26 +29,101 @@
 
     <main class="content">
 
-      <div class="sec-title">
-        <h2>Service dashboard</h2>
-        <span class="hint">Office IT Service Request, Maintenance &amp; Closure workflow</span>
+      <div class="sec-title dash-greet">
+        <h2 id="dashTitle">Service dashboard</h2>
+        <span class="hint" id="dashGreeting">Office IT Service Request, Maintenance &amp; Closure workflow</span>
       </div>
 
-      <!-- KPIs (computed live) -->
-      <section class="grid grid-kpi" id="kpiGrid"></section>
+      <div class="dash-grid">
+        <div class="dash-main">
 
-      <!-- the records that wait on the signed-in role -->
-      <section class="mt">
-        <div class="card">
-          <div class="card-head">
-            <h3>Needs my action</h3>
-            <span class="chip" id="mineCount"> -- </span>
-            <span class="hint" id="mineHint">the records waiting on your role</span>
-          </div>
-          <ul class="list" id="mineList"></ul>
-          <div class="empty" id="mineEmpty" hidden><img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">Nothing is waiting on you right now.</div>
+          <!-- KPIs (computed live) -->
+          <section class="grid grid-kpi" id="kpiGrid"></section>
+
+          <!-- ticket activity over the selected period, and the status split -->
+          <section class="mt">
+            <div class="grid grid-2">
+              <div class="card">
+                <div class="card-head">
+                  <h3>Ticket activity</h3>
+                  <span class="hint" id="actUpdated"> -- </span>
+                </div>
+                <div class="card-pad">
+                  <div class="row row-between">
+                    <div class="row row-tight">
+                      <label class="field-inline"><span>Period</span>
+                        <select id="actRange">
+                          <option value="7">Last 7 days</option>
+                          <option value="30" selected>Last 30 days</option>
+                          <option value="90">Last 90 days</option>
+                          <option value="month">This month</option>
+                          <option value="custom">Custom range</option>
+                        </select>
+                      </label>
+                      <label class="field-inline" id="actFromWrap" hidden><span>From</span>
+                        <input type="date" id="actFrom"></label>
+                      <label class="field-inline" id="actToWrap" hidden><span>To</span>
+                        <input type="date" id="actTo"></label>
+                    </div>
+                    <div class="row row-tight">
+                      <button class="btn btn-ghost btn-sm" id="actRefresh">Refresh</button>
+                      <button class="btn btn-soft btn-sm" id="actExport">Export CSV</button>
+                      <button class="btn btn-ghost btn-sm" id="actTable">Show the data</button>
+                    </div>
+                  </div>
+                  <div class="chart mt" id="actChart"></div>
+                  <div id="actTableWrap" hidden class="mt"></div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-head">
+                  <h3>Status breakdown</h3>
+                  <span class="hint">every record the role may see</span>
+                </div>
+                <div class="card-pad">
+                  <div class="bars hbar-list" id="statusBars"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
         </div>
-      </section>
+
+        <aside class="dash-side">
+          <!-- the records that wait on the signed-in role -->
+          <div class="card">
+            <div class="card-head">
+              <h3>Needs your action</h3>
+              <span class="chip" id="mineCount"> -- </span>
+              <span class="hint" id="mineHint">the records waiting on your role</span>
+            </div>
+            <ul class="list" id="mineList"></ul>
+            <div class="empty" id="mineEmpty" hidden><img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">Nothing is waiting on you right now.</div>
+          </div>
+
+          <!-- dependency follow-up (coordinator only) -->
+          <div class="coord-only" id="depWrap"><div id="depMount"></div></div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Coming up</h3>
+              <span class="hint">Maintenance visits and due dates</span>
+            </div>
+            <ul class="list" id="maintDue"></ul>
+            <div class="card-foot">
+              <a class="btn btn-soft btn-block" id="maintLink" href="maintenance.html">Open maintenance schedule</a>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Recent updates</h3>
+            </div>
+            <ul class="list" id="activity"></ul>
+          </div>
+        </aside>
+      </div>
 
       <!-- ticket queue: the full width, because the record has six columns -->
       <section class="mt">
@@ -61,7 +137,7 @@
             <thead>
               <tr>
                 <th>Ticket</th><th>Office / Requester</th><th>Status</th>
-                <th>Priority</th><th>Target</th><th>Technician</th>
+                <th>Priority</th><th>Target</th><th class="tech-only">Technician</th>
               </tr>
             </thead>
             <tbody id="queueBody"></tbody>
@@ -71,84 +147,8 @@
         </div>
       </section>
 
-      <!-- supporting panels -->
-      <section class="grid grid-2 mt">
-        <div class="stack">
-          <!-- dependency follow-up (live) -->
-          <div id="depMount"></div>
-
-          <div class="card">
-            <div class="card-head">
-              <h3>Maintenance due</h3>
-              <span class="hint">Auto schedule check</span>
-            </div>
-            <ul class="list" id="maintDue"></ul>
-            <div class="card-foot">
-              <a class="btn btn-soft btn-block" href="maintenance.html">Open maintenance schedule</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="stack">
-          <div class="card">
-            <div class="card-head">
-              <h3>Status &amp; audit history</h3>
-            </div>
-            <ul class="list" id="activity"></ul>
-          </div>
-        </div>
-      </section>
-
-      <!-- ticket activity over the selected period -->
-      <section class="mt">
-        <div class="grid grid-2">
-          <div class="card">
-            <div class="card-head">
-              <h3>Ticket activity</h3>
-              <span class="hint" id="actUpdated"> -- </span>
-            </div>
-            <div class="card-pad">
-              <div class="row row-between">
-                <div class="row row-tight">
-                  <label class="field-inline"><span>Period</span>
-                    <select id="actRange">
-                      <option value="7">Last 7 days</option>
-                      <option value="30" selected>Last 30 days</option>
-                      <option value="90">Last 90 days</option>
-                      <option value="month">This month</option>
-                      <option value="custom">Custom range</option>
-                    </select>
-                  </label>
-                  <label class="field-inline" id="actFromWrap" hidden><span>From</span>
-                    <input type="date" id="actFrom"></label>
-                  <label class="field-inline" id="actToWrap" hidden><span>To</span>
-                    <input type="date" id="actTo"></label>
-                </div>
-                <div class="row row-tight">
-                  <button class="btn btn-ghost btn-sm" id="actRefresh">Refresh</button>
-                  <button class="btn btn-soft btn-sm" id="actExport">Export CSV</button>
-                  <button class="btn btn-ghost btn-sm" id="actTable">Show the data</button>
-                </div>
-              </div>
-              <div class="chart mt" id="actChart"></div>
-              <div id="actTableWrap" hidden class="mt"></div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-head">
-              <h3>Status breakdown</h3>
-              <span class="hint">every record the role may see</span>
-            </div>
-            <div class="card-pad">
-              <div class="bars hbar-list" id="statusBars"></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <!-- costs, recurrence and preventive compliance -->
-      <section class="mt">
+      <section class="mt staff-only">
         <div class="card">
           <div class="card-head">
             <h3>Service costs, recurring issues and preventive maintenance</h3>
@@ -170,12 +170,12 @@
           <div class="tabs" role="tablist" id="bdTabs" aria-label="Service breakdown">
             <button type="button" class="tab" role="tab" id="tab-office" aria-controls="panel-office" aria-selected="true" data-bd="office">Offices</button>
             <button type="button" class="tab" role="tab" id="tab-category" aria-controls="panel-category" aria-selected="false" data-bd="category">Categories</button>
-            <button type="button" class="tab" role="tab" id="tab-technician" aria-controls="panel-technician" aria-selected="false" data-bd="technician">Technicians</button>
+            <button type="button" class="tab tech-only" role="tab" id="tab-technician" aria-controls="panel-technician" aria-selected="false" data-bd="technician">Technicians</button>
           </div>
           <div class="card-pad">
             <div class="tab-panel" id="panel-office" role="tabpanel" aria-labelledby="tab-office"></div>
             <div class="tab-panel" id="panel-category" role="tabpanel" aria-labelledby="tab-category" hidden></div>
-            <div class="tab-panel" id="panel-technician" role="tabpanel" aria-labelledby="tab-technician" hidden></div>
+            <div class="tab-panel tech-only" id="panel-technician" role="tabpanel" aria-labelledby="tab-technician" hidden></div>
           </div>
         </div>
       </section>
@@ -194,6 +194,32 @@
 <script src="js/live.js"></script>
 <script>
 UI.mountChrome({ title: 'Service Dashboard', sub: 'Office IT Service Request, Maintenance & Closure workflow' });
+
+/* The dashboard is the same record set for every role, but the heading, the
+   supporting panels and the links follow the signed-in lane. */
+(function roleFrame() {
+  var role = UI.roleKey();
+  var titles = {
+    requester: 'My service dashboard',
+    technician: 'Technician dashboard',
+    coordinator: 'Coordination dashboard',
+    management: 'Oversight dashboard'
+  };
+  var lead = {
+    requester: 'Your office requests, maintenance visits and updates in one place.',
+    technician: 'Your assigned tickets, maintenance jobs and pending tests.',
+    coordinator: 'Review, assignment, dependencies and closure across every office.',
+    management: 'Read-only oversight of every office, schedule and report.'
+  };
+  var roleName = (UI.currentRole && UI.currentRole().name) || '';
+  document.getElementById('dashTitle').textContent = titles[role] || 'Service dashboard';
+  document.getElementById('dashGreeting').textContent = 'Good day, ' + roleName + '. ' + (lead[role] || '');
+  var link = document.getElementById('maintLink');
+  if (link && role === 'requester') {
+    link.href = 'confirm.html';
+    link.textContent = 'Open maintenance visits';
+  }
+})();
 
 var LIVE = ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved', 'closed', 'cancelled'];
 var queuePage = 1;
@@ -243,8 +269,13 @@ function render() {
   });
   db.jobs.forEach(function (j) {
     if (UI.waitsOnMe(j.status, true, role)) {
+      /* An office answers a visit on the confirmation screen; IT roles open
+         the maintenance job itself. */
+      var jobHref = role === 'requester'
+        ? 'confirm.html'
+        : 'maintenance.html?job=' + encodeURIComponent(j.id);
       mine.push({ kind: 'Maintenance', id: j.id, title: j.category + ' visit', where: j.office,
-                  status: j.status, href: 'maintenance.html?job=' + encodeURIComponent(j.id) });
+                  status: j.status, href: jobHref });
     }
   });
   document.getElementById('mineCount').textContent = mine.length + (mine.length === 1 ? ' record' : ' records');
@@ -274,7 +305,7 @@ function render() {
       '<td data-label="Status">' + UI.badge(t.status) + UI.waitingOn(t.status) + '</td>' +
       '<td data-label="Priority">' + UI.prio(t.priority) + '</td>' +
       '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : ' -- ') + '</td>' +
-      '<td data-label="Technician"><div class="t-title">' + UI.esc(t.technician || ' -- ') + '</div></td></tr>';
+      '<td class="tech-only" data-label="Technician"><div class="t-title">' + UI.esc(t.technician || ' -- ') + '</div></td></tr>';
   }).join('');
   document.querySelectorAll('#queueBody tr[data-href]').forEach(function (tr) {
     tr.addEventListener('click', function () { location.href = tr.dataset.href; });

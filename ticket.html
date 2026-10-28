@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/green.css">
 <link rel="stylesheet" href="css/kit.css">
+<link rel="stylesheet" href="css/console.css">
 <script src="js/theme.js"></script>
 
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -49,7 +50,7 @@
           <div class="tabs" role="tablist" id="tTabs" aria-label="Service record sections">
             <button type="button" class="tab" role="tab" id="tab-conv" aria-controls="panel-conv" aria-selected="true" data-tab="conv">Conversation</button>
             <button type="button" class="tab" role="tab" id="tab-work" aria-controls="panel-work" aria-selected="false" data-tab="work">Service record</button>
-            <button type="button" class="tab" role="tab" id="tab-dep" aria-controls="panel-dep" aria-selected="false" data-tab="dep">Dependencies</button>
+            <button type="button" class="tab staff-only" role="tab" id="tab-dep" aria-controls="panel-dep" aria-selected="false" data-tab="dep">Dependencies</button>
             <button type="button" class="tab" role="tab" id="tab-hist" aria-controls="panel-hist" aria-selected="false" data-tab="hist">History</button>
             <button type="button" class="tab" role="tab" id="tab-rel" aria-controls="panel-rel" aria-selected="false" data-tab="rel">Related</button>
           </div>
@@ -81,7 +82,7 @@
           </div>
 
           <!-- dependency -->
-          <div class="tab-panel" id="panel-dep" role="tabpanel" aria-labelledby="tab-dep" hidden>
+          <div class="tab-panel staff-only" id="panel-dep" role="tabpanel" aria-labelledby="tab-dep" hidden>
             <div id="tDep"></div>
           </div>
 
@@ -393,7 +394,7 @@ function renderComposer(t) {
   var closed = ['closed', 'cancelled'].indexOf(t.status) > -1;
 
   var mode = '<div class="seg" id="tReplySeg">' +
-    '<button type="button" class="' + (replyVisibility === 'public' ? 'on' : '') + '" data-vis="public">Reply to office</button>' +
+    '<button type="button" class="' + (replyVisibility === 'public' ? 'on' : '') + '" data-vis="public">' + (role === 'requester' ? 'Reply to IT' : 'Reply to office') + '</button>' +
     (UI.canSeeInternal(role) ? '<button type="button" class="' + (replyVisibility === 'internal' ? 'on' : '') + '" data-vis="internal">Internal note</button>' : '') +
     '</div>';
 

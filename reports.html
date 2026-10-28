@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/green.css">
 <link rel="stylesheet" href="css/kit.css">
+<link rel="stylesheet" href="css/console.css">
 <script src="js/theme.js"></script>
 
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -40,7 +41,7 @@
           <div class="field"><label for="fTo">Date to</label><input type="date" id="fTo" value=""></div>
           <div class="field"><label for="fCat">Category</label>
             <select id="fCat"><option value="">All categories</option></select></div>
-          <div class="field"><label for="fTech">Technician</label>
+          <div class="field filter-tech lead-only"><label for="fTech">Technician</label>
             <select id="fTech"><option value="">All technicians</option></select></div>
           <div class="field"><label for="fStatus">Status</label>
             <select id="fStatus"><option value="">All statuses</option></select></div>
@@ -82,8 +83,8 @@
             <div class="bars hbar-list" id="rStatus"></div>
           </div>
 
-          <!-- workload -->
-          <div class="card card-pad">
+          <!-- workload (coordination and oversight only) -->
+          <div class="card card-pad lead-only">
             <b class="card-title">Workload by technician</b>
             <div class="bars hbar-list" id="rWork"></div>
             <div class="legend-line mt-sm"><span><i></i>Assigned / active</span><span><i class="alt"></i>Completed</span></div>

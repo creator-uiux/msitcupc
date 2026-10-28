@@ -32,6 +32,7 @@ NO_SHELL = {"index.html", "login.html", "404.html", "offline.html"}
 NO_HEAD = {"index.html", "login.html", "404.html", "offline.html"}
 
 STYLESHEETS = ["app.css", "green.css", "kit.css"]
+APP_STYLESHEETS = STYLESHEETS + ["console.css"]
 LOGIN_STYLESHEETS = STYLESHEETS + ["login.css"]
 
 # Inline styles that are computed at run time and therefore allowed.
@@ -118,7 +119,7 @@ def classes_used(src, known):
 def main():
     global fail
     css = ""
-    for name in LOGIN_STYLESHEETS:
+    for name in APP_STYLESHEETS + ["login.css"]:
         path = os.path.join(ROOT, "css", name)
         if not os.path.isfile(path):
             print("!! missing stylesheet: css/%s" % name)
@@ -136,7 +137,12 @@ def main():
         # 1 - the stylesheets, in order
         links = re.findall(r'<link rel="stylesheet" href="([^"]+)">', src)
         got = [l.rsplit("/", 1)[-1] for l in links]
-        expected = LOGIN_STYLESHEETS if name == "login.html" else STYLESHEETS
+        if name == "login.html":
+            expected = LOGIN_STYLESHEETS
+        elif name in NO_SHELL:
+            expected = STYLESHEETS
+        else:
+            expected = APP_STYLESHEETS
         if got != expected:
             fail_page(name, "stylesheets are %s, expected %s" % (got, expected))
 
@@ -158,7 +164,7 @@ def main():
 
         # 4 - the page head
         if name not in NO_HEAD:
-            if not re.search(r'<main class="content">\s*<div class="sec-title">\s*<h2', src):
+            if not re.search(r'<main class="content">\s*<div class="sec-title[^"]*">\s*<h2', src):
                 fail_page(name, "the page does not open with a .sec-title page head")
 
         # 5 - every class is defined

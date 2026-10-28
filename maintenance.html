@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/green.css">
 <link rel="stylesheet" href="css/kit.css">
+<link rel="stylesheet" href="css/console.css">
 <script src="js/theme.js"></script>
 
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -47,13 +48,13 @@
         <div class="card-head"><h3>Maintenance schedules</h3>
           <span class="hint">record: office, assets, category, checklist, frequency, due date, technician</span></div>
         <table class="table">
-          <thead><tr><th>Schedule</th><th>Office / assets</th><th>Frequency</th><th>Next due</th><th>Technician</th><th>State</th><th>Manage</th></tr></thead>
+          <thead><tr><th>Schedule</th><th>Office / assets</th><th>Frequency</th><th>Next due</th><th>Technician</th><th>State</th><th class="schedule-manage">Manage</th></tr></thead>
           <tbody id="sBody"></tbody>
         </table>
         <div id="sPagination"></div>
         <div class="card-foot" id="schedControls">
-          <button class="btn btn-primary" id="btnNewSched">New maintenance schedule</button>
-          <button class="btn btn-ghost" id="btnCheck">Run schedule check now</button>
+          <button class="btn btn-primary schedule-manage coord-only" id="btnNewSched">New maintenance schedule</button>
+          <button class="btn btn-ghost schedule-manage" id="btnCheck">Run schedule check now</button>
           <span class="hint">also runs automatically every few seconds</span>
         </div>
       </div>
@@ -112,18 +113,28 @@ function render() {
   var isCoord = role === 'coordinator';
   var canManageSched = role === 'coordinator' || role === 'management';
   document.getElementById('schedControls').hidden = !isCoord;
-  var due7 = db.schedules.filter(function (s) { return s.active && new Date(s.dueDate) <= new Date(Date.now() + 7 * 864e5); });
-  var openJobs = db.jobs.filter(function (j) { return j.status !== 'closed'; });
-  var awaitConf = db.jobs.filter(function (j) { return j.status === 'resolved' && j.confirmation && j.confirmation.state === 'pending'; });
+  /* The trusted server already scopes a technician to their own schedules and
+     jobs.  The same rule is applied here so the offline demo shows the same
+     picture as the live backend. */
+  var myName = (db.auth && db.auth.name) || (window.ROLES ? ROLES.technician.name : '');
+  var schedules = role === 'technician'
+    ? db.schedules.filter(function (s) { return s.technician === myName; })
+    : db.schedules;
+  var jobs = role === 'technician'
+    ? db.jobs.filter(function (j) { return j.technician === myName; })
+    : db.jobs;
+  var due7 = schedules.filter(function (s) { return s.active && new Date(s.dueDate) <= new Date(Date.now() + 7 * 864e5); });
+  var openJobs = jobs.filter(function (j) { return j.status !== 'closed'; });
+  var awaitConf = jobs.filter(function (j) { return j.status === 'resolved' && j.confirmation && j.confirmation.state === 'pending'; });
 
   document.getElementById('mKpi').innerHTML =
-    kpi('Active schedules', db.schedules.filter(function (s) { return s.active; }).length, 'auto-checked in real time', 'k-brand', UI.icon('cal')) +
+    kpi('Active schedules', schedules.filter(function (s) { return s.active; }).length, 'auto-checked in real time', 'k-brand', UI.icon('cal')) +
     kpi('Due within 7 days', due7.length, 'Maintenance due? → generate job', 'k-warn', UI.icon('clock')) +
     kpi('Open jobs', openJobs.length, 'visit / checklist / outcome', 'k-hold', UI.icon('toolbox')) +
     kpi('Awaiting confirmation', awaitConf.length, 'Closure pending', 'k-ok', UI.icon('checkCircle'));
 
   /* schedules */
-  var allSchedules = db.schedules;
+  var allSchedules = schedules;
   var schedPg = UI.paginate(allSchedules, schedPage, SCHED_PER_PAGE);
   document.getElementById('sBody').innerHTML = schedPg.items.map(function (s, i) {
     var overdue = new Date(s.dueDate).getTime() < UI.nowMs();
@@ -138,7 +149,7 @@ function render() {
       (overdue ? '<div class="t-sub nowrap">overdue</div>' : '') + '</td>' +
       '<td data-label="Technician"><div class="t-title">' + UI.esc(s.technician) + '</div></td>' +
       '<td data-label="State"><span class="badge ' + (s.active ? 'b-resolved' : 'b-cancelled') + '">' + (s.active ? 'Active' : 'Paused') + '</span></td>' +
-      '<td data-label="Manage">' + (canManageSched
+      '<td class="schedule-manage" data-label="Manage">' + (canManageSched
         ? '<div class="chip-row">' +
           '<button class="btn btn-ghost btn-sm" data-sedit="' + UI.attr(s.id) + '">Edit</button>' +
           '<button class="btn ' + (s.active ? 'btn-danger-soft' : 'btn-soft') + ' btn-sm" data-stoggle="' + UI.attr(s.id) + '" data-on="' + (s.active ? '0' : '1') + '">' + (s.active ? 'Pause' : 'Activate') + '</button>' +
@@ -160,7 +171,7 @@ function render() {
   });
 
   /* jobs */
-  var allJobs = db.jobs;
+  var allJobs = jobs;
   document.getElementById('jCount').textContent = allJobs.length + ' total';
   document.getElementById('jEmpty').hidden = allJobs.length > 0;
 
@@ -184,7 +195,7 @@ function render() {
     return '<tr data-job="' + j.id + '" style="' + rowStyle + ';--row-index:' + i + '"' + (j.status === 'closed' ? ' class="row-cancelled"' : '') + '>' +
       '<td class="td-main" data-label="Job"><div class="t-id">' + UI.esc(j.id) + '</div><div class="t-sub">' + UI.dateOnly(j.createdAt) + '</div></td>' +
       '<td data-label="Schedule"><div class="t-title">' + UI.esc(j.office) + '</div><div class="t-sub mono">' + UI.esc(j.scheduleId) + '</div></td>' +
-      '<td data-label="Status"><span class="chip">' + UI.esc(j.status) + '</span>' + UI.waitingOn(j.status, true) + '</td>' +
+      '<td data-label="Status">' + UI.badge(j.status) + UI.waitingOn(j.status, true) + '</td>' +
       '<td data-label="Checklist">' + done + '/' + j.items.length + '</td>' +
       '<td data-label="">open</td></tr>';
   }).join('');

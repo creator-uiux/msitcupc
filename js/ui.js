@@ -208,7 +208,9 @@
   function currentRole() { return ROLES[roleKey()]; }
   function can(page, role) {
     role = role || roleKey();
-    var allow = ACCESS[page];
+    /* Links may carry a queue or a section anchor, so compare the page only. */
+    var key = String(page || '').split('?')[0].split('#')[0].replace(/^(or|itc|ic|mgmt)-/, '');
+    var allow = ACCESS[key];
     return !allow || allow.indexOf(role) > -1;
   }
 
@@ -804,41 +806,265 @@
   };
   var PRIO_ICON = { low: 'prioLow', medium: 'prioMed', high: 'prioHigh', critical: 'alert' };
 
-  /* ---------- nav definition (visibility follows the ACCESS map) ---------- */
-  var NAV = [
-    { label: 'Workspace' },
-    { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
-    { href: 'tickets.html', label: 'Tickets', ic: 'ticket', pill: 'pillTickets' },
-    { href: 'register.html', label: 'Service Register', ic: 'case' },
-    { label: 'Service requests' },
-    { href: 'request.html', label: 'New Request', ic: 'plus' },
-    { href: 'review.html', label: 'Review & Assign', ic: 'shield' },
-    { label: 'Service delivery' },
-    { href: 'technician.html', label: 'My Work', ic: 'case', pill: 'pillWork' },
-    { href: 'maintenance.html', label: 'Maintenance', ic: 'cal', pill: 'pillMaint' },
-    { label: 'Closure & oversight' },
-    { href: 'confirm.html', label: 'Confirmation', ic: 'check' },
-    { href: 'reports.html', label: 'Reports', ic: 'chart' },
-    { href: 'audit.html', label: 'Audit Log', ic: 'shield' },
-    { label: 'Administration' },
-    { href: 'users.html', label: 'Users', ic: 'user' },
-    { href: 'offices.html', label: 'Offices', ic: 'grid' },
-    { href: 'settings.html', label: 'Settings', ic: 'flow' }
-  ];
-
-  var BOTTOM = {
-    home: { href: 'dashboard.html', label: 'Home', ic: 'grid' },
-    tickets: { href: 'tickets.html', label: 'Tickets', ic: 'ticket' },
-    request: { href: 'request.html', label: 'New', ic: 'plus' },
-    review: { href: 'review.html', label: 'Review', ic: 'shield' },
-    work: { href: 'technician.html', label: 'Work', ic: 'case' },
-    confirm: { href: 'confirm.html', label: 'Confirm', ic: 'check' },
-    reports: { href: 'reports.html', label: 'Reports', ic: 'chart' }
+  /* ---------- screen metadata (breadcrumbs, titles, contextual menus) ----
+     Every page a role may open has one section and one label here, so the
+     rail, the contextual menu, the breadcrumb, the browser title and the
+     Workflow Guide use the same names (specification 4A.4). */
+  var PAGE_META = {
+    'dashboard.html': { section: 'Dashboard', label: 'Dashboard' },
+    'tickets.html': { section: 'Tickets', label: 'Tickets' },
+    'ticket.html': { section: 'Tickets', label: 'Ticket detail' },
+    'request.html': { section: 'Service requests', label: 'New request' },
+    'review.html': { section: 'Service requests', label: 'Review and assign' },
+    'technician.html': { section: 'Service delivery', label: 'My work' },
+    'maintenance.html': { section: 'Maintenance', label: 'Maintenance' },
+    'register.html': { section: 'Records', label: 'Office register' },
+    'reports.html': { section: 'Records', label: 'Reports' },
+    'confirm.html': { section: 'Office confirmation', label: 'Confirmation' },
+    'notifications.html': { section: 'Account', label: 'Notifications' },
+    'profile.html': { section: 'Account', label: 'Profile' },
+    'audit.html': { section: 'Administration', label: 'Audit log' },
+    'users.html': { section: 'Administration', label: 'Users' },
+    'offices.html': { section: 'Administration', label: 'Offices' },
+    'settings.html': { section: 'Administration', label: 'Settings' },
+    'flow.html': { section: 'Reference', label: 'Workflow guide' },
+    'roles.html': { section: 'Reference', label: 'Roles and access' }
   };
+
+  /* The role names for the two record screens.  The permission map decides
+     whether the screen exists; this only decides what the role calls it. */
+  function ticketLabel(role) {
+    if (role === 'requester') return 'My Requests';
+    if (role === 'technician') return 'My Tickets';
+    if (role === 'management') return 'Service Records';
+    return 'Tickets';
+  }
+  function maintenanceLabel(role) {
+    if (role === 'requester') return 'Maintenance Visits';
+    if (role === 'technician') return 'My Maintenance Jobs';
+    return 'Maintenance';
+  }
+
+  /* ---------- the rail: a short, role-specific list ----------------------
+     Section 25.2 asks for one purpose-built rail per role instead of one
+     shared menu with disabled items.  Every entry is still filtered through
+     the permission map, which the backend enforces. */
+  function railModel(role) {
+    var rail;
+    if (role === 'requester') {
+      rail = [
+        { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
+        { href: 'tickets.html?queue=mine', label: ticketLabel(role), ic: 'ticket', pill: 'pillTickets' },
+        { href: 'request.html', label: 'New Request', ic: 'plus' },
+        { href: 'register.html', label: 'Office Register', ic: 'case' },
+        { href: 'notifications.html', label: 'Notifications', ic: 'bell', pill: 'pillNotif' }
+      ];
+    } else if (role === 'technician') {
+      rail = [
+        { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
+        { href: 'technician.html', label: ticketLabel(role), ic: 'ticket', pill: 'pillTickets' },
+        { href: 'maintenance.html', label: 'My Jobs', ic: 'cal', pill: 'pillMaint' },
+        { href: 'register.html', label: 'Office Register', ic: 'case' },
+        { href: 'notifications.html', label: 'Notifications', ic: 'bell', pill: 'pillNotif' }
+      ];
+    } else if (role === 'management') {
+      rail = [
+        { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
+        { href: 'tickets.html', label: ticketLabel(role), ic: 'ticket', pill: 'pillTickets' },
+        { href: 'users.html', label: 'Administration', ic: 'shield' },
+        { href: 'maintenance.html', label: maintenanceLabel(role), ic: 'cal', pill: 'pillMaint' },
+        { href: 'register.html', label: 'Office Register', ic: 'case' },
+        { href: 'reports.html', label: 'Reports', ic: 'chart' },
+        { href: 'notifications.html', label: 'Notifications', ic: 'bell', pill: 'pillNotif' }
+      ];
+    } else {
+      rail = [
+        { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
+        { href: 'tickets.html', label: ticketLabel(role), ic: 'ticket', pill: 'pillTickets' },
+        { href: 'request.html', label: 'New Request', ic: 'plus' },
+        { href: 'maintenance.html', label: maintenanceLabel(role), ic: 'cal', pill: 'pillMaint' },
+        { href: 'register.html', label: 'Office Register', ic: 'case' },
+        { href: 'reports.html', label: 'Reports', ic: 'chart' },
+        { href: 'notifications.html', label: 'Notifications', ic: 'bell', pill: 'pillNotif' }
+      ];
+    }
+    return rail.filter(function (n) { return can(n.href, role); });
+  }
+
+  /* ---------- the contextual menu inside the current section ------------- */
+  function countOpen() {
+    var states = window.Query ? window.Query.OPEN_STATES : ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved'];
+    return S.db.tickets.filter(function (t) { return states.indexOf(t.status) > -1; }).length;
+  }
+  function countClosed() {
+    return S.db.tickets.filter(function (t) { return t.status === 'closed'; }).length;
+  }
+  function countMine(role) {
+    if (role === 'technician') {
+      return S.db.tickets.filter(function (t) { return t.status === 'assigned' || t.status === 'in_progress'; }).length;
+    }
+    if (role === 'requester') {
+      return S.db.tickets.filter(function (t) { return t.status === 'needs_info' || t.status === 'resolved'; }).length;
+    }
+    return countOpen();
+  }
+  function countJobs() {
+    return S.db.jobs.filter(function (j) { return j.status !== 'closed' && j.status !== 'cancelled'; }).length;
+  }
+  function countNotif() {
+    return visibleNotifs().filter(function (n) { return !notifRead(n); }).length;
+  }
+
+  function ctxModel(page, role) {
+    var queues = [
+      { href: 'tickets.html?queue=open', label: 'Open', ic: 'inbox', count: countOpen() },
+      { href: 'tickets.html?queue=mine', label: role === 'requester' ? 'My Requests' : 'My Tickets', ic: 'user', count: countMine(role) },
+      { href: 'tickets.html?queue=closed', label: 'Closed', ic: 'archive', count: countClosed() },
+      { href: 'tickets.html?queue=all', label: 'All', ic: 'layers' },
+      { href: 'tickets.html?queue=cancelled', label: 'Cancelled', ic: 'ban' }
+    ];
+    if (page === 'tickets.html' || page === 'ticket.html') {
+      return {
+        kicker: 'Tickets',
+        title: ticketLabel(role),
+        groups: [
+          { label: 'Queues', items: queues },
+          { label: 'Actions', items: [
+            { href: 'request.html', label: 'New request', ic: 'plus' },
+            { href: 'tickets.html?queue=overdue', label: 'Overdue', ic: 'alert' }
+          ] }
+        ]
+      };
+    }
+    if (page === 'maintenance.html') {
+      return {
+        kicker: 'Maintenance',
+        title: maintenanceLabel(role),
+        groups: [
+          { label: 'Maintenance', items: [
+            { href: 'maintenance.html#schedules', label: 'Schedules', ic: 'cal' },
+            { href: 'maintenance.html#jobs', label: 'Jobs', ic: 'toolbox', count: countJobs() },
+            { href: 'maintenance.html#check', label: 'Schedule check log', ic: 'history' }
+          ] },
+          { label: 'Related', items: [
+            { href: 'tickets.html', label: role === 'requester' ? 'My Requests' : 'Tickets', ic: 'ticket' },
+            { href: 'register.html', label: 'Office Register', ic: 'case' }
+          ] }
+        ]
+      };
+    }
+    if (page === 'register.html') {
+      return {
+        kicker: 'Records',
+        title: 'Office register',
+        groups: [
+          { label: 'Register', items: [
+            { href: 'register.html#history', label: 'Service history', ic: 'history' },
+            { href: 'register.html#assets', label: 'Assets', ic: 'server' },
+            { href: 'register.html#maintenance', label: 'Maintenance', ic: 'cal' },
+            { href: 'register.html#audit', label: 'Audit trail', ic: 'shield' }
+          ] },
+          { label: 'Related', items: [
+            { href: 'reports.html', label: 'Reports', ic: 'chart' },
+            { href: 'tickets.html', label: role === 'requester' ? 'My Requests' : 'Tickets', ic: 'ticket' }
+          ] }
+        ]
+      };
+    }
+    if (page === 'reports.html') {
+      return {
+        kicker: 'Records',
+        title: 'Reports',
+        groups: [
+          { label: 'Reports', items: [
+            { href: 'reports.html#rCatBody', label: 'Report catalogue', ic: 'list' },
+            { href: 'reports.html', label: 'Service history', ic: 'history' },
+            { href: 'register.html', label: 'Office Register', ic: 'case' }
+          ] },
+          { label: 'Reference', items: [
+            { href: 'flow.html', label: 'Workflow guide', ic: 'flow' },
+            { href: 'roles.html', label: 'Roles and access', ic: 'users' }
+          ] }
+        ]
+      };
+    }
+    if (page === 'users.html' || page === 'offices.html' || page === 'settings.html' || page === 'audit.html') {
+      return {
+        kicker: 'Administration',
+        title: 'System administration',
+        groups: [
+          { label: 'Administration', items: [
+            { href: 'users.html', label: 'Users and roles', ic: 'users' },
+            { href: 'offices.html', label: 'Offices and membership', ic: 'building' },
+            { href: 'settings.html', label: 'Configuration', ic: 'sliders' },
+            { href: 'audit.html', label: 'Audit log (read-only)', ic: 'shield' }
+          ] },
+          { label: 'Reference', items: [
+            { href: 'flow.html', label: 'Workflow guide', ic: 'flow' },
+            { href: 'roles.html', label: 'Roles and access', ic: 'users' }
+          ] }
+        ]
+      };
+    }
+    if (page === 'notifications.html' || page === 'profile.html') {
+      return {
+        kicker: 'Account',
+        title: 'Your account',
+        groups: [
+          { label: 'Account', items: [
+            { href: 'profile.html', label: 'Profile', ic: 'user' },
+            { href: 'notifications.html', label: 'Notifications', ic: 'bell', count: countNotif() }
+          ] },
+          { label: 'Reference', items: [
+            { href: 'flow.html', label: 'Workflow guide', ic: 'flow' },
+            { href: 'roles.html', label: 'Roles and access', ic: 'users' }
+          ] }
+        ]
+      };
+    }
+    if (page === 'flow.html' || page === 'roles.html') {
+      return {
+        kicker: 'Reference',
+        title: 'Workflow reference',
+        groups: [
+          { label: 'Reference', items: [
+            { href: 'flow.html', label: 'Workflow guide', ic: 'flow' },
+            { href: 'roles.html', label: 'Roles and access', ic: 'users' }
+          ] },
+          { label: 'Back to work', items: [
+            { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
+            { href: 'tickets.html', label: ticketLabel(role), ic: 'ticket' }
+          ] }
+        ]
+      };
+    }
+    /* dashboard, request, review, technician, confirm */
+    var requests = [
+      { href: 'request.html', label: 'New request', ic: 'plus' },
+      { href: 'review.html', label: 'Review and assign', ic: 'shield' },
+      { href: 'confirm.html', label: 'Confirmation', ic: 'check' }
+    ].filter(function (n) { return can(n.href, role); });
+    return {
+      kicker: PAGE_META[page] ? PAGE_META[page].section : 'Workspace',
+      title: PAGE_META[page] ? PAGE_META[page].label : 'Workspace',
+      groups: [
+        { label: 'My work', items: [
+          { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
+          { href: 'maintenance.html#upcoming', label: 'Coming up', ic: 'clock' }
+        ] },
+        { label: 'Service requests', items: requests },
+        { label: 'Reference', items: [
+          { href: 'flow.html', label: 'Workflow guide', ic: 'flow' },
+          { href: 'roles.html', label: 'Roles and access', ic: 'users' }
+        ] }
+      ]
+    };
+  }
 
   function bellHTML(id) {
     return '<div class="notif-wrap bellWrap">' +
       '<input type="checkbox" id="' + id + '" class="notif-toggle">' +
+      '<label class="tray-backdrop" for="' + id + '" aria-hidden="true"></label>' +
       '<label class="bell" for="' + id + '" title="Notifications">' + icon('bell') +
       '<span class="count bellCount">0</span></label>' +
       '<div class="notif">' +
@@ -852,30 +1078,34 @@
       '</div></div>';
   }
 
-  function accountHTML() {
+  function accountHTML(id) {
     var a = auth(), r = ROLES[a.role] || currentRole(), demo = !!a.demo;
     return '<div class="notif-wrap acctWrap">' +
-      '<input type="checkbox" id="acctD" class="notif-toggle">' +
-      '<label class="avatar" for="acctD" title="Account &amp; role">' + esc(initials(a.name)) + '</label>' +
-      '<div class="acct">' +
-      '<div class="acct-head"><div><b class="acctName">' + esc(a.name) + '</b>' +
+      '<input type="checkbox" id="' + id + '" class="notif-toggle">' +
+      '<label class="tray-backdrop" for="' + id + '" aria-hidden="true"></label>' +
+      '<label class="avatar" for="' + id + '" title="Account and role">' + esc(initials(a.name)) + '</label>' +
+      '<div class="acct" role="dialog" aria-label="Account">' +
+      '<div class="acct-head"><span class="acct-seals">' +
+      '<img src="img/up-seal.png" alt="University of the Philippines seal" width="30" height="30" loading="lazy">' +
+      '<img src="img/upc-seal.png" alt="University of the Philippines Cebu seal" width="30" height="30" loading="lazy">' +
+      '</span><div><b class="acctName">' + esc(a.name) + '</b>' +
       '<i class="acctEmail">' + esc(a.email) + '</i></div></div>' +
       '<div class="acct-role"><span class="chip">' + esc(r.title) + '</span>' +
       '<span class="chip">' + esc(a.office || r.office) + '</span></div>' +
       (demo ? '<div class="acct-note">Demo session  --  you are not signed in.</div>' : '') +
       themePickerHTML() +
-      '<a class="btn btn-ghost btn-block" href="' + urlFor('profile.html', roleKey()) + '">Profile &amp; account settings</a>' +
+      '<a class="btn btn-ghost btn-block" href="' + urlFor('profile.html', roleKey()) + '">Profile and account settings</a>' +
       (demo
-        ? '<a class="btn btn-primary btn-block" href="login.html">Sign in with Google</a>'
-        : '<a class="btn btn-ghost btn-block" href="login.html">Switch Google account</a>') +
+        ? '<a class="btn btn-primary btn-block" href="login.html">Sign in with UPMail</a>'
+        : '<a class="btn btn-ghost btn-block" href="login.html">Switch UPMail account</a>') +
       '</div></div>';
   }
 
-  /* Light / Dark choice.  The saved choice is applied before the
-     first paint, so there is never a flash of the wrong theme. */
+  /* Light / Dark / System.  The saved choice is applied before the first
+     paint, so there is never a flash of the wrong theme. */
   function themePickerHTML() {
-    var cur = theme();
-    var opts = [['light', 'Light', 'sun'], ['dark', 'Dark', 'moon']];
+    var cur = themeChoice();
+    var opts = [['light', 'Light', 'sun'], ['dark', 'Dark', 'moon'], ['system', 'System', 'monitor']];
     return '<div class="theme-picker" role="group" aria-label="Colour theme">' +
       '<span class="theme-picker-label">Theme</span>' +
       '<div class="seg theme-seg">' + opts.map(function (o) {
@@ -887,14 +1117,14 @@
 
   function bindThemePicker(root) {
     (root || document).querySelectorAll('[data-theme-set]').forEach(function (b) {
+      if (b.dataset.bound) return; b.dataset.bound = '1';
       b.addEventListener('click', function () {
         applyTheme(b.dataset.themeSet);
         document.querySelectorAll('[data-theme-set]').forEach(function (o) {
-          var on = o.dataset.themeSet === theme();
+          var on = o.dataset.themeSet === themeChoice();
           o.classList.toggle('on', on);
           o.setAttribute('aria-pressed', on ? 'true' : 'false');
         });
-        if (window.Live && Live.start) { /* the shell re-reads the tokens on the next paint */ }
       });
     });
   }
@@ -909,63 +1139,213 @@
     return p || 'index.html';
   }
 
+  function hrefPage(href) {
+    return String(href || '').split('?')[0].split('#')[0].replace(/^(or|itc|ic|mgmt)-/, '');
+  }
+  /* A link is active on its own page.  Queue links share tickets.html, so the
+     contextual menu compares the query too; the rail only needs the page. */
+  function isActiveHref(href, page, strictQuery) {
+    var p = hrefPage(href);
+    if (!(p === page || (page === 'ticket.html' && p === 'tickets.html'))) return false;
+    if (!strictQuery) return true;
+    var qi = String(href).indexOf('?');
+    if (qi < 0) return String(href).indexOf('#') < 0;
+    var want = String(href).slice(qi + 1).split('#')[0];
+    var have = location.search.replace(/^\?/, '');
+    if (!have) return want === 'queue=open';
+    return have === want || have.indexOf(want + '&') === 0;
+  }
+
+  function sealLockup(cls) {
+    return '<div class="' + (cls || 'tb-lockup') + '">' +
+      '<img src="img/up-seal.png" alt="University of the Philippines seal" width="28" height="28" loading="lazy">' +
+      '<img src="img/upc-seal.png" alt="University of the Philippines Cebu seal" width="28" height="28" loading="lazy">' +
+      '<div class="tb-names"><strong>University of the Philippines Cebu</strong>' +
+      '<small>IT Service and Maintenance Management System</small></div></div>';
+  }
+
   function renderSide() {
     var side = document.getElementById('chromeSide');
     if (!side) return;
-    var role = roleKey();
-    var nav = '<div class="brand"><span class="brand-mark">' + icon('brand') + '</span>' +
-      '<div><strong>Maintenance System</strong><small>Service &amp; Support</small></div></div><nav class="nav">';
-    var label = null, buf = '';
-    function flush() {
-      if (label !== null && buf) nav += '<span class="nav-label">' + label + '</span>';
-      nav += buf; label = null; buf = '';
-    }
-    NAV.forEach(function (n) {
-      if (n.label && !n.href) { flush(); label = n.label; return; }
-      if (!can(n.href, role)) return;
-      buf += '<a class="nav-item" href="' + urlFor(n.href, role) + '">' + icon(n.ic) + esc(n.label) +
-        (n.pill ? ' <span class="pill" id="' + n.pill + '">0</span>' : '') + '</a>';
+    var role = roleKey(), page = pageId();
+    var rail = railModel(role).map(function (n) {
+      return '<a class="rail-item' + (isActiveHref(n.href, page) ? ' active' : '') + '"' +
+        ' href="' + urlFor(n.href, role) + '"' + (isActiveHref(n.href, page) ? ' aria-current="page"' : '') + '>' +
+        icon(n.ic) + '<span>' + esc(n.label) + '</span>' +
+        (n.pill ? '<span class="pill" id="' + n.pill + '">0</span>' : '') + '</a>';
+    }).join('');
+
+    var model = ctxModel(page, role);
+    var ctx = '<div class="ctx">' +
+      '<div class="ctx-head"><div class="ctx-head-text">' +
+      '<span class="ctx-kicker">' + esc(model.kicker) + '</span>' +
+      '<span class="ctx-title">' + esc(model.title) + '</span></div>' +
+      '<button type="button" class="ctx-close" id="ctxClose" aria-label="Close navigation">' + icon('x') + '</button></div>' +
+      model.groups.map(function (g) {
+        var items = (g.items || []).filter(function (n) { return can(n.href, role); });
+        if (!items.length) return '';
+        return '<span class="ctx-group">' + esc(g.label) + '</span>' + items.map(function (n) {
+          var active = isActiveHref(n.href, page, true);
+          return '<a class="ctx-item' + (active ? ' active' : '') + '" href="' + urlFor(n.href, role) + '"' +
+            (active ? ' aria-current="page"' : '') + '>' + icon(n.ic) + '<span>' + esc(n.label) + '</span>' +
+            (n.count ? '<span class="count">' + n.count + '</span>' : '') + '</a>';
+        }).join('');
+      }).join('') +
+      '<div class="ctx-note"><b>' + esc(currentRole().title) + '</b>' +
+      'Signed in as ' + esc(auth().name) + '<br>Role-based access active</div>' +
+      '</div>';
+
+    side.innerHTML = '<nav class="rail" aria-label="Primary">' +
+      '<button type="button" class="rail-avatar" id="railAccount" title="Account" aria-label="Account">' +
+      esc(initials(auth().name)) + '</button>' +
+      '<div class="rail-nav">' + rail + '</div>' +
+      '<div class="rail-foot">' +
+      '<a class="rail-item" href="' + urlFor('flow.html', role) + '" title="Workflow guide">' +
+      icon('flow') + '<span>Workflow</span></a>' +
+      '<button type="button" class="rail-item" id="railAccountFoot" title="Account">' +
+      icon('user') + '<span>Account</span></button>' +
+      '</div></nav>' + ctx;
+
+    var close = document.getElementById('ctxClose');
+    if (close) close.addEventListener('click', function () { document.body.classList.remove('nav-open'); });
+    ['railAccount', 'railAccountFoot'].forEach(function (id) {
+      var b = document.getElementById(id);
+      if (b) b.addEventListener('click', openAccount);
     });
-    flush();
-    nav += '</nav>';
-    var r = currentRole();
-    nav += '<div class="side-card"><strong class="sideRole">' + esc(r.title) + '</strong>' +
-      'Signed in as <b class="sideUser">' + esc(r.name) + '</b>' +
-      '<div class="side-demo">Role-based access active</div></div>';
-    side.innerHTML = nav;
+  }
+
+  function openAccount() {
+    var id = window.matchMedia && window.matchMedia('(max-width:1023px)').matches ? 'acctM' : 'acctD';
+    var cb = document.getElementById(id);
+    if (!cb) cb = document.getElementById('acctD') || document.getElementById('acctM');
+    if (cb) { cb.checked = true; renderBell(); }
   }
 
   function renderAppbar() {
     var appbar = document.getElementById('chromeAppbar');
     if (!appbar) return;
-    var title = (lastOpts && (lastOpts.mobileTitle || lastOpts.title)) || 'Maintenance';
-    appbar.innerHTML = '<span class="brand-mark">' + icon('brand') + '</span>' +
-      '<div><h1>' + esc(title) + '</h1>' +
-      '<div class="sub roleChip">' + esc(currentRole().title) + '</div></div>' +
+    var a = auth();
+    appbar.innerHTML =
+      '<button type="button" class="ico-btn" id="navToggle" aria-label="Open navigation" aria-expanded="false">' + icon('menu') + '</button>' +
+      sealLockup('tb-lockup') +
+      '<span class="spacer"></span>' +
       bellHTML('notifM') +
-      '<a class="ico-btn acct-link" href="login.html" title="Account" aria-label="Account">' + icon('user') + '</a>';
+      accountHTML('acctM');
+    var toggle = document.getElementById('navToggle');
+    if (toggle) toggle.addEventListener('click', function () {
+      var open = !document.body.classList.contains('nav-open');
+      document.body.classList.toggle('nav-open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    bindThemePicker(appbar);
+    renderAccountTriggers(appbar);
+  }
+
+  function renderAccountTriggers(root) {
+    (root || document).querySelectorAll('.acctWrap .avatar').forEach(function (el) {
+      el.setAttribute('aria-label', 'Account and role');
+    });
+  }
+
+  /* Workspace / Section / Page, without repeating a name when the section and
+     the page are the same (the dashboard and the register pages). */
+  function crumbInner(withLinks) {
+    var page = pageId(), meta = PAGE_META[page] || { section: 'Workspace', label: '' };
+    var section = meta.section || 'Workspace', label = meta.label || '';
+    var sep = withLinks
+      ? '<span class="sep" aria-hidden="true">/</span>'
+      : '<span class="sep">/</span>';
+    var out = '<a href="' + urlFor('dashboard.html', roleKey()) + '">Workspace</a>';
+    if (section && section !== 'Workspace' && section !== label) out += sep + esc(section);
+    if (label) out += sep + '<strong>' + esc(label) + '</strong>';
+    return out;
   }
 
   function renderTop() {
     var topbar = document.getElementById('chromeTopbar');
     if (!topbar) return;
     topbar.innerHTML =
-      '<div><h1>' + esc((lastOpts && lastOpts.title) || 'Maintenance System') + '</h1><div class="sub">' + esc((lastOpts && lastOpts.sub) || '') + '</div></div>' +
-      '<div class="spacer"></div>' +
+      sealLockup() +
+      '<nav class="tb-crumbs" aria-label="Breadcrumb">' + crumbInner(true) + '</nav>' +
+      '<span class="spacer"></span>' +
+      '<form class="tb-search" id="tbSearch" role="search">' + icon('search') +
+      '<input type="search" id="tbSearchInput" placeholder="Search tickets" aria-label="Search tickets"></form>' +
+      '<a class="ico-btn" href="' + urlFor('flow.html', roleKey()) + '" title="Workflow guide" aria-label="Workflow guide">' + icon('help') + '</a>' +
+      '<span class="role-chip"><i aria-hidden="true"></i>' + esc(currentRole().title) + '</span>' +
       bellHTML('notifD') +
-      accountHTML();
+      accountHTML('acctD');
     bindThemePicker(topbar);
+    renderAccountTriggers(topbar);
+    var form = document.getElementById('tbSearch');
+    if (form) form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var q = document.getElementById('tbSearchInput').value.trim();
+      location.href = urlFor('tickets.html', roleKey()) + (q ? '?q=' + encodeURIComponent(q) : '');
+    });
   }
 
+  /* Breadcrumbs and the formal footer are inserted for every authenticated
+     page, so the shell reads the same on every screen without editing the
+     page files. */
+  function renderPageFrame() {
+    var content = document.querySelector('.content');
+    if (!content) return;
+    if (!content.querySelector('.crumbs')) {
+      var crumbs = document.createElement('nav');
+      crumbs.className = 'crumbs';
+      crumbs.setAttribute('aria-label', 'Breadcrumb');
+      crumbs.innerHTML = crumbInner(false);
+      content.insertBefore(crumbs, content.firstChild);
+    }
+    var main = content.parentNode;
+    if (main && !main.querySelector('.app-foot')) {
+      var foot = document.createElement('footer');
+      foot.className = 'app-foot';
+      foot.innerHTML = '<span>&copy; ' + new Date().getFullYear() +
+        ' University of the Philippines Cebu. All rights reserved.</span>';
+      main.insertBefore(foot, document.getElementById('chromeBottom') || null);
+    }
+    if (!document.getElementById('navScrim')) {
+      var scrim = document.createElement('button');
+      scrim.type = 'button';
+      scrim.id = 'navScrim';
+      scrim.className = 'nav-scrim';
+      scrim.setAttribute('aria-label', 'Close navigation');
+      scrim.addEventListener('click', function () { document.body.classList.remove('nav-open'); });
+      document.body.appendChild(scrim);
+    }
+  }
+
+  /* The four main destinations for the bottom tab bar, per role, plus More.
+     Every item is still filtered through the shared permission map. */
   function bottomItems(role) {
-    var primary = role === 'requester' ? BOTTOM.request
-      : role === 'coordinator' ? BOTTOM.review
-        : role === 'technician' ? BOTTOM.work
-          : null;
-    var it = [BOTTOM.home, BOTTOM.tickets];
-    if (primary) it.push(primary);
-    it.push(BOTTOM.reports);
-    return it;
+    var map = {
+      requester: [
+        { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
+        { href: 'tickets.html?queue=mine', label: 'My Requests', ic: 'ticket' },
+        { href: 'request.html', label: 'New Request', ic: 'plus' },
+        { href: 'register.html', label: 'Register', ic: 'case' }
+      ],
+      coordinator: [
+        { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
+        { href: 'tickets.html', label: 'Tickets', ic: 'ticket' },
+        { href: 'maintenance.html', label: 'Maintenance', ic: 'cal' },
+        { href: 'reports.html', label: 'Reports', ic: 'chart' }
+      ],
+      technician: [
+        { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
+        { href: 'technician.html', label: 'My Tickets', ic: 'ticket' },
+        { href: 'maintenance.html', label: 'My Jobs', ic: 'cal' },
+        { href: 'register.html', label: 'Register', ic: 'case' }
+      ],
+      management: [
+        { href: 'dashboard.html', label: 'Dashboard', ic: 'grid' },
+        { href: 'users.html', label: 'Admin', ic: 'shield' },
+        { href: 'offices.html', label: 'Offices', ic: 'building' },
+        { href: 'reports.html', label: 'Reports', ic: 'chart' }
+      ]
+    };
+    return (map[role] || map.coordinator).filter(function (n) { return can(n.href, role); });
   }
 
   function renderBottom() {
@@ -982,38 +1362,32 @@
   }
 
   /* The destinations that do not fit the four bottom tabs.  They live in the
-     More sheet on a phone and in the sidebar on a wide screen.
-
-     The Workflow Guide and the Roles & Access reference are deliberately not
-     listed: the sidebar never offered them either, so on a phone they stay
-     hidden as well.  Both are dense reference screens that read best on a
-     wide display; they are reached by their own link or from the landing
-     page, not from the phone navigation. */
+     More sheet on a phone.  The list is derived from the same rail model the
+     desktop uses, so a destination the role cannot open is never offered. */
   var EXTRA_DESTINATIONS = [
     { href: 'notifications.html', label: 'Notifications', ic: 'bell' },
     { href: 'profile.html', label: 'Profile', ic: 'user' }
   ];
 
   function moreDestinations(role) {
-    var inBar = bottomItems(role).map(function (i) { return i.href; });
+    var inBar = bottomItems(role).map(function (i) { return hrefPage(i.href); });
     var out = [];
     var seen = {};
-    function add(item) {
-      if (!item || !item.href || seen[item.href]) return;
-      seen[item.href] = 1;
-      out.push(item);
+    function add(href, label, ic) {
+      var page = hrefPage(href);
+      if (!page || seen[page] || inBar.indexOf(page) > -1) return;
+      if (!can(page, role)) return;
+      seen[page] = 1;
+      out.push({ href: href, label: label, ic: ic });
     }
-    NAV.forEach(function (n) {
-      if (!n.href) return;
-      if (inBar.indexOf(n.href) > -1) return;
-      if (!can(n.href, role)) return;
-      add(n);
-    });
-    EXTRA_DESTINATIONS.forEach(function (n) {
-      if (inBar.indexOf(n.href) > -1) return;
-      if (!can(n.href, role)) return;
-      add(n);
-    });
+    railModel(role).forEach(function (n) { add(n.href, n.label, n.ic); });
+    add('flow.html', 'Workflow guide', 'flow');
+    add('roles.html', 'Roles and access', 'users');
+    if (role === 'management') {
+      add('settings.html', 'Configuration', 'sliders');
+      add('audit.html', 'Audit log', 'shield');
+    }
+    EXTRA_DESTINATIONS.forEach(function (n) { add(n.href, n.label, n.ic); });
     return out;
   }
 
@@ -1044,11 +1418,20 @@
     document.body.classList.add('sheet-open');
   }
 
+  function markBodyRole() {
+    var role = roleKey();
+    ['requester', 'technician', 'coordinator', 'management'].forEach(function (r) {
+      document.body.classList.toggle('role-' + r, r === role);
+    });
+  }
+
   function mountChrome(opts) {
     lastOpts = opts || {};
     applyTheme();
     if (bindUrlRole()) return;  /* wrong-role or signed-out URL is redirecting */
+    markBodyRole();
     renderSide(); renderAppbar(); renderTop(); renderBottom();
+    renderPageFrame();
     bindChrome();
     activeNav();
     renderBell();
@@ -1057,32 +1440,32 @@
   }
   function remount() {
     if (!lastOpts) return;
+    markBodyRole();
     renderSide(); renderTop(); renderBottom();
+    renderPageFrame();
     bindChrome();
     activeNav();
     renderPills();
     guardPage();
   }
 
-  /* ---------- page-level access control ---------- */
+  /* ---------- page-level access control ----------
+     A forbidden address gets a neutral screen.  It never names the role list
+     or confirms that a hidden feature exists (specification 25.2). */
   function guardPage() {
     var page = pageId();
     var content = document.querySelector('.content');
     if (!can(page)) {
       document.body.classList.add('access-denied');
       if (content && !document.getElementById('accessPanel')) {
-        var r = currentRole();
-        var allowed = ROLE_ORDER.filter(function (x) { return can(page, x); })
-          .map(function (x) { return '<span class="chip">' + esc(ROLES[x].title) + '</span>'; }).join(' ');
         var panel = document.createElement('div');
         panel.className = 'access-panel';
         panel.id = 'accessPanel';
         panel.innerHTML =
           '<span class="ap-ic">' + UI.icon('lock') + '</span>' +
-          '<h2>This screen is not part of your role</h2>' +
-          '<p class="ap-lead">Signed in as <b>' + esc(r.title) + '</b> (' + esc(r.name) + '). ' +
-          'Each role only carries the features it needs  --  role-based access keeps every lane separate.</p>' +
-          '<p class="ap-avail">Available to: ' + allowed + '</p>' +
+          '<h2>This page is not available</h2>' +
+          '<p class="ap-lead">The address may be mistyped, or the page may not be part of this workspace. ' +
+          'Your navigation lists every screen you can open.</p>' +
           '<div class="row ap-actions">' +
           '<a class="btn btn-primary" href="' + urlFor('dashboard.html', roleKey()) + '">Back to dashboard</a>' +
           '</div>';
@@ -1343,6 +1726,16 @@
      (Codia's dark-mode import) or a share link can use; data-theme is the
      explicit choice. */
   var THEME_KEY = 'itc_theme';
+  /* The saved choice: light, dark or system.  js/theme.js owns the value so
+     the pre-paint script, the account tray and the sign-in screen agree. */
+  function themeChoice() {
+    if (window.Theme && window.Theme.current) return window.Theme.current();
+    try {
+      var v = localStorage.getItem(THEME_KEY);
+      if (v === 'dark' || v === 'light' || v === 'system') return v;
+    } catch (e) { /* private mode */ }
+    return 'system';
+  }
   /* Light / Dark / System.  The shared helper in js/theme.js owns the logic so
      the pre-paint script, the user menu and the sign-in screen all agree. */
   function applyTheme(name) {
@@ -1372,9 +1765,19 @@
 
   function activeNav() {
     var page = pageId();
-    document.querySelectorAll('.nav-item,.bottomnav a').forEach(function (a) {
-      var href = String(a.getAttribute('href') || '').replace(/^(or|itc|ic|mgmt)-/, '');
-      a.classList.toggle('active', href === page);
+    document.querySelectorAll('.rail-item[href],.ctx-item[href],.bottomnav a[href]').forEach(function (a) {
+      var href = a.getAttribute('href') || '';
+      var on = hrefPage(href) === page;
+      if (on && href.indexOf('?') > -1) {
+        /* Queue links share one page, so the query decides which one is lit. */
+        var want = href.slice(href.indexOf('?') + 1);
+        var have = location.search.replace(/^\?/, '');
+        on = have === want || have.indexOf(want + '&') === 0;
+        if (!have && want === 'queue=open') on = true;
+      }
+      a.classList.toggle('active', on);
+      if (on) a.setAttribute('aria-current', 'page');
+      else a.removeAttribute('aria-current');
     });
   }
 

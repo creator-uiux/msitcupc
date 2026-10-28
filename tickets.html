@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/green.css">
 <link rel="stylesheet" href="css/kit.css">
+<link rel="stylesheet" href="css/console.css">
 <script src="js/theme.js"></script>
 
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -50,15 +51,15 @@
         <!-- advanced filters -->
         <div id="tkAdv" hidden class="divided">
           <div class="filters">
-            <div class="field"><label for="fOffice">Office</label><select id="fOffice"><option value="">All offices</option></select></div>
+            <div class="field filter-office"><label for="fOffice">Office</label><select id="fOffice"><option value="">All offices</option></select></div>
             <div class="field"><label for="fStatus">Status</label><select id="fStatus"><option value="">All statuses</option></select></div>
             <div class="field"><label for="fPriority">Priority</label><select id="fPriority"><option value="">All priorities</option></select></div>
             <div class="field"><label for="fCategory">Category</label><select id="fCategory"><option value="">All categories</option></select></div>
-            <div class="field"><label for="fTech">Technician</label><select id="fTech"><option value="">All technicians</option></select></div>
+            <div class="field filter-tech"><label for="fTech">Technician</label><select id="fTech"><option value="">All technicians</option></select></div>
             <div class="field"><label for="fSource">Source</label><select id="fSource"><option value="">All sources</option></select></div>
             <div class="field"><label for="fFrom">Created from</label><input type="date" id="fFrom"></div>
             <div class="field"><label for="fTo">Created to</label><input type="date" id="fTo"></div>
-            <div class="field"><label for="fMine">Scope</label>
+            <div class="field filter-scope"><label for="fMine">Scope</label>
               <select id="fMine"><option value="1">My office / my requests</option><option value="0">Whole register (authorized)</option></select></div>
             <div class="field"><label for="fOverdue">Overdue only</label>
               <select id="fOverdue"><option value="">No</option><option value="1">Yes</option></select></div>
@@ -76,7 +77,7 @@
       </div>
 
       <!-- bulk bar -->
-      <div class="card card-pad mt" id="tkBulk" hidden>
+      <div class="card card-pad mt bulk-bar" id="tkBulk" hidden>
         <div class="row row-between">
           <b id="tkBulkCount">0 selected</b>
           <div class="row">
@@ -208,7 +209,7 @@ function rowHTML(t, i) {
   var sel = selected[t.id] ? ' checked' : '';
   return '<tr data-href="ticket.html?id=' + encodeURIComponent(t.id) + '" style="--row-index:' + i + '"' +
     (t.status === 'cancelled' ? ' class="row-cancelled"' : '') + '>' +
-    '<td data-label="Select" class="tk-sel"><input type="checkbox" data-sel="' + UI.attr(t.id) + '"' + sel + ' aria-label="Select ' + UI.attr(t.id) + '"></td>' +
+    '<td data-label="Select" class="col-check tk-sel"><input type="checkbox" data-sel="' + UI.attr(t.id) + '"' + sel + ' aria-label="Select ' + UI.attr(t.id) + '"></td>' +
     '<td class="td-main" data-label="Ticket"><div class="t-id">' + UI.esc(t.id) + '</div>' +
     '<div class="t-title">' + UI.esc(String(t.issue).slice(0, 56)) + (String(t.issue).length > 56 ? '…' : '') + '</div>' +
     '<div class="t-sub">' + UI.esc(t.category) + (t.asset ? ' · Asset ' + UI.esc(t.asset) : '') +
@@ -349,6 +350,18 @@ document.getElementById('tkBulkAssign').addEventListener('click', function () {
     render();
   };
 });
+
+/* A search from the top bar, or a queue from the contextual menu, opens the
+   register already filtered. */
+(function readUrlState() {
+  var q = UI.qs('q');
+  if (q) { F.q = q; document.getElementById('tkQ').value = q; }
+  var queue = UI.qs('queue');
+  if (['open', 'mine', 'closed', 'all', 'cancelled', 'overdue'].indexOf(queue) > -1) {
+    chip = queue === 'all' ? '' : queue;
+  }
+  if (UI.roleKey() === 'requester') CHIPS[1][1] = 'My requests';
+})();
 
 Store.subscribe(render);
 render();
