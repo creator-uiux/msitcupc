@@ -530,6 +530,38 @@ tests.push(async function maintenancePage() {
   close(p);
 });
 
+tests.push(async function maintenancePlanner() {
+  var p = await open(BASE + 'maintenance.html');
+  asRole(p, 'coordinator');
+  ok($('#plannerCard') !== null, 'the maintenance page carries a planner');
+  var days = $$('#plannerBody .pl-day');
+  ok(days.length === 42, 'the month view renders six weeks of days (' + days.length + ')');
+  ok($$('#plannerBody .pl-head').length === 7, 'the month view names seven weekdays');
+  ok($$('#plannerBody .pl-evt').length > 0, 'schedules and visits become dated chips');
+  ok($('#plannerBody .is-today') !== null, 'today is marked in the month grid');
+  ok($('#techToday').hidden === true, 'the technician route panel stays hidden for a coordinator');
+
+  var range0 = $('#plannerRange').textContent;
+  $('#pNext').click();
+  ok($('#plannerRange').textContent !== range0, 'next moves the planner one month forward');
+  $('#pToday').click();
+  ok($('#plannerRange').textContent === range0, 'Today returns to the current month');
+
+  $$('[data-pview="week"]')[0].click();
+  ok($$('#plannerBody .pl-grid.is-week .pl-day').length === 7, 'the week view renders seven days');
+  ok(/#|to/.test($('#plannerRange').textContent), 'the week range names both ends');
+  $$('[data-pview="agenda"]')[0].click();
+  ok($$('#plannerBody .pl-agenda-row').length > 0, 'the agenda lists the dated items');
+  ok($$('#plannerBody .pl-agenda-day').length > 0, 'the agenda groups rows by day');
+  ok(p.w.localStorage.getItem('itc_planner_view') === 'agenda', 'the planner view is remembered');
+
+  asRole(p, 'technician');
+  ok($('#techToday').hidden === false, 'the technician sees Today on your route');
+  ok($('#techToday').textContent.indexOf('Today on your route') > -1, 'the route panel is titled for the technician');
+  ok(p.errors.length === 0, 'no errors from the planner' + (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));
+  close(p);
+});
+
 tests.push(async function reportsPage() {
   var p = await open(BASE + 'reports.html');
   ok(p.errors.length === 0, 'reports page loads with no errors' + (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));

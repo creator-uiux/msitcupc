@@ -135,9 +135,15 @@ and opens forbidden URLs to confirm the neutral panel appears.
 - **Ticket detail.** Docket header with the status stepper, role-limited
   action bar, conversation and service record tabs, and a properties rail.
   The requester view omits internal notes, dependencies and money.
-- **Maintenance.** Schedule and job lists, follow-up indicators, checklist
-  execution and the corrective-ticket panel. Create is coordinator-only;
-  edit and pause follow the permission map.
+- **Maintenance.** A planner with month, week and agenda views over the same
+  schedules and visits, a legend for due, visit, rescheduled and overdue,
+  previous, today and next controls, and a count of the dated items. A
+  coordinated visit replaces the due chip on the same day, so a day is never
+  printed twice. Technicians get a Today on your route panel above the
+  schedule tables. Phones default to the agenda because a month of dots is
+  not readable at 320 px. Schedule and job lists, follow-up indicators,
+  checklist execution and the corrective-ticket panel follow. Create is
+  coordinator-only; edit and pause follow the permission map.
 - **Office register.** Office selector, summary strip, service history,
   assets, maintenance and audit trail.
 - **Reports.** Filter bar, summary tiles, chart plus table, metric
@@ -200,7 +206,7 @@ Results from this working tree. Commands are listed with their outcome.
 |---|---|---|
 | Backend suite | `python server/tests.py` | 335 passed, 0 failed |
 | Workflow smoke | `node tools/smoke.js` | 60 passed, 0 failed |
-| Page integration | `node tools/pagetest.js` | 416 passed, 0 failed |
+| Page integration | `node tools/pagetest.js` | 432 passed, 0 failed |
 | Role page suite | `node tools/rolepages_test.js` | 182 passed, 0 failed |
 | API integration | `python tools/api_check.py` | 17 passed, 0 failed |
 | Markup and DOM ids | `python tools/validate.py` | PASSED |

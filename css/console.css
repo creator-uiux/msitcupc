@@ -520,6 +520,73 @@ body.role-technician .filter-scope{display:none !important}
 .wo-col .wo-title{font-size:12.5px;-webkit-line-clamp:3}
 .board-note{padding:9px 14px;border-bottom:1px solid var(--line);background:var(--surface-2);margin:0}
 
+/* ------------------------------------------------------ maintenance planner */
+.planner-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  padding:9px 14px;border-bottom:1px solid var(--line);background:var(--surface-2);
+}
+.planner-legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--muted)}
+#pPrev,#pNext{min-width:38px;justify-content:center;padding-left:0;padding-right:0}
+.planner-legend span{display:inline-flex;align-items:center;gap:5px}
+.pl-dot{width:7px;height:7px;border-radius:50%;flex:0 0 7px;background:var(--muted);font-style:normal}
+.pl-dot.due{background:var(--brand)}
+.pl-dot.visit{background:var(--ok)}
+.pl-dot.reschedule{background:var(--warn)}
+.pl-dot.overdue{background:var(--danger)}
+.planner-body{overflow-x:auto}
+.pl-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));min-width:0}
+.pl-grid.is-week{min-width:760px}
+.pl-head{
+  padding:7px 8px;font-size:10px;font-weight:var(--w-semibold);letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);
+  border-bottom:1px solid var(--line);background:var(--surface);
+}
+.pl-day{
+  min-height:98px;padding:6px 7px;display:flex;flex-direction:column;gap:5px;min-width:0;
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+}
+.pl-day.is-out{background:var(--surface-2)}
+.pl-day.is-today{box-shadow:inset 0 0 0 2px var(--brand)}
+.pl-daynum{font-family:var(--font-mono);font-size:11px;color:var(--muted);line-height:1.2}
+.pl-day.is-out .pl-daynum{color:var(--border-strong)}
+.pl-day.is-today .pl-daynum{color:var(--brand-2);font-weight:700}
+.pl-events{display:flex;flex-direction:column;gap:4px;min-width:0}
+.pl-evt{
+  display:flex;align-items:center;gap:4px;min-width:0;
+  padding:3px 5px;border:1px solid var(--line);border-radius:4px;
+  font-size:10.5px;line-height:1.3;color:var(--ink-2);background:var(--surface-2);
+  text-decoration:none;
+}
+.pl-evt:hover{border-color:var(--brand);color:var(--brand-2);text-decoration:none}
+.pl-evt-name{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-evt.pl-due{background:var(--brand-soft);border-color:transparent;color:var(--brand-2)}
+.pl-evt.pl-visit{background:var(--ok-bg);border-color:transparent;color:var(--ok)}
+.pl-evt.pl-reschedule{background:var(--warn-bg);border-color:transparent;color:var(--warn)}
+.pl-evt.pl-overdue{background:var(--danger-bg);border-color:transparent;color:var(--danger);font-weight:600}
+.pl-more{font-size:10px;color:var(--muted);padding-left:2px}
+
+.pl-agenda{padding:2px 14px 10px}
+.pl-agenda-day{
+  margin:14px 0 5px;font-size:10.5px;font-weight:var(--w-semibold);
+  letter-spacing:.07em;text-transform:uppercase;color:var(--muted);
+}
+.pl-agenda-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:8px 0;border-bottom:1px solid var(--line);
+}
+.pl-agenda-row .pl-evt{flex:1 1 auto;border:0;background:transparent;padding:6px 0;min-height:36px;font-size:12.5px}
+.pl-agenda-row .pl-evt:hover{background:transparent}
+.pl-agenda-meta{flex:0 0 auto;font-size:11px;color:var(--muted);white-space:nowrap}
+.pl-empty{padding:26px 16px}
+
+.tech-today{padding:12px 14px 14px;border-top:1px solid var(--line);background:var(--brand-soft)}
+.tech-today[hidden]{display:none}
+.pl-today{margin-top:6px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden}
+.pl-today li{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:9px 12px}
+.pl-today li.pl-today-empty{justify-content:flex-start}
+.pl-today .pl-evt{border:0;background:transparent;padding:0;min-height:36px;font-size:12px}
+.pl-today .when{font-size:10.5px;color:var(--muted);white-space:nowrap}
+
 /* --------------------------------------------------------- command palette */
 .cmdk{
   position:fixed;inset:0;z-index:90;
@@ -636,6 +703,18 @@ body.cmdk-open{overflow:hidden}
   .wo-board{padding:8px;gap:8px;scroll-snap-type:x mandatory}
   .wo-col{flex:0 0 min(84vw,282px);max-height:none;overflow-y:visible}
   .board-note{padding:8px 12px}
+  .planner-bar{padding:8px 10px}
+  .planner-legend{font-size:10px;gap:9px}
+  .pl-day{min-height:56px;padding:4px}
+  .pl-grid.is-month .pl-events{flex-direction:row;flex-wrap:wrap;gap:3px}
+  .pl-grid.is-month .pl-evt{padding:2px;border:0;background:transparent}
+  .pl-grid.is-month .pl-evt .pl-dot{width:8px;height:8px;flex-basis:8px}
+  .pl-grid.is-month .pl-evt-name{display:none}
+  .pl-grid.is-month .pl-more{font-size:9px}
+  .pl-agenda{padding:2px 10px 8px}
+  .pl-agenda-row{flex-wrap:wrap;gap:2px 10px}
+  .pl-agenda-row .pl-evt{flex:1 1 100%}
+  .pl-today li{padding:8px 10px}
   .cmdk{padding:64px 8px 8px}
   .cmdk-panel{max-height:calc(100vh - 80px)}
   .cmdk-foot{display:none}

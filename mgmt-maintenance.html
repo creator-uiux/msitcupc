@@ -35,6 +35,35 @@
 
       <section class="grid grid-kpi" id="mKpi"></section>
 
+      <!-- planner: the same schedules and visits on a calendar, a week or a list -->
+      <section class="card mt" id="plannerCard">
+        <div class="card-head">
+          <h3>Maintenance planner</h3>
+          <span class="hint" id="plannerRange"> -- </span>
+          <div class="seg seg-view" id="plannerView" role="group" aria-label="Planner view">
+            <button type="button" data-pview="month">Month</button>
+            <button type="button" data-pview="week">Week</button>
+            <button type="button" data-pview="agenda">Agenda</button>
+          </div>
+        </div>
+        <div class="planner-bar">
+          <div class="row row-tight">
+            <button type="button" class="btn btn-ghost btn-sm" id="pPrev" aria-label="Previous period">&#8249;</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="pToday">Today</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="pNext" aria-label="Next period">&#8250;</button>
+          </div>
+          <div class="planner-legend" aria-hidden="true">
+            <span><i class="pl-dot due"></i>Due</span>
+            <span><i class="pl-dot visit"></i>Visit</span>
+            <span><i class="pl-dot reschedule"></i>Rescheduled</span>
+            <span><i class="pl-dot overdue"></i>Overdue</span>
+          </div>
+        </div>
+        <div class="planner-body" id="plannerBody"></div>
+        <div id="plannerPager"></div>
+        <div class="tech-today tech-only" id="techToday" hidden></div>
+      </section>
+
       <!-- schedule check log -->
       <div class="card card-pad mt" id="checkCard" hidden>
         <div class="card-head-row">
@@ -102,6 +131,235 @@ var jobPage = 1;
 var schedPage = 1;
 const JOBS_PER_PAGE = 10;
 const SCHED_PER_PAGE = 10;
+
+/* ---- planner state ---- */
+var PLANNER_KEY = 'itc_planner_view';
+var plannerView = 'month';
+try {
+  var savedPlanner = localStorage.getItem(PLANNER_KEY);
+  if (['month', 'week', 'agenda'].indexOf(savedPlanner) > -1) plannerView = savedPlanner;
+  else if (window.innerWidth < 600) plannerView = 'agenda';
+} catch (e) {
+  if (window.innerWidth < 600) plannerView = 'agenda';
+}
+var plannerCursor = Time.day(new Date(UI.nowMs()).toISOString());
+var agendaPage = 1;
+const AGENDA_PER_PAGE = 10;
+var plannerEvents = [];
+
+function addDaysKey(key, n) {
+  var d = new Date(key + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function weekdayKey(key) { return new Date(key + 'T00:00:00Z').getUTCDay(); }
+function keyDate(key) { return UI.dateOnly(key + 'T04:00:00Z'); }
+function monthStart(key) { return key.slice(0, 8) + '01'; }
+function weekStart(key) {
+  var back = (weekdayKey(key) + 6) % 7;
+  return addDaysKey(key, -back);
+}
+
+/* Schedules (due) and jobs (visit, reschedule) become one dated event stream.
+   A visit that lands on the schedule's due date replaces the due chip so a
+   coordinated day is not printed twice. */
+function buildPlannerEvents(schedules, jobs) {
+  var today = Time.day(new Date(UI.nowMs()).toISOString());
+  var openBySched = {};
+  jobs.forEach(function (j) {
+    if (j.status !== 'closed' && j.status !== 'cancelled') openBySched[j.scheduleId] = j;
+  });
+  var visitDays = {};
+  jobs.forEach(function (j) {
+    if (!j.visitDate) return;
+    var k = Time.day(j.visitDate);
+    (visitDays[j.scheduleId] || (visitDays[j.scheduleId] = {}))[k] = 1;
+  });
+  var ev = [];
+  schedules.forEach(function (s) {
+    if (!s.active) return;
+    var k = Time.day(s.dueDate);
+    if (visitDays[s.id] && visitDays[s.id][k]) return;
+    var open = openBySched[s.id];
+    ev.push({
+      key: k, kind: (!open && k < today) ? 'overdue' : 'due',
+      ref: s.id, office: s.office, category: s.category,
+      technician: s.technician, jobId: open ? open.id : '', status: open ? open.status : ''
+    });
+  });
+  jobs.forEach(function (j) {
+    if (j.status === 'closed' || j.status === 'cancelled') return;
+    if (j.visitDate) {
+      ev.push({ key: Time.day(j.visitDate), kind: 'visit', ref: j.id, office: j.office,
+        category: j.category || 'Maintenance', technician: j.technician, jobId: j.id, status: j.status });
+    }
+    if (j.status === 'on_hold' && j.reschedules && j.reschedules.length) {
+      var r = j.reschedules[j.reschedules.length - 1];
+      ev.push({ key: Time.day(r.to), kind: 'reschedule', ref: j.id, office: j.office,
+        category: j.category || 'Maintenance', technician: j.technician, jobId: j.id, status: j.status });
+    }
+  });
+  ev.sort(function (a, b) { return a.key.localeCompare(b.key) || a.kind.localeCompare(b.kind); });
+  return ev;
+}
+
+function plannerChip(e, short) {
+  var label = short ? UI.esc(e.office) : UI.esc(e.category) + ' · ' + UI.esc(e.office);
+  var title = (e.kind === 'due' ? 'Due ' : e.kind === 'visit' ? 'Visit ' : e.kind === 'overdue' ? 'Overdue ' : 'Rescheduled ') +
+    UI.dateOnly(e.key + 'T04:00:00Z') + ' · ' + e.office + ' · ' + e.category +
+    (e.technician ? ' · ' + e.technician : '');
+  var inner = '<i class="pl-dot ' + e.kind + '" aria-hidden="true"></i><span class="pl-evt-name">' + label + '</span>';
+  if (e.jobId) {
+    return '<a class="pl-evt pl-' + e.kind + '" href="' + UI.urlFor('maintenance.html?job=' + encodeURIComponent(e.jobId), UI.roleKey()) +
+      '" title="' + UI.attr(title) + '">' + inner + '</a>';
+  }
+  return '<span class="pl-evt pl-' + e.kind + '" title="' + UI.attr(title) + '">' + inner + '</span>';
+}
+
+function plannerGrid(startKey, days, monthMode) {
+  var byKey = {};
+  plannerEvents.forEach(function (e) { (byKey[e.key] || (byKey[e.key] = [])).push(e); });
+  var today = Time.day(new Date(UI.nowMs()).toISOString());
+  var cells = [];
+  if (!monthMode) {
+    var names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    names.forEach(function (n) {
+      cells.push('<div class="pl-head" role="columnheader">' + n + '</div>');
+    });
+  }
+  for (var i = 0; i < days; i++) {
+    var key = addDaysKey(startKey, i);
+    var list = byKey[key] || [];
+    var out = monthMode && key.slice(0, 7) !== plannerCursor.slice(0, 7);
+    var shown = monthMode ? list.slice(0, 2) : list.slice(0, 6);
+    var extra = list.length - shown.length;
+    cells.push('<div class="pl-day' + (out ? ' is-out' : '') + (key === today ? ' is-today' : '') +
+      '" role="gridcell" aria-label="' + UI.attr(keyDate(key) + ', ' + list.length + ' item(s)') + '">' +
+      '<span class="pl-daynum">' + Number(key.slice(8, 10)) + '</span>' +
+      '<div class="pl-events">' + shown.map(function (e) { return plannerChip(e, monthMode); }).join('') +
+      (extra > 0 ? '<span class="pl-more">+' + extra + ' more</span>' : '') +
+      '</div></div>');
+  }
+  return '<div class="pl-grid' + (monthMode ? ' is-month' : ' is-week') + '" role="grid">' +
+    (monthMode ? '<div class="pl-head" role="columnheader">Mon</div><div class="pl-head" role="columnheader">Tue</div>' +
+      '<div class="pl-head" role="columnheader">Wed</div><div class="pl-head" role="columnheader">Thu</div>' +
+      '<div class="pl-head" role="columnheader">Fri</div><div class="pl-head" role="columnheader">Sat</div>' +
+      '<div class="pl-head" role="columnheader">Sun</div>' : '') +
+    cells.join('') + '</div>';
+}
+
+function renderPlannerAgenda() {
+  var pages = Math.max(1, Math.ceil(plannerEvents.length / AGENDA_PER_PAGE));
+  agendaPage = Math.min(agendaPage, pages);
+  var slice = plannerEvents.slice((agendaPage - 1) * AGENDA_PER_PAGE, agendaPage * AGENDA_PER_PAGE);
+  var html = '', lastKey = '';
+  slice.forEach(function (e) {
+    if (e.key !== lastKey) {
+      html += '<h4 class="pl-agenda-day">' + UI.esc(keyDate(e.key)) + '</h4>';
+      lastKey = e.key;
+    }
+    html += '<div class="pl-agenda-row">' + plannerChip(e) +
+      '<span class="pl-agenda-meta">' + UI.esc(e.technician || 'Unassigned') +
+      (e.status ? ' · ' + UI.esc((UI.STATUS[e.status] || [e.status])[0]) : '') + '</span></div>';
+  });
+  document.getElementById('plannerBody').innerHTML = html
+    ? '<div class="pl-agenda">' + html + '</div>'
+    : '<div class="empty pl-empty">No maintenance dates in this period.</div>';
+  var env = { items: slice, total: plannerEvents.length, page: agendaPage, pages: pages, perPage: AGENDA_PER_PAGE };
+  UI.renderPagination(document.getElementById('plannerPager'), env, function (p) { agendaPage = p; renderPlanner(); });
+}
+
+function renderTechToday() {
+  var box = document.getElementById('techToday');
+  var tech = UI.roleKey() === 'technician';
+  box.hidden = !tech;
+  if (!tech) { box.innerHTML = ''; return; }
+  var today = Time.day(new Date(UI.nowMs()).toISOString());
+  var todays = plannerEvents.filter(function (e) { return e.key === today && e.kind !== 'overdue'; });
+  var next = plannerEvents.filter(function (e) { return e.key > today; }).slice(0, 3);
+  var body = todays.length
+    ? todays.map(function (e) {
+        return '<li>' + plannerChip(e) + '<span class="when">' + UI.esc((UI.STATUS[e.status] || ['Planned'])[0]) + '</span></li>';
+      }).join('')
+    : '<li class="pl-today-empty"><span class="ico">' + UI.icon('cal') + '</span><div class="body"><strong>No visits today</strong>' +
+      (next.length ? '<span>Next: ' + UI.esc(keyDate(next[0].key)) + ' · ' + UI.esc(next[0].office) + '</span>' : '<span>Nothing else is scheduled.</span>') +
+      '</div></li>';
+  box.innerHTML = '<div class="card-head-row"><b class="card-title">Today on your route</b>' +
+    '<span class="chip">' + UI.esc(keyDate(today)) + '</span></div>' +
+    '<ul class="list pl-today mt-sm">' + body + '</ul>';
+}
+
+function renderPlanner() {
+  var db = Store.db;
+  var role = Store.db.role;
+  var myName = (db.auth && db.auth.name) || (window.ROLES ? ROLES.technician.name : '');
+  var schedules = role === 'technician' ? db.schedules.filter(function (s) { return s.technician === myName; }) : db.schedules;
+  var jobs = role === 'technician' ? db.jobs.filter(function (j) { return j.technician === myName; }) : db.jobs;
+  plannerEvents = buildPlannerEvents(schedules, jobs);
+
+  document.querySelectorAll('#plannerView [data-pview]').forEach(function (b) {
+    var on = b.dataset.pview === plannerView;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+
+  var body = document.getElementById('plannerBody');
+  var pager = document.getElementById('plannerPager');
+  if (plannerView === 'month') {
+    var start = weekStart(monthStart(plannerCursor));
+    body.innerHTML = plannerGrid(start, 42, true);
+    pager.innerHTML = '';
+    var d = new Date(plannerCursor + 'T00:00:00Z');
+    document.getElementById('plannerRange').textContent =
+      new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(d);
+  } else if (plannerView === 'week') {
+    body.innerHTML = plannerGrid(weekStart(plannerCursor), 7, false);
+    pager.innerHTML = '';
+    var ws = weekStart(plannerCursor), we = addDaysKey(ws, 6);
+    document.getElementById('plannerRange').textContent = keyDate(ws) + ' to ' + keyDate(we);
+  } else {
+    renderPlannerAgenda();
+    document.getElementById('plannerRange').textContent = plannerEvents.length + ' dated item(s), earliest first';
+  }
+  renderTechToday();
+}
+
+function shiftPlanner(dir) {
+  if (plannerView === 'month') {
+    var d = new Date(plannerCursor + 'T00:00:00Z');
+    d.setUTCMonth(d.getUTCMonth() + dir);
+    plannerCursor = d.toISOString().slice(0, 10);
+  } else if (plannerView === 'week') {
+    plannerCursor = addDaysKey(plannerCursor, dir * 7);
+  } else {
+    var pages = Math.max(1, Math.ceil(plannerEvents.length / AGENDA_PER_PAGE));
+    agendaPage = Math.min(Math.max(agendaPage + dir, 1), pages);
+  }
+  renderPlanner();
+}
+
+document.getElementById('plannerView').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-pview]');
+  if (!b || b.dataset.pview === plannerView) return;
+  plannerView = b.dataset.pview;
+  agendaPage = 1;
+  try { localStorage.setItem(PLANNER_KEY, plannerView); } catch (err) { /* private mode */ }
+  renderPlanner();
+});
+document.getElementById('pPrev').addEventListener('click', function () { shiftPlanner(-1); });
+document.getElementById('pNext').addEventListener('click', function () { shiftPlanner(1); });
+document.getElementById('pToday').addEventListener('click', function () {
+  var today = Time.day(new Date(UI.nowMs()).toISOString());
+  plannerCursor = today;
+  if (plannerView === 'agenda') {
+    var idx = 0;
+    while (idx < plannerEvents.length && plannerEvents[idx].key < today) idx++;
+    agendaPage = Math.floor(idx / AGENDA_PER_PAGE) + 1;
+  } else {
+    agendaPage = 1;
+  }
+  renderPlanner();
+});
 
 function kpi(l, v, d, c, dot) {
   return '<div class="card kpi ' + c + '"><div class="dot">' + dot + '</div><div class="label">' + l +
@@ -334,6 +592,9 @@ function render() {
     }
     render();
   }
+
+  /* planner */
+  renderPlanner();
 
   /* check log */
   document.getElementById('checkCard').hidden = checkLog.length === 0 || !isCoord;

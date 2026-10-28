@@ -197,6 +197,18 @@ The authoritative workflow is the 29 step SOP in the bundled
 | 14.6 | Phones scroll one column at a time with the next column visible | DONE | horizontal snap scroll, 84 vw columns, 36 px view buttons; `responsive.py` 0 problems |
 | 14.7 | Tests and visual evidence | DONE | `pagetest.js` 416 passed, including the eight columns, counts, placement and no pager; captures at 1440 and 390 in both themes |
 
+## Phase 15. Maintenance planner
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 15.1 | Month, week and agenda views over the same schedules and visits | DONE | `#plannerCard` on `maintenance.html`; `plannerGrid` and `renderPlannerAgenda`; the view is remembered in `itc_planner_view` |
+| 15.2 | Due, visit, rescheduled and overdue are distinct and legible | DONE | typed chips with a legend; a coordinated visit replaces the due chip on the same day so no day prints twice |
+| 15.3 | Navigation is explicit and honest | DONE | previous, today and next; month and week name their range, the agenda reports its item count; Today in the agenda jumps to the page holding today |
+| 15.4 | A technician sees today's route | DONE | `#techToday` lists today's visits, otherwise names the next visit; hidden for every other role |
+| 15.5 | Planner scope matches the page scope | DONE | a technician plans only their own schedules and jobs; IT leads plan the whole register |
+| 15.6 | Phones stay readable | DONE | agenda is the phone default, month falls back to dots with a per-day accessible label; tap targets 36 px; `responsive.py` 0 problems |
+| 15.7 | Tests and evidence | DONE | `pagetest.js` 432 passed, including six-week month, weekday names, chips, today, period navigation, view memory and the technician panel; captures at 1440 and 390 in both themes |
+
 ## Known gaps
 
 The items that remain partial or unverified are listed in
