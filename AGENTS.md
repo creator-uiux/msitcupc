@@ -10,8 +10,8 @@ apply to every change, every conversation, and every generated file.
   behavior. Prove the freeze with `git diff` and a render comparison.
 - The colour theme is frozen. Token values live in `docs/THEME_SNAPSHOT.md`
   and come from `css/app.css`, `css/green.css`, and `css/kit.css`. Do not
-  change those values. New styles go in `css/console.css` and use existing
-  tokens only. No new brand colours.
+  change those values. New styles go in `css/console.css`, use the existing
+  tokens plus white and black alpha overlays, and add no new brand colours.
 - Do not change the business workflow, the eight status labels, routes, data
   model, API contract, or security rules for presentation work.
 
