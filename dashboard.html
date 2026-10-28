@@ -309,7 +309,7 @@ function render() {
       '<div class="body"><strong>' + UI.esc(s.office) + '  --  ' + UI.esc(s.category) + ' PM</strong>' +
       '<span>' + UI.esc(s.frequency) + ' · ' + s.assets.length + ' asset(s) · ' + UI.esc(s.technician) +
       (j ? ' · job <span class="mono">' + UI.esc(j.id) + '</span> exists  --  not duplicated' : '') + '</span></div>' +
-      '<span class="when">' + UI.dateOnly(s.dueDate).slice(5) + (overdue ? ' · due' : '') + '</span></li>';
+      '<span class="when">' + UI.dateOnly(s.dueDate) + (overdue ? ' · due' : '') + '</span></li>';
   }).join('') || '<li><div class="body"><strong>No active schedules</strong></div></li>';
 
   /* ---- live audit feed ---- */
