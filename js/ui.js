@@ -34,6 +34,67 @@
      ISO day is available as Time.day() for a date input value. */
   function dateOnly(iso) { return (window.Time && window.Time.date) ? window.Time.date(iso) : ' -- '; }
 
+  /* ---------- the work-order card ----------
+     One record at a glance: ticket number, subject, office, category icon,
+     status chip, priority as a coloured left edge plus a text chip, assignee
+     avatar, the due or overdue chip, and small attachment and reply counts.
+     Used by the register card view, the dashboards and the phone layouts.
+     The counts never expose an internal note to an office requester. */
+  var CATEGORY_ICON = {
+    'Hardware Repair': 'wrench',
+    'Software Support': 'monitor',
+    'Network and Connectivity': 'activity',
+    'Account Assistance': 'key',
+    'Printer and Peripheral': 'printer',
+    'Installation and Configuration': 'package',
+    'Other': 'folder'
+  };
+  function categoryIcon(category) {
+    return CATEGORY_ICON[category] || 'ticket';
+  }
+  function workCard(t, opts) {
+    opts = opts || {};
+    var role = opts.role || roleKey();
+    var href = opts.href || ('ticket.html?id=' + encodeURIComponent(t.id));
+    var overdue = t.overdue === undefined
+      ? !!(window.Query && Query.isOverdue && Query.isOverdue(t))
+      : !!t.overdue;
+    var pKey = ['low', 'medium', 'high', 'critical'].indexOf(t.priority) > -1 ? t.priority : 'low';
+    var pLabel = pKey.charAt(0).toUpperCase() + pKey.slice(1);
+    var comments = Array.isArray(t.comments) ? t.comments : [];
+    var replies = comments.filter(function (c) {
+      return canSeeInternal(role) || c.visibility !== 'internal';
+    }).length;
+    var files = Array.isArray(t.attachments) ? t.attachments.length : 0;
+    var due = t.target ? dateOnly(t.target) : '';
+    var tech = t.technician || '';
+    var subject = String(t.issue == null ? '' : t.issue);
+    return '<a class="wo-card wo-p-' + attr(pKey) + '" href="' + attr(href) + '"' +
+      (t.status === 'cancelled' ? ' data-cancelled="1"' : '') + '>' +
+      '<span class="wo-top"><span class="wo-id">' + esc(t.id) + '</span>' +
+      '<span class="wo-cat">' + icon(categoryIcon(t.category)) +
+      '<span class="wo-cat-name">' + esc(t.category || '') + '</span></span></span>' +
+      '<span class="wo-title">' + esc(subject.slice(0, 96)) + (subject.length > 96 ? '…' : '') + '</span>' +
+      '<span class="wo-office">' + icon('building') + esc(t.office || '') +
+      (t.requester ? ' · ' + esc(t.requester) : '') + '</span>' +
+      '<span class="wo-foot">' + badge(t.status) +
+      '<span class="wo-prio prio p-' + attr(pKey) + '">' + esc(pLabel) + '</span>' +
+      (due || overdue ? '<span class="wo-due' + (overdue ? ' is-overdue' : '') + '">' +
+        icon(overdue ? 'alert' : 'cal') + (overdue ? 'Overdue' : esc(due)) +
+        (overdue && due ? ' · ' + esc(due) : '') + '</span>' : '') +
+      '</span>' +
+      '<span class="wo-bar"><span class="wo-tech">' +
+      (tech
+        ? '<span class="wo-avatar" aria-hidden="true">' + esc(initials(tech)) + '</span>' +
+          '<span class="wo-tech-name">' + esc(tech) + '</span>'
+        : '<span class="wo-avatar is-empty" aria-hidden="true">' + icon('user') + '</span>' +
+          '<span class="wo-tech-name">Unassigned</span>') +
+      '</span><span class="wo-counts">' +
+      (files ? '<span title="' + files + ' attachment(s)">' + icon('paperclip') + files + '</span>' : '') +
+      (replies ? '<span title="' + replies + ' reply(ies)">' + icon('message') + replies + '</span>' : '') +
+      '</span></span></a>';
+  }
+
   /* ============================================================
      ROLE MODEL  --  single source of truth for roles, screens & features
      (mirrors the guards in js/flow.js)
@@ -1067,6 +1128,7 @@
       '<button type="button" class="ico-btn" id="navToggle" aria-label="Open navigation" aria-expanded="false">' + icon('menu') + '</button>' +
       sealLockup('tb-lockup') +
       '<span class="spacer"></span>' +
+      '<button type="button" class="ico-btn" id="tbSearchMobile" aria-label="Search the workspace" aria-haspopup="dialog" aria-expanded="false">' + icon('search') + '</button>' +
       bellHTML('notifM') +
       accountHTML('acctM');
     var toggle = document.getElementById('navToggle');
@@ -1077,6 +1139,8 @@
     });
     bindThemePicker(appbar);
     renderAccountTriggers(appbar);
+    var search = document.getElementById('tbSearchMobile');
+    if (search) search.addEventListener('click', function () { openPalette(); });
   }
 
   function renderAccountTriggers(root) {
@@ -1099,26 +1163,257 @@
     return out;
   }
 
+  /* ---------- command palette (Ctrl or Cmd plus K) ----------
+     One search over the records the signed-in role may open: tickets,
+     offices, assets and maintenance schedules, plus the recent items the
+     person opened from here.  Scope follows the same tenancy the screens
+     use, so the palette never reveals another office, another technician's
+     work, or a maintenance screen the role cannot open. */
+  var CM_KEY = 'itc_cmdk_recent_v1';
+  var cmActive = 0;
+
+  function cmRawRecent() {
+    try {
+      var rows = JSON.parse(localStorage.getItem(CM_KEY) || '[]');
+      return Array.isArray(rows) ? rows : [];
+    } catch (e) { return []; }
+  }
+  function cmRecent() {
+    var role = roleKey();
+    return cmRawRecent().filter(function (r) {
+      return r && r.href && r.role === role;
+    }).slice(0, 5);
+  }
+  function cmRemember(item) {
+    try {
+      var role = roleKey();
+      var rows = cmRawRecent().filter(function (r) { return !(r.href === item.href && r.role === role); });
+      rows.unshift({ href: item.href, label: item.label, meta: item.meta, kind: item.kind, role: role });
+      localStorage.setItem(CM_KEY, JSON.stringify(rows.slice(0, 20)));
+    } catch (e) { /* private mode */ }
+  }
+  function cmScoped() {
+    var db = S.db || {}, role = roleKey(), a = auth();
+    function mine(rec) {
+      if (role === 'requester') return rec.office === a.office;
+      if (role === 'technician') return rec.technician === a.name;
+      return true;
+    }
+    return {
+      role: role, me: a,
+      tickets: (db.tickets || []).filter(mine),
+      jobs: (db.jobs || []).filter(mine),
+      schedules: (db.schedules || []).filter(mine)
+    };
+  }
+  function cmCommandResults(query) {
+    var q = String(query || '').trim().toLowerCase();
+    var sc = cmScoped(), offices = {};
+    function hash(v) { return String(v == null ? '' : v).toLowerCase(); }
+    function hit(vals) { return !q || vals.some(function (v) { return hash(v).indexOf(q) > -1; }); }
+    function when(rec) { return new Date(rec.updatedAt || rec.createdAt || 0).getTime() || 0; }
+
+    sc.tickets.forEach(function (t) { if (t.office) offices[t.office] = 1; });
+    sc.jobs.forEach(function (j) { if (j.office) offices[j.office] = 1; });
+    sc.schedules.forEach(function (s) { if (s.office) offices[s.office] = 1; });
+    if (sc.role === 'requester' && sc.me.office) offices[sc.me.office] = 1;
+    if (sc.role === 'coordinator' || sc.role === 'management') {
+      (S.db.offices || []).forEach(function (o) { if (o.name) offices[o.name] = 1; });
+    }
+
+    var ticketHits = sc.tickets.filter(function (t) {
+      return hit([t.id, t.issue, t.office, t.asset, t.category, t.requester, t.technician]);
+    }).sort(function (a, b) { return when(b) - when(a); }).slice(0, q ? 6 : 5).map(function (t) {
+      return {
+        kind: 'Ticket', label: t.id + ' · ' + String(t.issue || ''),
+        meta: t.office + ' · ' + (STATUS[t.status] ? STATUS[t.status][0] : t.status),
+        href: 'ticket.html?id=' + encodeURIComponent(t.id)
+      };
+    });
+
+    var officeHits = Object.keys(offices).sort().filter(function (name) {
+      return hit([name]);
+    }).slice(0, q ? 4 : 3).map(function (name) {
+      return {
+        kind: 'Office', label: name, meta: 'Office register and service history',
+        href: (sc.role === 'management' ? 'offices.html?q=' : 'register.html?office=') + encodeURIComponent(name)
+      };
+    });
+
+    var assetSet = {};
+    sc.tickets.forEach(function (t) { if (t.asset) assetSet[t.asset] = 1; });
+    sc.jobs.forEach(function (j) { (j.assets || []).forEach(function (a) { if (a) assetSet[a] = 1; }); });
+    sc.schedules.forEach(function (s) { (s.assets || []).forEach(function (a) { if (a) assetSet[a] = 1; }); });
+    var assetHits = q ? Object.keys(assetSet).sort().filter(function (a) {
+      return hit([a]);
+    }).slice(0, 4).map(function (a) {
+      return { kind: 'Asset', label: a, meta: 'Office IT service register', href: 'register.html?q=' + encodeURIComponent(a) };
+    }) : [];
+
+    var scheduleHits = [];
+    if (can('maintenance.html') && q) {
+      scheduleHits = sc.schedules.filter(function (s) {
+        return hit([s.id, s.office, s.category, s.technician, (s.assets || []).join(' ')]);
+      }).sort(function (a, b) {
+        return new Date(a.dueDate || 0).getTime() - new Date(b.dueDate || 0).getTime();
+      }).slice(0, 4).map(function (s) {
+        var job = sc.jobs.filter(function (j) { return j.scheduleId === s.id && j.status !== 'closed'; })[0];
+        return {
+          kind: 'Schedule', label: s.id + ' · ' + s.category,
+          meta: s.office + ' · due ' + dateOnly(s.dueDate),
+          href: job ? 'maintenance.html?job=' + encodeURIComponent(job.id) : 'maintenance.html'
+        };
+      });
+    }
+
+    var groups = [];
+    if (!q) {
+      var recent = cmRecent().map(function (r) {
+        return { kind: r.kind || 'Recent', label: r.label, meta: r.meta || '', href: r.href };
+      });
+      if (recent.length) groups.push({ label: 'Recent', items: recent });
+    }
+    groups.push({ label: q ? 'Tickets' : 'Recent tickets', items: ticketHits });
+    groups.push({ label: 'Offices', items: officeHits });
+    groups.push({ label: 'Assets', items: assetHits });
+    groups.push({ label: 'Maintenance schedules', items: scheduleHits });
+    return groups.filter(function (g) { return g.items.length; });
+  }
+
+  function cmIcon(kind) {
+    return { Ticket: 'ticket', Office: 'building', Asset: 'server', Schedule: 'cal', Recent: 'history' }[kind] || 'search';
+  }
+
+  function ensurePalette() {
+    var host = document.getElementById('cmdk');
+    if (host) return host;
+    host = document.createElement('div');
+    host.id = 'cmdk';
+    host.className = 'cmdk';
+    host.hidden = true;
+    host.innerHTML =
+      '<div class="cmdk-backdrop" data-cmdk-close></div>' +
+      '<div class="cmdk-panel" role="dialog" aria-modal="true" aria-label="Search the workspace">' +
+      '<div class="cmdk-field">' + icon('search') +
+      '<input id="cmdkInput" type="search" role="combobox" aria-expanded="true" aria-controls="cmdkList" aria-autocomplete="list" autocomplete="off" placeholder="Search tickets, offices, assets, schedules">' +
+      '<kbd>Esc</kbd></div>' +
+      '<div class="cmdk-list" id="cmdkList" role="listbox" aria-label="Results"></div>' +
+      '<div class="cmdk-foot"><span><kbd>Up</kbd><kbd>Down</kbd> move</span>' +
+      '<span><kbd>Enter</kbd> open</span><span>' + esc(currentRole().title) + ' scope</span></div></div>';
+    document.body.appendChild(host);
+    var input = document.getElementById('cmdkInput');
+    input.addEventListener('input', function () { renderPalette(input.value); });
+    host.querySelector('[data-cmdk-close]').addEventListener('click', closePalette);
+    document.getElementById('cmdkList').addEventListener('click', function (e) {
+      var item = e.target.closest('[data-cmdk-item]');
+      if (item) pickPaletteItem(item);
+    });
+    return host;
+  }
+
+  function renderPalette(query) {
+    var list = document.getElementById('cmdkList');
+    if (!list) return;
+    var groups = cmCommandResults(query);
+    var n = 0, html = '';
+    groups.forEach(function (g) {
+      html += '<div class="cmdk-group" role="presentation">' + esc(g.label) + '</div>';
+      g.items.forEach(function (it) {
+        html += '<button type="button" class="cmdk-item' + (n === 0 ? ' on' : '') + '" id="cmdk-opt-' + n + '"' +
+          ' role="option" aria-selected="' + (n === 0) + '" data-cmdk-item data-href="' + attr(it.href) + '"' +
+          ' data-kind="' + attr(it.kind) + '" data-label="' + attr(it.label) + '" data-meta="' + attr(it.meta || '') + '">' +
+          '<span class="cmdk-ic">' + icon(cmIcon(it.kind)) + '</span>' +
+          '<span class="cmdk-text"><b>' + esc(it.label) + '</b><small>' + esc(it.meta || '') + '</small></span>' +
+          '<span class="cmdk-kind">' + esc(it.kind) + '</span></button>';
+        n++;
+      });
+    });
+    list.innerHTML = html || '<div class="cmdk-empty">No ticket, office, asset or schedule matches this search.</div>';
+    var input = document.getElementById('cmdkInput');
+    if (input) input.setAttribute('aria-activedescendant', n ? 'cmdk-opt-0' : '');
+    cmActive = 0;
+  }
+
+  function openPalette(query) {
+    var host = ensurePalette();
+    host.hidden = false;
+    document.body.classList.add('cmdk-open');
+    var input = document.getElementById('cmdkInput');
+    input.value = query || '';
+    renderPalette(input.value);
+    ['tbSearch', 'tbSearchMobile'].forEach(function (id) {
+      var b = document.getElementById(id);
+      if (b) b.setAttribute('aria-expanded', 'true');
+    });
+    input.focus();
+  }
+  function closePalette() {
+    var host = document.getElementById('cmdk');
+    if (!host) return;
+    host.hidden = true;
+    document.body.classList.remove('cmdk-open');
+    ['tbSearch', 'tbSearchMobile'].forEach(function (id) {
+      var b = document.getElementById(id);
+      if (b) b.setAttribute('aria-expanded', 'false');
+    });
+    var t = document.getElementById('tbSearch') || document.getElementById('tbSearchMobile');
+    if (t) t.focus();
+  }
+  function movePalette(delta) {
+    var items = document.querySelectorAll('#cmdkList [data-cmdk-item]');
+    if (!items.length) return;
+    cmActive = (cmActive + delta + items.length) % items.length;
+    items.forEach(function (el, i) {
+      el.classList.toggle('on', i === cmActive);
+      el.setAttribute('aria-selected', i === cmActive ? 'true' : 'false');
+    });
+    var input = document.getElementById('cmdkInput');
+    if (input) input.setAttribute('aria-activedescendant', items[cmActive].id);
+    if (items[cmActive].scrollIntoView) items[cmActive].scrollIntoView({ block: 'nearest' });
+  }
+  function pickPaletteItem(el) {
+    if (!el) return;
+    cmRemember({ href: el.dataset.href, label: el.dataset.label, meta: el.dataset.meta, kind: el.dataset.kind });
+    location.href = el.dataset.href;
+  }
+  function bindPaletteKeys() {
+    if (bindPaletteKeys.bound) return;
+    bindPaletteKeys.bound = true;
+    document.addEventListener('keydown', function (e) {
+      var host = document.getElementById('cmdk');
+      var open = host && !host.hidden;
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) closePalette(); else openPalette();
+        return;
+      }
+      if (!open) return;
+      if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); movePalette(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); movePalette(-1); }
+      else if (e.key === 'Enter') {
+        var items = document.querySelectorAll('#cmdkList [data-cmdk-item]');
+        if (items.length) { e.preventDefault(); pickPaletteItem(items[Math.max(0, cmActive)]); }
+      }
+    });
+  }
+
   function renderTop() {
     var topbar = document.getElementById('chromeTopbar');
     if (!topbar) return;
     topbar.innerHTML =
       '<nav class="tb-crumbs" aria-label="Breadcrumb">' + crumbInner(true) + '</nav>' +
       '<span class="spacer"></span>' +
-      '<form class="tb-search" id="tbSearch" role="search">' + icon('search') +
-      '<input type="search" id="tbSearchInput" placeholder="Search tickets" aria-label="Search tickets"></form>' +
+      '<button type="button" class="tb-search" id="tbSearch" aria-label="Search the workspace" aria-haspopup="dialog" aria-expanded="false">' +
+      icon('search') + '<span class="tb-search-text">Search tickets, offices, assets…</span><kbd>Ctrl K</kbd></button>' +
       '<a class="ico-btn" href="' + urlFor('flow.html', roleKey()) + '" title="Workflow guide" aria-label="Workflow guide">' + icon('help') + '</a>' +
       '<span class="role-chip"><i aria-hidden="true"></i>' + esc(currentRole().title) + '</span>' +
       bellHTML('notifD') +
       accountHTML('acctD');
     bindThemePicker(topbar);
     renderAccountTriggers(topbar);
-    var form = document.getElementById('tbSearch');
-    if (form) form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var q = document.getElementById('tbSearchInput').value.trim();
-      location.href = urlFor('tickets.html', roleKey()) + (q ? '?q=' + encodeURIComponent(q) : '');
-    });
+    var trigger = document.getElementById('tbSearch');
+    if (trigger) trigger.addEventListener('click', function () { openPalette(); });
   }
 
   /* Breadcrumbs and the formal footer are inserted for every authenticated
@@ -1254,6 +1549,7 @@
     renderSide(); renderAppbar(); renderTop(); renderBottom();
     renderPageFrame();
     bindChrome();
+    bindPaletteKeys();
     activeNav();
     renderBell();
     renderPills();
@@ -1265,6 +1561,7 @@
     renderSide(); renderTop(); renderBottom();
     renderPageFrame();
     bindChrome();
+    bindPaletteKeys();
     activeNav();
     renderPills();
     guardPage();
@@ -1617,6 +1914,7 @@
     return { items: items.slice(start, start + perPage), total: items.length, page: page, perPage: perPage, pages: Math.ceil(items.length / perPage) };
   }
   function renderPagination(el, state, onChange) {
+    if (!el) return;
     if (state.pages <= 1) { el.innerHTML = ''; return; }
     var from = (state.page - 1) * state.perPage + 1;
     var to = Math.min(state.page * state.perPage, state.total);
@@ -1682,6 +1980,8 @@
 
   window.UI = {
     esc: esc, attr: attr, badge: badge, prio: prio, timeAgo: timeAgo, clock: clock, dateOnly: dateOnly,
+    workCard: workCard, categoryIcon: categoryIcon,
+    openPalette: openPalette, closePalette: closePalette, paletteResults: cmCommandResults,
     toast: toast, openModal: openModal, closeModal: closeModal, field: field, input: input,
     openAttachment: openAttachment, closeAttachment: closeAttachment,
     attachmentKind: attachmentKind, humanSize: humanSize,

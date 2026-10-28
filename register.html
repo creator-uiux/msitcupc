@@ -89,11 +89,21 @@
 <script>
 UI.mountChrome({ title: 'Office IT Service Register', sub: 'Every corrective and preventive service on record' });
 
-var G_F = { q: '', office: '', kind: '', status: '', from: '', to: '' };
+var G_F = {
+  q: UI.qs('q'), office: UI.qs('office'), kind: UI.qs('kind'),
+  status: UI.qs('status'), from: UI.qs('from'), to: UI.qs('to')
+};
 var gPage = 1;
 var G_PER = 18;
 var aPage = 1, mPage = 1, sPage = 1, auPage = 1;
 var G_TAB_PER = 15;
+
+/* A link from the command palette or another screen opens the register
+   already filtered; the controls show the state they will query. */
+document.getElementById('gQ').value = G_F.q;
+document.getElementById('gKind').value = G_F.kind;
+document.getElementById('gFrom').value = G_F.from;
+document.getElementById('gTo').value = G_F.to;
 
 function paginateSafe(items, page, per) {
   var pages = Math.max(1, Math.ceil(items.length / per));

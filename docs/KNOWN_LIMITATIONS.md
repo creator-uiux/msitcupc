@@ -20,11 +20,13 @@ current commit. Blocked or unverified items are listed first.
   `docs/source/Maintenance_System.pdf`, which exists; a copy also sits at the
   repository root as `Maintenance System.pdf`. The diagrams and the SOP were
   read from the same one page PDF.
-- **The reference screenshots were only partly available.** `docs/reference/`
+- **The reference screenshots arrived in two batches.** `docs/reference/`
   holds `UPLoginUI.PNG` and `login-bg.jpg`, and both were used for the sign-in
-  screen. The ticket list, ticket detail and dashboard screenshots named in
-  the specification are not present, so those screens were built from the
-  written requirements in Section 14 rather than copied from a picture.
+  screen. The ticket list, ticket detail and dashboard images arrived later,
+  as `ticket-list.png.png`, `ticket-details.png.png` and `dashboard.png.png`,
+  after those screens had been built from the written requirements in Section
+  14. They are kept as a comparison reference; the screens follow the written
+  requirements and the design system, not a copy of those pictures.
 - **The Figma kit page was fetched and read.** The kit page at
   `https://itcmaintenancesystem.web.app/figma-kit/everything.html` returned
   the screen inventory and the intended look, and it matches what this
@@ -73,6 +75,12 @@ current commit. Blocked or unverified items are listed first.
 - No password sign-in. Production uses UPMail Google sign-in restricted to
   `@upcebu.edu.ph`; the demo account shortcut exists behind an explicit flag
   and is off by default.
+- **One navigation column, not a rail plus a contextual menu.** Section 25.5B
+  suggests a narrow rail with a collapsible contextual menu between 1024 and
+  1919 px. The owner asked for the double navigation to be removed, so the
+  single grouped sidebar is kept at every width and the side menu never
+  reopens next to it. Below 1024 px the same sidebar becomes an off canvas
+  drawer opened from the mobile app bar.
 
 ## Partial
 

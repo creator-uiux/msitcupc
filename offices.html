@@ -72,9 +72,12 @@
 <script>
 UI.mountChrome({ title: 'Office directory', sub: 'Maintain the offices the IT service supports' });
 
-var O_F = { q: '', active: '' };
+var O_F = { q: UI.qs('q'), active: '' };
 var oPage = 1;
 const O_PER_PAGE = 12;
+
+/* A command palette result opens the directory already filtered. */
+document.getElementById('oQ').value = O_F.q;
 
 function offices() {
   var db = Store.db;

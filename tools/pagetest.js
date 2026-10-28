@@ -1035,6 +1035,150 @@ tests.push(async function composerSeg() {
   close(p);
 });
 
+/* The register offers the same page as rows or as work-order cards.  The
+   card carries the ticket number, subject, status, priority edge, assignee
+   and the due chip, and it never leaks an internal reply count to an office
+   requester. */
+tests.push(async function workOrderCards() {
+  var p = await open(BASE + 'tickets.html');
+  asRole(p, 'coordinator');
+  ok(p.errors.length === 0, 'tickets loads for the card view test');
+  ok($('#tkView') !== null, 'the register offers a list and card layout switch');
+  ok($('#tkCards') !== null && $('#tkCards').hidden === true, 'the card grid starts hidden in list view');
+  ok($('#tkTable') !== null && $('#tkTable').hidden === false, 'the table is the default layout');
+
+  var btn = $$('#tkView [data-view="cards"]')[0];
+  ok(btn !== undefined, 'the card layout can be chosen');
+  if (btn) {
+    btn.click();
+    ok($('#tkCards').hidden === false, 'the card grid appears in card view');
+    ok($('#tkTable').hidden === true, 'the table is hidden in card view');
+    var cards = $$('#tkCards .wo-card');
+    ok(cards.length > 0, 'cards render for the current page (' + cards.length + ')');
+    var c = cards[0];
+    ok(c.querySelector('.wo-id') !== null, 'a work card shows the ticket number');
+    ok(c.querySelector('.wo-title').textContent.length > 0, 'a work card shows the subject');
+    ok(c.querySelector('.wo-office') !== null, 'a work card shows the office');
+    ok(c.querySelector('.badge') !== null, 'a work card shows the status chip');
+    ok(/wo-p-(low|medium|high|critical)/.test(c.className), 'a work card carries the priority edge');
+    ok(c.querySelector('.wo-tech') !== null, 'a work card shows the assignee');
+    ok($('#tkBulk').hidden === true, 'bulk selection stays out of the card view');
+    $$('#tkView [data-view="list"]')[0].click();
+    ok($('#tkTable').hidden === false && $('#tkCards').hidden === true, 'the list layout returns');
+  }
+
+  /* an office requester counts only the replies they may read */
+  var t = p.w.Store.getTicket('IT-2026-000142');
+  if (t) {
+    var staffCard = p.w.UI.workCard(t, { role: 'coordinator' });
+    var officeCard = p.w.UI.workCard(t, { role: 'requester' });
+    var internal = (t.comments || []).filter(function (x) { return x.visibility === 'internal'; }).length;
+    var staffText = staffCard.replace(/<[^>]+>/g, ' ');
+    var officeText = officeCard.replace(/<[^>]+>/g, ' ');
+    ok(internal > 0, 'the seeded ticket has an internal note to test with');
+    ok(/\b1\b/.test(officeText) || officeText.indexOf(String((t.comments || []).length - internal)) > -1,
+      'the office card counts only the public replies');
+    ok(staffText.indexOf(String((t.comments || []).length)) > -1,
+      'the staff card counts every reply');
+  }
+  ok(p.errors.length === 0, 'no errors from the card view');
+  close(p);
+});
+
+/* Ctrl or Cmd plus K opens one search over the records the signed-in role
+   may open.  It stays inside the role's tenancy and can be closed with Esc. */
+tests.push(async function commandPalette() {
+  var p = await open(BASE + 'tickets.html');
+  asRole(p, 'coordinator');
+  ok(p.errors.length === 0, 'tickets loads for the palette test');
+  ok($('#tbSearch') !== null && $('#tbSearch').tagName === 'BUTTON',
+    'the top bar search is a palette trigger');
+
+  p.d.dispatchEvent(new p.w.KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+  ok($('#cmdk') !== null && $('#cmdk').hidden === false, 'Ctrl plus K opens the command palette');
+  ok($('#cmdkInput') !== null, 'the palette has a search field');
+
+  var input = $('#cmdkInput');
+  input.value = 'Library';
+  input.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  var items = $$('#cmdkList [data-cmdk-item]');
+  ok(items.length > 0, 'the palette returns matches (' + items.length + ')');
+  var hrefs = items.map(function (a) { return a.dataset.href; });
+  ok(hrefs.some(function (h) { return /ticket\.html\?id=/.test(h); }), 'ticket results are listed');
+  ok(hrefs.some(function (h) { return /register\.html\?office=Library|offices\.html\?q=Library/.test(h); }),
+    'office results are listed');
+
+  input.dispatchEvent(new p.w.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+  ok($('#cmdkList .cmdk-item.on') !== null, 'arrow keys move the selection');
+  p.d.dispatchEvent(new p.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  ok($('#cmdk').hidden === true, 'Esc closes the palette');
+  ok(p.d.body.className.indexOf('cmdk-open') === -1, 'closing restores page scrolling');
+
+  /* asset search */
+  p.w.UI.openPalette('PC-OF-118');
+  var assetHrefs = $$('#cmdkList [data-cmdk-item]').map(function (a) { return a.dataset.href; });
+  ok(assetHrefs.some(function (h) { return /register\.html\?q=PC-OF-118/.test(h); }),
+    'asset results open the register');
+  p.w.UI.closePalette();
+
+  /* the technician sees only the tickets assigned to them */
+  asRole(p, 'technician');
+  p.w.UI.openPalette('IT-2026');
+  var techIds = $$('#cmdkList [data-cmdk-item]').map(function (a) { return a.dataset.href; })
+    .filter(function (h) { return /ticket\.html\?id=/.test(h); })
+    .map(function (h) { return decodeURIComponent(h.split('id=')[1]); });
+  ok(techIds.length > 0, 'the technician palette lists their own tickets');
+  ok(techIds.every(function (id) {
+    var tk = p.w.Store.getTicket(id);
+    return tk && tk.technician === 'J. Tan';
+  }), 'the technician palette never lists another technician\'s ticket');
+  p.w.UI.closePalette();
+
+  /* the requester stays inside their office */
+  asRole(p, 'requester');
+  p.w.UI.openPalette('Accounting');
+  var officeHrefs = $$('#cmdkList [data-cmdk-item]').map(function (a) { return a.dataset.href; })
+    .filter(function (h) { return /office=|q=Accounting/.test(h); });
+  ok(officeHrefs.length === 0, 'the requester palette never offers another office');
+  var ownIds = $$('#cmdkList [data-cmdk-item]').map(function (a) { return a.dataset.href; })
+    .filter(function (h) { return /ticket\.html\?id=/.test(h); })
+    .map(function (h) { return decodeURIComponent(h.split('id=')[1]); });
+  ok(ownIds.every(function (id) {
+    var tk = p.w.Store.getTicket(id);
+    return tk && tk.office === 'Records Office';
+  }), 'the requester palette stays inside office tenancy');
+  p.w.UI.closePalette();
+
+  ok(p.errors.length === 0, 'no errors from the command palette');
+  close(p);
+});
+
+/* Links from the palette open the register and the directory already
+   filtered, with the controls reflecting the filter in force. */
+tests.push(async function urlFilters() {
+  var p = await open(BASE + 'register.html?office=Accounting&q=printer');
+  asRole(p, 'coordinator');
+  ok(p.errors.length === 0, 'the filtered register loads with no errors' +
+    (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));
+  ok($('#gQ').value === 'printer', 'the register search reflects the link');
+  ok($('#gOffice').value === 'Accounting', 'the register office select reflects the link');
+  var rows = $$('#gBody tr');
+  ok(rows.length > 0, 'the filtered register shows matching records');
+  ok(rows.every(function (tr) { return tr.textContent.indexOf('Accounting') > -1; }),
+    'every row belongs to the linked office');
+  close(p);
+
+  var o = await open(BASE + 'offices.html?q=Records');
+  asRole(o, 'management');
+  ok(o.errors.length === 0, 'the filtered directory loads with no errors');
+  ok($('#oQ').value === 'Records', 'the directory search reflects the link');
+  var orows = $$('#oBody tr');
+  ok(orows.length > 0, 'the filtered directory shows a match');
+  ok(orows.every(function (tr) { return tr.textContent.indexOf('Records') > -1; }),
+    'the directory lists only the matching office');
+  close(o);
+});
+
 /* The pop-up switch: the live notices can be paused, but the feedback that
    follows an action, and the notifications themselves, are never lost. */
 tests.push(async function popupsSwitch() {

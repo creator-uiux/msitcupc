@@ -94,8 +94,12 @@
           <h3>Results</h3>
           <span class="chip" id="tkTotal"> -- </span>
           <span class="hint" id="tkScopeNote"></span>
+          <div class="seg seg-view" id="tkView" role="group" aria-label="Result layout">
+            <button type="button" data-view="list">List</button>
+            <button type="button" data-view="cards">Cards</button>
+          </div>
         </div>
-        <table class="table">
+        <table class="table" id="tkTable">
           <thead>
             <tr>
               <th class="col-check"><input type="checkbox" id="tkAll" aria-label="Select all"></th>
@@ -105,6 +109,7 @@
           </thead>
           <tbody id="tkBody"></tbody>
         </table>
+        <div class="wo-grid" id="tkCards" hidden></div>
         <div id="tkPagination"></div>
         <div class="empty" id="tkEmpty" hidden><img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No tickets match these filters.</div>
       </div>
@@ -136,6 +141,15 @@ var chip = 'open';
 var page = 1;
 var selected = {};
 var last = null;      /* last query envelope */
+var VIEW_KEY = 'itc_ticket_view';
+var view = 'list';
+try {
+  var savedView = localStorage.getItem(VIEW_KEY);
+  if (savedView === 'cards' || savedView === 'list') view = savedView;
+  else if (window.innerWidth < 600) view = 'cards';
+} catch (e) {
+  if (window.innerWidth < 600) view = 'cards';
+}
 
 function isLive() { return !!(window.ApiMode && window.Api && window.Api.tickets); }
 
@@ -239,6 +253,10 @@ function render() {
   document.getElementById('tkEmpty').hidden = last.total > 0;
 
   document.getElementById('tkBody').innerHTML = last.items.map(rowHTML).join('');
+  document.getElementById('tkCards').innerHTML = last.items.map(function (t) {
+    return UI.workCard(t, { href: 'ticket.html?id=' + encodeURIComponent(t.id) });
+  }).join('');
+  applyView();
 
   document.querySelectorAll('#tkBody tr[data-href]').forEach(function (tr) {
     tr.addEventListener('click', function (e) {
@@ -259,10 +277,21 @@ function render() {
   renderBulk();
 }
 
+function applyView() {
+  var cards = view === 'cards';
+  document.getElementById('tkTable').hidden = cards;
+  document.getElementById('tkCards').hidden = !cards;
+  document.querySelectorAll('#tkView [data-view]').forEach(function (b) {
+    var on = b.dataset.view === view;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+
 function renderBulk() {
   var ids = Object.keys(selected);
   var bar = document.getElementById('tkBulk');
-  bar.hidden = ids.length === 0;
+  bar.hidden = ids.length === 0 || view === 'cards';
   document.getElementById('tkBulkCount').textContent = ids.length + ' selected';
   /* bulk assign is a coordinator responsibility */
   document.getElementById('tkBulkAssign').hidden = UI.roleKey() !== 'coordinator';
@@ -275,6 +304,14 @@ document.getElementById('tkQ').addEventListener('input', UI.debounce(function (e
 document.getElementById('tkMore').addEventListener('click', function () {
   var adv = document.getElementById('tkAdv');
   adv.hidden = !adv.hidden;
+});
+document.getElementById('tkView').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-view]');
+  if (!b || b.dataset.view === view) return;
+  view = b.dataset.view;
+  try { localStorage.setItem(VIEW_KEY, view); } catch (err) { /* private mode */ }
+  applyView();
+  renderBulk();
 });
 document.getElementById('tkAll').addEventListener('change', function (e) {
   if (!last) return;
@@ -365,6 +402,8 @@ document.getElementById('tkBulkAssign').addEventListener('click', function () {
   }
   var status = UI.qs('status');
   if (Query.ALL_STATES.indexOf(status) > -1) { F.status = status; chip = ''; }
+  var v = UI.qs('view');
+  if (v === 'cards' || v === 'list') view = v;
   if (UI.roleKey() === 'requester') CHIPS[1][1] = 'My requests';
 })();
 

@@ -172,6 +172,19 @@ The authoritative workflow is the 29 step SOP in the bundled
 | 12.4 | KPI copy fits its card | DONE | the Overdue delta reads "Past the target date" and stays on one line at 390 and 1440 |
 | 12.5 | Evidence refreshed | DONE | 48 role captures and 60 gate captures regenerated; page suite 361 passed; role page suite 182 passed; `ui_check.py`, `validate.py`, `responsive.py` and the visual gate all pass |
 
+## Phase 13. Work-order cards and the command palette
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 13.1 | Work-order card with number, subject, office, category icon, status, priority edge and chip, assignee, due or overdue chip, attachment and reply counts | DONE | `UI.workCard` in `js/ui.js`; `.wo-card` in `css/console.css`; an office requester's reply count excludes internal notes |
+| 13.2 | Register list and card layouts, phones default to cards | DONE | `#tkView` switch on `tickets.html`; the choice persists in `itc_ticket_view`; `?view=cards` deep link; bulk selection stays out of the card layout |
+| 13.3 | Command palette on Ctrl or Cmd plus K over tickets, offices, assets and schedules, with recent items | DONE | palette in `js/ui.js`; top bar trigger plus the phone app bar search; Arrow keys, Enter and Esc; recent items in `itc_cmdk_recent_v1` |
+| 13.4 | Palette scope follows the signed-in role | DONE | requesters stay in their office, technicians see only their assigned records, schedules appear only when the role can open Maintenance; `pagetest.js` asserts all three |
+| 13.5 | Deep links open the register and the directory already filtered | DONE | `register.html?q=&office=&kind=&status=&from=&to=` and `offices.html?q=` set both the state and the visible controls |
+| 13.6 | Pagination helper is safe when a filtered panel renders no pager | DONE | `UI.renderPagination` returns early for a missing host; this was exposed by the new deep links and fixed |
+| 13.7 | Responsive and writing checks | DONE | `responsive.py` 0 problems after the 36 px view toggle on phones; page suite 406 passed; role page suite 182 passed; `ui_check.py`, `validate.py`, `html_check.js`, `parity_check.js` and the visual gate pass |
+| 13.8 | Single sidebar retained | DONE (deliberate) | Section 25.5B suggests a rail plus a contextual menu at 1024 to 1919 px; the owner asked for one navigation column, so the grouped sidebar is kept and the deviation is recorded in `KNOWN_LIMITATIONS.md` |
+
 ## Known gaps
 
 The items that remain partial or unverified are listed in
