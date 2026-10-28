@@ -214,6 +214,7 @@ def capture(ws, name, w, h, full=False):
                        "transition:none!important;caret-color:transparent!important}"
                        ".live-dot{box-shadow:none!important;animation:none!important}';"
                        "document.head.appendChild(s);"
+                       "var tb=document.querySelector('.toast-box');if(tb)tb.innerHTML='';"
                        "window.scrollTo(0,0);void document.body.offsetHeight;})()")})
     time.sleep(0.7)
 
@@ -309,8 +310,8 @@ def main():
     # --only accepts any page file in the repository, so a role page
     # (or-dashboard.html, mgmt-users.html ...) can be captured too.
     if args.only:
-        pages = [p if p.endswith(".html") else p + ".html" for p in args.only]
-        missing = [p for p in pages if not os.path.isfile(os.path.join(ROOT, p))]
+        pages = [p if (p.endswith(".html") or ".html?" in p) else p + ".html" for p in args.only]
+        missing = [p for p in pages if not os.path.isfile(os.path.join(ROOT, p.split("?", 1)[0]))]
         if missing:
             print("!! no such page: %s" % ", ".join(missing))
             return 2
@@ -359,7 +360,7 @@ def main():
         for page in pages:
             for vp, w, h in vps:
                 for full, suffix in modes:
-                    stem = "%s--%s%s" % (page.rsplit(".", 1)[0], vp, suffix)
+                    stem = "%s--%s%s" % (page.split("?", 1)[0].rsplit(".", 1)[0], vp, suffix)
                     try:
                         png, css_h, errors = capture(ws, page, w, h, full=full)
                     except Exception as exc:

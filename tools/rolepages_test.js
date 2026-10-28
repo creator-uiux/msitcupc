@@ -126,8 +126,14 @@ function seedFor(role) {
   var db = JSON.parse(SEED_DB);
   db.settings.simulate = false;
   if (role) {
+    var WHO = {
+      requester: { name: 'A. Delos Reyes', office: 'Records Office', email: 'a.delosreyes@upcebu.edu.ph' },
+      technician: { name: 'J. Tan', office: 'IT Office', email: 'j.tan@upcebu.edu.ph' },
+      coordinator: { name: 'K. Ramos', office: 'IT Office', email: 'k.ramos@upcebu.edu.ph' },
+      management: { name: 'M. Reyes', office: 'Office of the Director', email: 'm.reyes@upcebu.edu.ph' }
+    }[role] || { name: 'T', office: 'IT Office', email: 't@upcebu.edu.ph' };
     db.role = role;
-    db.auth = { role: role, name: 'T', email: 't@upcebu.edu.ph', office: 'IT Office' };
+    db.auth = { role: role, name: WHO.name, email: WHO.email, office: WHO.office };
   } else {
     db.auth = null;
   }
@@ -307,19 +313,20 @@ tests.push(async function rolePagesExist() {
 });
 
 tests.push(async function rolePagesRenderOwnRole() {
+  var TITLE = { requester: 'Office Requester', technician: 'IT Technician', coordinator: 'IT Coordinator', management: 'System Administrator' };
   for (var i = 0; i < ROLE_PAGES.length; i++) {
     var pfx = ROLE_PAGES[i][0], role = ROLE_PAGES[i][1];
     var p = await open(BASE + pfx + '-dashboard.html', role);
     ok(p.errors.length === 0, pfx + '-dashboard.html loads clean' + (p.errors.length ? ' -> ' + p.errors.join('|') : ''));
     ok(p.w.UI.roleKey() === role, pfx + '-dashboard.html pins role=' + role + ' (got ' + p.w.UI.roleKey() + ')');
-    var side = p.d.querySelector('.sideRole');
-    ok(side && side.textContent.length > 0, pfx + ': sidebar shows a role title ("' + (side ? side.textContent : '') + '")');
+    var side = p.d.querySelector('.role-chip');
+    ok(side && side.textContent.trim() === TITLE[role], pfx + ': header shows the role title ("' + (side ? side.textContent.trim() : '') + '")');
     /* nav hrefs must carry the same prefix */
-    var hrefs = Array.prototype.slice.call(p.d.querySelectorAll('.nav-item')).map(function (a) { return a.getAttribute('href'); });
+    var hrefs = Array.prototype.slice.call(p.d.querySelectorAll('.rail-item[href]')).map(function (a) { return a.getAttribute('href'); });
     ok(hrefs.length > 0 && hrefs.every(function (h) { return h.indexOf(pfx + '-') === 0; }),
        pfx + ': every nav link is ' + pfx + '-prefixed');
     /* the active page is marked */
-    var active = p.d.querySelector('.nav-item.active');
+    var active = p.d.querySelector('.rail-item.active');
     ok(active && active.getAttribute('href') === pfx + '-dashboard.html', pfx + ': dashboard is the active nav item');
     close(p);
   }
@@ -379,9 +386,9 @@ tests.push(async function sessionlessRendersOwnRole() {
     ok(p.redirected !== true, pfx + '-dashboard.html sessionless load does not redirect');
     ok(p.w.UI.roleKey() === role,
        pfx + '-dashboard.html sessionless load renders the URL role (got ' + p.w.UI.roleKey() + ')');
-    var side = p.d.querySelector('.sideRole');
-    ok(side && side.textContent.length > 0,
-       pfx + ': sessionless preview still shows a role title ("' + (side ? side.textContent : '') + '")');
+    var side = p.d.querySelector('.role-chip');
+    ok(side && side.textContent.trim().length > 0,
+       pfx + ': sessionless preview still shows a role title ("' + (side ? side.textContent.trim() : '') + '")');
     ok(p.d.querySelector('#accessPanel') === null, pfx + ': sessionless preview is not an access-denied panel');
     try { p.w.close(); } catch (e) { }
   }
@@ -413,6 +420,135 @@ tests.push(async function barePagesStillWork() {
   ok(p.w.UI.roleKey() === 'requester', 'bare dashboard.html respects the session role');
   ok(p.d.querySelector('#accessPanel') === null, 'requester sees their dashboard, no access panel');
   close(p);
+});
+
+/* ---------- role visibility (Section 25.2) ----------
+   The one permission map drives the rail, the columns, the filters and the
+   dashboard panels.  These checks read the computed style of a representative
+   element for every rule, so a rule that stops matching is caught here rather
+   than by eye. */
+function displayOf(w, sel) {
+  var el = w.document.querySelector(sel);
+  if (!el) return null;
+  return w.getComputedStyle(el).display;
+}
+
+tests.push(async function roleVisibility() {
+  var HIDE = [
+    /* role, page, selector, shouldShow */
+    ['requester', 'or-dashboard.html', '#depWrap', false],
+    ['requester', 'or-dashboard.html', '.staff-only', false],
+    ['requester', 'or-dashboard.html', '.tech-only', false],
+    ['coordinator', 'ic-dashboard.html', '#depWrap', true],
+    ['coordinator', 'ic-dashboard.html', '.staff-only', true],
+    ['coordinator', 'ic-dashboard.html', '.tech-only', true],
+    ['management', 'mgmt-dashboard.html', '#depWrap', false],
+    ['management', 'mgmt-dashboard.html', '.tech-only', false],
+    ['technician', 'itc-dashboard.html', '#depWrap', false],
+
+    ['requester', 'or-tickets.html', '.col-check', false],
+    ['requester', 'or-tickets.html', '.filter-tech', false],
+    ['requester', 'or-tickets.html', '.filter-office', false],
+    ['requester', 'or-tickets.html', '.filter-scope', false],
+    ['technician', 'itc-tickets.html', '.col-check', false],
+    ['technician', 'itc-tickets.html', '.filter-tech', false],
+    ['coordinator', 'ic-tickets.html', '.col-check', true],
+    ['coordinator', 'ic-tickets.html', '.filter-tech', true],
+    ['coordinator', 'ic-tickets.html', '.filter-office', true],
+    ['coordinator', 'ic-tickets.html', '.filter-scope', true],
+    ['management', 'mgmt-tickets.html', '.col-check', false],
+    ['management', 'mgmt-tickets.html', '.filter-tech', true],
+
+    ['requester', 'or-reports.html', '.lead-only', false],
+    ['technician', 'itc-reports.html', '.lead-only', false],
+    ['coordinator', 'ic-reports.html', '.lead-only', true],
+    ['management', 'mgmt-reports.html', '.lead-only', true],
+
+    ['technician', 'itc-maintenance.html', '.schedule-manage', false],
+    ['coordinator', 'ic-maintenance.html', '.schedule-manage', true],
+    ['management', 'mgmt-maintenance.html', '.schedule-manage', true],
+    ['management', 'mgmt-maintenance.html', '#btnNewSched', false],
+    ['coordinator', 'ic-maintenance.html', '#btnNewSched', true],
+
+    ['requester', 'or-ticket.html?id=IT-2026-000142', '#tab-dep', false],
+    ['coordinator', 'ic-ticket.html?id=IT-2026-000142', '#tab-dep', true],
+    ['technician', 'itc-ticket.html?id=IT-2026-000142', '#tab-dep', true]
+  ];
+  var groups = {};
+  HIDE.forEach(function (c) { (groups[c[0]] = groups[c[0]] || []).push(c); });
+  for (var role in groups) {
+    var list = groups[role];
+    var pages = {};
+    list.forEach(function (c) { pages[c[1]] = true; });
+    for (var page in pages) {
+      var p = await open(BASE + page, role);
+      list.filter(function (c) { return c[1] === page; }).forEach(function (c) {
+        var d = displayOf(p.w, c[2]);
+        var shown = d !== null && d !== 'none';
+        ok(d !== null, role + ' ' + page + ': ' + c[2] + ' exists');
+        ok(shown === c[3], role + ' ' + page + ': ' + c[2] + (c[3] ? ' is shown' : ' is hidden') + (d === null ? ' (missing)' : ' (display ' + d + ')'));
+      });
+      close(p);
+    }
+  }
+});
+
+tests.push(async function roleNavigationMatchesPermissionMap() {
+  var CASES = [
+    ['requester', 'or-dashboard.html', ['my requests', 'new request', 'office register'], ['maintenance', 'reports', 'users']],
+    ['technician', 'itc-dashboard.html', ['my tickets', 'my jobs', 'office register'], ['reports', 'users', 'new request']],
+    ['coordinator', 'ic-dashboard.html', ['tickets', 'maintenance', 'reports'], ['users']],
+    ['management', 'mgmt-dashboard.html', ['service records', 'administration', 'reports'], ['new request']]
+  ];
+  for (var i = 0; i < CASES.length; i++) {
+    var role = CASES[i][0], page = CASES[i][1];
+    var p = await open(BASE + page, role);
+    var labels = Array.prototype.slice.call(p.d.querySelectorAll('.rail-item[href] span'))
+      .map(function (s) { return s.textContent.trim().toLowerCase(); });
+    var hrefs = Array.prototype.slice.call(p.d.querySelectorAll('.rail-item[href]'))
+      .map(function (a) { return a.getAttribute('href'); });
+    CASES[i][2].forEach(function (want) {
+      ok(labels.indexOf(want) > -1, role + ': rail shows "' + want + '" (' + labels.join(', ') + ')');
+    });
+    CASES[i][3].forEach(function (bad) {
+      var hit = hrefs.some(function (h) { return h.indexOf(bad) > -1; });
+      ok(!hit, role + ': rail does not offer ' + bad);
+    });
+    close(p);
+  }
+});
+
+tests.push(async function requesterPlainLanguage() {
+  var p = await open(BASE + 'or-ticket.html?id=IT-2026-000142', 'requester');
+  var work = p.d.getElementById('tWorkCard');
+  ok(work && work.textContent.indexOf('Cost / labor') === -1, 'requester ticket detail: no cost or labour figures');
+  var seg = p.d.getElementById('tReplySeg');
+  ok(seg && /Reply to IT/.test(seg.textContent), 'requester reply toggle says "Reply to IT"');
+  ok(!/Internal note/.test(seg ? seg.textContent : ''), 'requester reply toggle has no internal note option');
+  close(p);
+});
+
+tests.push(async function forbiddenUrlShowsNeutralPanel() {
+  var CASES = [
+    ['requester', 'users.html'],
+    ['requester', 'maintenance.html'],
+    ['technician', 'users.html'],
+    ['coordinator', 'users.html'],
+    ['technician', 'review.html']
+  ];
+  for (var i = 0; i < CASES.length; i++) {
+    var role = CASES[i][0], page = CASES[i][1];
+    var p = await open(BASE + page, role);
+    var panel = p.d.getElementById('accessPanel');
+    ok(panel !== null, role + ' on ' + page + ': neutral access panel is shown');
+    if (panel) {
+      var text = panel.textContent;
+      ok(/This page is not available/.test(text), role + ' on ' + page + ': panel uses the neutral heading');
+      ok(text.indexOf(page) === -1, role + ' on ' + page + ': panel does not name the page');
+    }
+    ok(p.d.querySelector('.rail') !== null, role + ' on ' + page + ': the rail still works');
+    close(p);
+  }
 });
 
 /* ---------- run ---------- */

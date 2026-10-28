@@ -169,8 +169,8 @@ tests.push(async function dashboard() {
   ok($('.roleSel') === null, 'no view-as-role switcher in the top bar');
   asRole(p, 'requester');
   ok(p.w.Store.db.role === 'requester', 'signed-in role persists to store');
-  ok($('.sideUser').textContent === 'A. Delos Reyes', 'sidebar reflects the signed-in account');
-  ok($('.avatar').textContent === 'AD', 'avatar initials update');
+  ok($('.acctName').textContent === 'A. Delos Reyes', 'account tray reflects the signed-in account');
+  ok($('.rail-avatar').textContent === 'AD', 'rail avatar initials update');
 
   /* live tick */
   var n0 = p.w.Store.db.tickets.length;
@@ -723,19 +723,22 @@ tests.push(async function rolesPage() {  var p = await open(BASE + 'roles.html')
 
 tests.push(async function roleNav() {
   var p = await open(BASE + 'dashboard.html');
-  var n0 = $$('.nav-item').length;
+  var rail = function () {
+    return $$('.rail-item[href]').map(function (a) { return a.textContent.replace(/\s+/g, ' ').trim(); });
+  };
+  var n0 = rail().length;
   ok(n0 >= 7, 'coordinator sees the full navigation (' + n0 + ')');
-  var c0 = $$('.nav-item').map(function (a) { return a.textContent; }).join('|');
-  ok(c0.indexOf('My Work') === -1, 'My Work is the technician lane  --  hidden from the coordinator');
+  var c0 = rail().join('|');
+  ok(c0.indexOf('My Tickets') === -1, 'My Tickets is the technician lane  --  hidden from the coordinator');
   asRole(p, 'requester');
-  var labels = $$('.nav-item').map(function (a) { return a.textContent; }).join('|');
-  ok($$('.nav-item').length < n0, 'requester sees fewer nav items than the coordinator');
-  ok(labels.indexOf('My Work') === -1, 'requester cannot see the technician workspace');
+  var labels = rail().join('|');
+  ok(rail().length < n0, 'requester sees fewer nav items than the coordinator');
+  ok(labels.indexOf('My Jobs') === -1, 'requester cannot see the technician workspace');
   ok(labels.indexOf('Maintenance') === -1, 'requester cannot see maintenance');
   asRole(p, 'management');
-  var m = $$('.nav-item').map(function (a) { return a.textContent; }).join('|');
+  var m = rail().join('|');
   ok(m.indexOf('New Request') === -1, 'management cannot submit requests');
-  ok(m.indexOf('Roles') === -1, 'reference pages are hidden from the navigation');
+  ok(m.indexOf('Roles') === -1, 'reference pages stay out of the primary rail');
   ok(m.indexOf('Maintenance') > -1, 'management can still open maintenance');
   ok(p.errors.length === 0, 'no errors switching roles');
   close(p);
@@ -745,13 +748,14 @@ tests.push(async function navGroupsNeverEmpty() {
   var p = await open(BASE + 'dashboard.html');
   ['requester', 'technician', 'coordinator', 'management'].forEach(function (role) {
     asRole(p, role);
-    var kids = Array.prototype.slice.call(p.d.querySelectorAll('#chromeSide nav.nav > *'));
-    var empty = kids.some(function (el, i) {
-      if (!el.classList.contains('nav-label')) return false;
-      var next = kids[i + 1];
-      return !next || next.classList.contains('nav-label');
-    });
-    ok(!empty, role + ': no navigation group renders empty');
+    var items = $$('#chromeSide .rail-nav .rail-item[href]');
+    var ctxItems = $$('#chromeSide .ctx .ctx-item[href]');
+    ok(items.length > 0, role + ': the rail renders destinations (' + items.length + ')');
+    ok(ctxItems.length > 0, role + ': the contextual menu renders destinations (' + ctxItems.length + ')');
+    ok($$('#chromeSide .ctx-group').every(function (g) {
+      var next = g.nextElementSibling;
+      return next && next.classList.contains('ctx-item');
+    }), role + ': no contextual group renders empty');
   });
   ok(p.errors.length === 0, 'no errors across role navigation');
   close(p);
@@ -905,7 +909,7 @@ tests.push(async function accessGuard() {
   asRole(p, 'requester');
   ok($('#accessPanel') !== null, 'requester is blocked with a friendly panel');
   ok(p.w.document.body.classList.contains('access-denied'), 'denied state applied to the page');
-  ok($('#accessPanel').textContent.indexOf('not part of your role') > -1, 'panel explains the role restriction');
+  ok($('#accessPanel').textContent.indexOf('This page is not available') > -1, 'panel gives a neutral explanation');
   close(p);
 });
 
@@ -948,8 +952,8 @@ tests.push(async function newScreens() {
 
 /* Mobile navigation: the bottom tab bar carries the role's four most used
    destinations and the rest live in the More sheet.  The Workflow Guide and
-   the Roles & Access reference are hidden on a phone, the same way the
-   sidebar never offered them. */
+   the Roles & Access reference live in the More sheet, so a phone still
+   reaches every screen the rail offers on a desktop. */
 tests.push(async function mobileNav() {
   var p = await open(BASE + 'dashboard.html');
   asRole(p, 'coordinator');
@@ -972,12 +976,12 @@ tests.push(async function mobileNav() {
         'More sheet reaches the notification centre');
       ok(hrefs.some(function (h) { return /profile\.html$/.test(h); }),
         'More sheet reaches the profile');
-      /* the two dense reference screens stay off the phone navigation, the
-         same way the sidebar never offered them */
-      ok(!hrefs.some(function (h) { return /flow\.html$/.test(h); }),
-        'More sheet hides the workflow guide');
-      ok(!hrefs.some(function (h) { return /roles\.html$/.test(h); }),
-        'More sheet hides the roles & access reference');
+      /* the reference screens stay reachable on a phone through More, because
+         the rail foot is not part of the bottom tab bar */
+      ok(hrefs.some(function (h) { return /flow\.html$/.test(h); }),
+        'More sheet reaches the workflow guide');
+      ok(hrefs.some(function (h) { return /roles\.html$/.test(h); }),
+        'More sheet reaches the roles & access reference');
       /* a destination must never be listed twice */
       var uniq = {};
       var dupes = [];
