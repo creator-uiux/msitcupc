@@ -990,10 +990,6 @@
         { href: 'reports.html', label: 'Reports', ic: 'chart' }
       ]);
     }
-    add('Reference', [
-      { href: 'flow.html', label: 'Workflow Guide', ic: 'flow' },
-      { href: 'roles.html', label: 'Roles and Access', ic: 'users' }
-    ]);
     return groups;
   }
 
@@ -1442,7 +1438,6 @@
       '<span class="spacer"></span>' +
       '<button type="button" class="tb-search" id="tbSearch" aria-label="Search the workspace" aria-haspopup="dialog" aria-expanded="false">' +
       icon('search') + '<span class="tb-search-text">Search tickets, offices, assets…</span><kbd>Ctrl K</kbd></button>' +
-      '<a class="ico-btn" href="' + urlFor('flow.html', roleKey()) + '" title="Workflow guide" aria-label="Workflow guide">' + icon('help') + '</a>' +
       '<span class="role-chip"><i aria-hidden="true"></i>' + esc(currentRole().title) + '</span>' +
       bellHTML('notifD') +
       accountHTML('acctD');

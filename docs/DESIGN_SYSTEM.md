@@ -308,21 +308,24 @@ theme.
 
 - **Desktop**: one 256px sidebar in deep green with white text and a grouped
   list of every screen the role may open: Workspace, Service Requests,
-  Maintenance, Records, Administration and Reference. Group headings are
-  plain labels, the active screen carries a left accent bar, and count pills
-  follow the role's own queue. Only permitted items are rendered.
+  Maintenance, Records and Administration. Group headings are plain labels,
+  the active screen carries a left accent bar, and count pills follow the
+  role's own queue. Only permitted items are rendered.
 - **Sidebar identity block**: the two existing seals, "UP Cebu" and the
   system name at the top; the signed-in person, role and account shortcut
   below it; Notifications and Profile in a "Your account" block at the foot.
   There is no second navigation column.
-- **Top bar**: breadcrumbs, ticket search, Workflow Guide link, role chip,
-  notification bell and account menu. Breadcrumbs are the single page
-  location indicator; the page body does not repeat them.
+- **Top bar**: breadcrumbs, ticket search, role chip, notification bell and
+  account menu. Breadcrumbs are the single page location indicator; the page
+  body does not repeat them.
 - **Tablet and phone**: the sidebar becomes a slide-in drawer opened from the
   app bar, with a scrim and an explicit close control. A bottom tab bar
   carries the role's four most used destinations plus a **More** sheet with
-  the rest, so nothing is unreachable. The Workflow Guide and Roles & Access
-  are in the More sheet and in the drawer.
+  the rest, so nothing is unreachable.
+- **Reference pages stay out of navigation.** The Workflow Guide and the Roles
+  and Access reference remain routable at `flow.html` and `roles.html` for
+  every role, but no sidebar, top bar or More sheet entry points at them. The
+  permission map is unchanged; only the navigation entry was removed.
 - **Phone**: 44px touch targets, safe-area padding, tables become cards, the
   primary action sticks to the bottom.
 - **The More sheet holds the notices.**  The sheet covers the screen, so a
@@ -373,7 +376,7 @@ informative image carries alt text (decorative artwork is `alt=""`).
 | Tool | What it proves |
 |---|---|
 | `python tools/ui_check.py` | every page loads its stylesheets in order (four on authenticated pages, three plus `login.css` on the sign-in page), carries no inline style, keeps the shell and the page head, uses only classes the stylesheets define, and has no page-local `<style>` block |
-| `python tools/responsive.py` | no overflow, no clipping, no tap target under 36px across 320 / 375 / 390 / 430 / 768 / 1024 / 1280 / 1440 |
+| `python tools/responsive.py` | no overflow, no clipping, no tap target under 36px across 34 viewports from 320x480 to 7680x2160; the frozen login is allowed its recorded bounded scroll |
 | `node tools/pagetest.js` | every page renders, every control is wired, icons and badges behave |
 | `node tools/smoke.js` | the workflow still runs end to end in the browser |
 | `python tools/validate.py` | every element id referenced by the scripts exists |

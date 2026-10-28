@@ -69,6 +69,11 @@ move the map does not allow.
 | Settings | no | no | no | yes |
 | Audit Log | no | no | no | yes |
 
+The Workflow Guide and Roles and Access rows describe route permission, not
+navigation. Both pages remain reachable at `flow.html` and `roles.html` for
+every role, but neither appears in the sidebar, the top bar or the mobile More
+sheet.
+
 Page access is enforced twice: the pre-paint role guard in the generated role
 pages redirects a wrong-role visitor, and the backend scopes every read and
 write to the signed-in user's role and office.

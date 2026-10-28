@@ -758,6 +758,15 @@ tests.push(async function roleNav() {
   var nav = function () {
     return $$('.side-link[href]').map(function (a) { return a.textContent.replace(/\s+/g, ' ').trim(); });
   };
+  /* Both reference screens are routable but must stay out of the navigation
+     for every role, on the desktop rail and in the phone More sheet. */
+  ['requester', 'technician', 'coordinator', 'management'].forEach(function (r) {
+    asRole(p, r);
+    var refs = nav().join('|');
+    ok(refs.indexOf('Workflow Guide') === -1, r + ' does not list the workflow guide');
+    ok(refs.indexOf('Roles and Access') === -1, r + ' does not list the roles and access reference');
+  });
+  asRole(p, 'coordinator');
   var n0 = nav().length;
   ok(n0 >= 7, 'coordinator sees the full navigation (' + n0 + ')');
   var c0 = nav().join('|');
@@ -770,7 +779,8 @@ tests.push(async function roleNav() {
   asRole(p, 'management');
   var m = nav().join('|');
   ok(m.indexOf('New Request') === -1, 'management cannot submit requests');
-  ok(m.indexOf('Roles and Access') > -1, 'reference pages live in their own sidebar group');
+  ok(m.indexOf('Roles and Access') === -1, 'the reference pages stay out of the sidebar');
+  ok(m.indexOf('Workflow Guide') === -1, 'the workflow guide stays out of the sidebar');
   ok(m.indexOf('Maintenance') > -1, 'management can still open maintenance');
   ok(p.errors.length === 0, 'no errors switching roles');
   close(p);
@@ -784,7 +794,7 @@ tests.push(async function navGroupsNeverEmpty() {
     ok(groups.length > 0, role + ': the sidebar renders groups (' + groups.length + ')');
     ok(groups.every(function (g) { return g.querySelectorAll('.side-link[href]').length > 0; }),
       role + ': no sidebar group renders empty');
-    ok($$('#chromeSide .side-link[href]').length >= 6,
+    ok($$('#chromeSide .side-link[href]').length >= 5,
       role + ': the sidebar renders destinations (' + $$('#chromeSide .side-link[href]').length + ')');
     ok($('#chromeSide .ctx') === null, role + ': the old contextual column is gone');
   });
@@ -1049,9 +1059,7 @@ tests.push(async function newScreens() {
 });
 
 /* Mobile navigation: the bottom tab bar carries the role's four most used
-   destinations and the rest live in the More sheet.  The Workflow Guide and
-   the Roles & Access reference live in the More sheet, so a phone still
-   reaches every screen the rail offers on a desktop. */
+   destinations and the rest live in the More sheet. */
 tests.push(async function mobileNav() {
   var p = await open(BASE + 'dashboard.html');
   asRole(p, 'coordinator');
@@ -1074,12 +1082,11 @@ tests.push(async function mobileNav() {
         'More sheet reaches the notification centre');
       ok(hrefs.some(function (h) { return /profile\.html$/.test(h); }),
         'More sheet reaches the profile');
-      /* the reference screens stay reachable on a phone through More, because
-         the rail foot is not part of the bottom tab bar */
-      ok(hrefs.some(function (h) { return /flow\.html$/.test(h); }),
-        'More sheet reaches the workflow guide');
-      ok(hrefs.some(function (h) { return /roles\.html$/.test(h); }),
-        'More sheet reaches the roles & access reference');
+      /* the reference screens are not part of the signed-in navigation */
+      ok(!hrefs.some(function (h) { return /flow\.html$/.test(h); }),
+        'More sheet does not list the workflow guide');
+      ok(!hrefs.some(function (h) { return /roles\.html$/.test(h); }),
+        'More sheet does not list the roles and access reference');
       /* a destination must never be listed twice */
       var uniq = {};
       var dupes = [];

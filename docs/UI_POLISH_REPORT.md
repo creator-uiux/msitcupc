@@ -42,19 +42,22 @@ change re-renders the same shell everywhere.
 - **Grouped sidebar.** One 256 px column. The top block carries the two
   existing seals, "UP Cebu" and the system name. The signed-in person, role
   and account shortcut sit directly below it. The navigation is a labelled
-  list (Workspace, Service Requests, Maintenance, Records, Administration,
-  Reference) with a left accent bar on the active screen and role-scoped
+  list (Workspace, Requests or Service Requests, Maintenance, Records,
+  Administration) with a left accent bar on the active screen and role-scoped
   count pills. A "Your account" block at the foot holds Notifications and
   Profile. There is no second navigation column.
-- **Top bar.** Breadcrumbs, ticket search, Workflow Guide link, role chip,
-  notification tray and account tray. The account tray holds the Light, Dark
-  and System theme picker. Breadcrumbs appear once, in the top bar, not in
-  the page body.
+- **Top bar.** Breadcrumbs, ticket search, role chip, notification tray and
+  account tray. The account tray holds the Light, Dark and System theme
+  picker. Breadcrumbs appear once, in the top bar, not in the page body.
 - **Mobile app bar.** Menu control, seal lockup, notification bell and
   account trigger. The same theme picker is bound inside the mobile tray.
 - **Bottom bar.** Four main destinations per role plus a More sheet. The
-  More sheet exposes every remaining destination, including Workflow Guide
-  and Roles and Access.
+  More sheet exposes every remaining destination for the role.
+- **Reference pages.** The Workflow Guide and Roles and Access reference
+  remain routable at `flow.html` and `roles.html` under the same permission
+  map, but they are no longer listed in the sidebar, the top bar or the More
+  sheet. The navigation was trimmed; the routes and permissions were not
+  changed.
 - **Page frame.** A formal footer on every authenticated page: copyright
   line with the current year, University of the Philippines Cebu. The page
   content fills the remaining height so the footer sits at the bottom of
@@ -79,10 +82,10 @@ guard still refuses the operation if it is called directly.
 
 | Role | Sidebar destinations | Hidden in the interface |
 |---|---|---|
-| Office Requester | Dashboard, My Requests, New Request, Confirmation, Office Register, Reports, Workflow Guide, Roles and Access | staff, technician and coordinator panels; cost and labour columns; internal notes; technician, office and scope filters; bulk selection; assignment and scheduling controls |
-| IT Technician | Dashboard, My Tickets, My Maintenance Jobs, Office Register, Reports, Workflow Guide, Roles and Access | coordinator and administration panels; schedule create, edit and pause controls; office and scope filters; bulk selection |
-| IT Coordinator | Dashboard, Tickets, New Request, Review and Assign, Confirmation, Maintenance, Office Register, Reports, Workflow Guide, Roles and Access | administration panels |
-| System Administrator | Dashboard, Service Records, Maintenance, Office Register, Reports, Users, Offices, Configuration, Audit Log, Workflow Guide, Roles and Access | operational technician panels; coordination-only controls such as creating a maintenance schedule; edit and pause remain because the permission map allows them |
+| Office Requester | Dashboard, My Requests, New Request, Confirmation, Office Register, Reports | staff, technician and coordinator panels; cost and labour columns; internal notes; technician, office and scope filters; bulk selection; assignment and scheduling controls |
+| IT Technician | Dashboard, My Tickets, My Maintenance Jobs, Office Register, Reports | coordinator and administration panels; schedule create, edit and pause controls; office and scope filters; bulk selection |
+| IT Coordinator | Dashboard, Tickets, New Request, Review and Assign, Confirmation, Maintenance, Office Register, Reports | administration panels |
+| System Administrator | Dashboard, Service Records, Maintenance, Office Register, Reports, Users, Offices, Configuration, Audit Log | operational technician panels; coordination-only controls such as creating a maintenance schedule; edit and pause remain because the permission map allows them |
 
 Notifications and Profile sit in the "Your account" block of every sidebar.
 A group with nothing permitted is omitted, so no heading renders empty.
@@ -181,8 +184,10 @@ and opens forbidden URLs to confirm the neutral panel appears.
   rather than changed, because `js/theme.js` is a frozen surface.
 - Layout tiers: phone up to 599 px, tablet 600 to 1023 px, desktop 1024 px
   and up, with the two-column content grid engaging at 1280 px.
-  `tools/responsive.py` exercises 71 pages at 8 widths from 320 px to
-  1440 px and reports 0 problems, including 0 sub-36 px tap targets.
+  `tools/responsive.py` exercises 71 pages at 34 viewports from 320x480 to
+  7680x2160 and reports 0 problems, including 0 sub-36 px tap targets. The
+  frozen login is measured with a bounded scroll allowance, recorded in
+  `KNOWN_LIMITATIONS.md`.
 - Breadcrumbs live in the top bar only and are hidden below 600 px; bulk
   selection hides on phones, and bottom tab labels are set to a single line
   at 10.5 px. Status links in the dashboard strip are at least 36 px tall.
@@ -214,7 +219,7 @@ Results from this working tree. Commands are listed with their outcome.
 |---|---|---|
 | Backend suite | `python server/tests.py` | 335 passed, 0 failed |
 | Workflow smoke | `node tools/smoke.js` | 60 passed, 0 failed |
-| Page integration | `node tools/pagetest.js` | 452 passed, 0 failed |
+| Page integration | `node tools/pagetest.js` | 461 passed, 0 failed |
 | Role page suite | `node tools/rolepages_test.js` | 182 passed, 0 failed |
 | API integration | `python tools/api_check.py` | 17 passed, 0 failed |
 | Markup and DOM ids | `python tools/validate.py` | PASSED |

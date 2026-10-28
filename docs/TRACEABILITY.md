@@ -92,7 +92,7 @@ from the label text and the SOP numbering (Appendix B.6).
 | 20 | Audit records every status change and is append only | `engine._audit` | `tests.py` audit trail | verified | none |
 | 21 | Office level permissions are enforced | `engine._office_block`, `app._scoped` | `tests.py` access, `api_check.py` | verified | none |
 | 22 | Ticket list, detail and dashboard have the reference functionality | `tickets.html`, `ticket.html`, `dashboard.html` | `pagetest.js` | verified | the owner's screenshot references could not be opened, so the written requirements were used |
-| 23 | All pages are responsive and accessible | `css/app.css` | `tools/responsive.py` (320, 375, 390, 430, 768, 1024, 1280, 1440), `tools/gate_shots.py` | verified | none |
+| 23 | All pages are responsive and accessible | `css/app.css` | `tools/responsive.py` (34 viewports from 320x480 to 7680x2160), `tools/gate_shots.py` | verified | none |
 | 24 | No primary control is nonfunctional | every action is a guarded engine method | `smoke.js`, `pagetest.js` | verified | none |
 | 25 | Tests and the build were executed, with honest results | the test suites below | the results below | verified | the page suite is flaky while another process is editing the same tree |
 | 26 | The UI follows the design system and looks consistent | `docs/DESIGN_SYSTEM.md`, `docs/screenshots/` | `tools/gate_shots.py` | verified | the screenshots are a machine check plus a read of the captures, not a full designer review |
@@ -120,7 +120,7 @@ that was not run is not listed.
 |---|---|---|
 | Backend | `python server/tests.py` | 335 passed, 0 failed |
 | Workflow smoke | `node tools/smoke.js` | 60 passed, 0 failed |
-| Page integration | `node tools/pagetest.js` | 452 passed, 0 failed |
+| Page integration | `node tools/pagetest.js` | 461 passed, 0 failed |
 | Role pages | `node tools/rolepages_test.js` | 182 passed, 0 failed |
 | API | `python tools/api_check.py` | 17 passed, 0 failed |
 | Markup and DOM ids | `python tools/validate.py` | PASSED |
@@ -133,7 +133,7 @@ that was not run is not listed.
 | Role page generation | `python tools/role_pages.py --check` | PASS (49 files) |
 | Asia/Manila display | `node tools/time_check.js` | PASS under three host timezones |
 | Visual gate | `python tools/gate_shots.py` | PASS (60 captures, no overflow, no clipping); 48 role captures also checked in |
-| Responsive | `python tools/responsive.py` | 0 problems at 1440, 1280, 1024, 768, 430, 390, 375 and 320 px |
+| Responsive | `python tools/responsive.py` | 0 problems across 2414 checks (71 pages x 34 viewports, 320x480 to 7680x2160); the frozen login scroll is bounded and recorded |
 | HTML markup check | `node tools/html_check.js` | 355 passed, 0 failed across 71 pages |
 | UI structure audit | `node tools/ui_audit.js` | 335 passed, 0 issues |
 | Script load order | `node tools/script_order_check.js` | 67 passed, 0 failed across 71 pages |

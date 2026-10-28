@@ -154,7 +154,7 @@ The authoritative workflow is the 29 step SOP in the bundled
 | # | Requirement | Status | Evidence |
 |---|---|---|---|
 | 11.1 | One navigation column instead of two competing columns | DONE | `js/ui.js` `navModel`/`renderSide`; `css/console.css` `.side-head`, `.side-user`, `.side-nav`, `.side-group`, `.side-link`, `.side-foot`; the old `.rail`/`.ctx` markup and styles are removed |
-| 11.2 | Every permitted screen reachable from the sidebar, grouped and labelled | DONE | groups Workspace, Service Requests, Maintenance, Records, Administration, Reference; account links at the foot; empty groups omitted |
+| 11.2 | Every permitted screen reachable from the sidebar, grouped and labelled | DONE | groups Workspace, Service Requests, Maintenance, Records, Administration; account links at the foot; empty groups omitted. Phase 17 removes the two reference entries from navigation while keeping their routes |
 | 11.3 | Role-focused dashboard | DONE | four role tiles, the eight status labels plus Overdue as links into the filtered queue, four role quick actions, scoped data, paginated Needs your action list |
 | 11.4 | Status links open the matching filtered queue | DONE | `?status=` and `?queue=overdue` handled in `tickets.html`; the advanced status filter no longer loses the chip |
 | 11.5 | Pagination wherever a list or table can grow | DONE | `UI.paginate`/`UI.renderPagination` in dashboard queues, tickets, users, offices, settings reference data, register history/assets/maintenance/audit, reports, review, confirm, notifications |
@@ -220,6 +220,18 @@ The authoritative workflow is the 29 step SOP in the bundled
 | 16.5 | Phones stay legible | DONE | office numbers wrap under the name instead of truncating it, sparklines shorten, the ring shrinks to 72 px; `responsive.py` 0 problems |
 | 16.6 | Privacy and scope hold | DONE | the health strip is `staff-only`, the load card is `lead-only`, the ring lives in the `staff-only` costs section; the requester render hides the strip entirely |
 | 16.7 | Tests and evidence | DONE | `pagetest.js` 452 passed, including sparkline markup and titles, office ordering and links, load segments adding to the total, ring value and label, and the requester hidden strip; captures at 1440 and 390 in both themes |
+
+## Phase 17. Trimmed navigation and every-screen sizing
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 17.1 | Workflow Guide and Roles and Access no longer clutter the signed-in navigation | DONE | the Reference group is removed from `navModel` in `js/ui.js`, the top bar help link is removed from `renderTop`, and the mobile More sheet derives from `navModel`, so none of the three surfaces lists either page. `pagetest.js` `roleNav` checks all four roles and `mobileNav` checks the More sheet |
+| 17.2 | Routes and permissions are unchanged | DONE | `ACCESS` still grants `flow.html` and `roles.html` to every role; `rolesPage` and the role page suite still open them; `permission_parity_check.py` and `parity_check.js` pass |
+| 17.3 | One responsive matrix covers phones, tablets, laptops, desktops, ultrawide and 8K | DONE | `tools/responsive.py` `VIEWPORTS` holds 34 viewports from 320x480 to 7680x2160, including 844x390, 932x430, 820x1180, 1180x820, 1366x768, 3440x1440 and 3840x2160 |
+| 17.4 | The frozen login is measured, not edited | DONE | `FROZEN_SCREEN_SCROLL` accepts a bounded scroll of at most 120 px on `login.html` only; the largest observed overshoot is 85 px at 360x640. `git diff` shows no change to `login.html`, `css/login.css`, `js/login.js` or the login images |
+| 17.5 | Static checks and suites | DONE | `pagetest.js` 461 passed; `rolepages_test.js` 182 passed; `server/tests.py` 335 passed; `ui_check.py` 71 pages; `validate.py`, `html_check.js` (355), `script_order_check.js` (67), `parity_check.js` (54), `permission_parity_check.py`, `appendix_c_check.py`, `js_syntax_check.py` and `em_dash_check.py` pass |
+| 17.6 | Documentation matches the trimmed navigation | DONE | `DESIGN_SYSTEM.md`, `UI_POLISH_REPORT.md`, `ROLE_MATRIX.md`, `KNOWN_LIMITATIONS.md`, `TRACEABILITY.md` and `README.md` describe the hidden entries, the 34-viewport matrix and the bounded login scroll |
+| 17.7 | Every page at every audited size | DONE | `responsive.py`: 2414 checks (71 pages x 34 viewports) with 0 problems. The only accepted scroll is the frozen login at 320x480 (19 px), 360x640 (85 px), 375x667 (61 px) and 844x390 (75 px) |
 
 ## Known gaps
 

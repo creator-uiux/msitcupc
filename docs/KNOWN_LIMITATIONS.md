@@ -132,6 +132,16 @@ current commit. Blocked or unverified items are listed first.
 - **Installability was checked by the manifest and the service worker**, by
   loading the pages over HTTP with the worker registered; it was not verified
   by a real install on a phone's home screen.
+- **The frozen sign-in screen scrolls vertically on short viewports.** At
+  360x640 it needs 725 px, at 320x480 it needs 499 px, and in a 844x390 phone
+  landscape it needs 465 px. The login page is a frozen surface, so it was
+  measured, not edited. `tools/responsive.py` records the overshoot and
+  accepts it up to a bound of 120 px; the rest of the app fits every audited
+  viewport from 320 to 7680 px wide without page overflow.
+- **The Workflow Guide and Roles and Access are routable but not listed.**
+  Both pages remain at `flow.html` and `roles.html` under the unchanged
+  permission map, so a direct link still opens them, but the sidebar, the top
+  bar and the mobile More sheet no longer offer either page.
 - **The demo flag gates the account list, not the backend.** When demo mode is
   off, the demo usernames are refused by `server/app.py`; the browser-only
   demo still runs from `js/store.js` when the API is absent, which is why the
