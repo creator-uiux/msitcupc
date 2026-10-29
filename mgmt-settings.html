@@ -43,7 +43,7 @@
 
         <div class="stack">
           <div class="card">
-            <div class="card-head"><h3>Operational settings</h3><span class="hint">reminder loop &amp; simulation</span></div>
+            <div class="card-head"><h3>Operational settings</h3><span class="hint">reminder loop</span></div>
             <div class="card-pad"><div id="opSettings"></div></div>
           </div>
 
@@ -78,6 +78,7 @@
 <script src="js/live.js"></script>
 <script>
 UI.mountChrome({ title: 'Settings', sub: 'Reference data & system settings' });
+var SIM = UI.feature('demoIntakeSimulation');
 
 var GROUPS = [
   { key: 'categories', label: 'Categories', hint: 'service classification' },
@@ -135,7 +136,9 @@ function render() {
     '<div class="grid grid-form">' +
     UI.field('Follow-up reminder interval (minutes)', UI.numberInput('reminderMinutes', s.reminderMinutes || 2, { min: 1, max: 1440 })) +
     UI.field('First reminder after (business days)', UI.numberInput('reminderBusinessDays', s.reminderBusinessDays || 3, { min: 1, max: 60 })) +
-    UI.field('Simulation (demo intake)', UI.select('simulate', [['1', 'On'], ['0', 'Off']], s.simulate ? '1' : '0', true)) +
+    (SIM
+      ? UI.field('Simulation (demo intake)', UI.select('simulate', [['1', 'On'], ['0', 'Off']], s.simulate ? '1' : '0', true))
+      : '<input type="hidden" name="simulate" value="' + (s.simulate ? '1' : '0') + '">') +
     '</div><div class="form-actions">' +
     '<button class="btn btn-primary" id="saveOp">Save settings</button></div>';
 
@@ -238,10 +241,11 @@ function render() {
   });
   var so = document.getElementById('saveOp');
   if (so) so.onclick = function () {
+    var simEl = document.querySelector('[name="simulate"]');
     var r = window.Admin.saveSettings({
       reminderMinutes: document.querySelector('[name="reminderMinutes"]').value,
       reminderBusinessDays: document.querySelector('[name="reminderBusinessDays"]').value,
-      simulate: document.querySelector('[name="simulate"]').value === '1'
+      simulate: simEl ? simEl.value === '1' : false
     });
     UI.toast(r.msg, r.ok ? 'ok' : 'err');
   };

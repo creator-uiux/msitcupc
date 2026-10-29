@@ -283,7 +283,7 @@ function rowHTML(t, i) {
     '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div><div class="t-sub">' + UI.esc(t.requester) + '</div></td>' +
     '<td data-label="Status">' + UI.badge(t.status) + (overdue ? ' <span class="badge b-needs-info">overdue</span>' : '') + UI.waitingOn(t.status) + '</td>' +
     '<td class="lead-only" data-label="Priority">' + UI.prio(t.priority) + '</td>' +
-    '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : (overdue ? 'past SLA' : ' -- ')) + '</td>' +
+    '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : (overdue ? 'past due' : ' -- ')) + '</td>' +
     '<td class="staff-only" data-label="Technician"><div class="t-title">' + UI.esc(t.technician || ' -- ') + '</div></td>' +
     '<td data-label="Updated">' + UI.timeAgo(t.updatedAt || t.createdAt) + '</td></tr>';
 }

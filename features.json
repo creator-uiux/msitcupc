@@ -25,6 +25,36 @@
       "enabled": false,
       "baseline": "none",
       "reason": "Development gallery and framed screen previews. It is not a workspace screen; the signed-in product starts at the dashboard."
+    },
+    "rolesReferencePage": {
+      "enabled": false,
+      "baseline": "none",
+      "reason": "Standalone roles and access matrix. No signed-in navigation reaches it, so a direct address gets the neutral screen. Role enforcement itself is unchanged."
+    },
+    "ticketJumpPicker": {
+      "enabled": false,
+      "baseline": "none",
+      "reason": "A second ticket chooser and filter inside the ticket detail page. Appendix E.2 defines the detail page without it; the register keeps its own queues and search."
+    },
+    "requestIdempotencyField": {
+      "enabled": false,
+      "baseline": "none",
+      "reason": "A developer-facing duplicate protection key shown on the intake form. The PDF describes intake channels, not a key field; the key still travels with the request."
+    },
+    "demoIntakeSimulation": {
+      "enabled": false,
+      "baseline": "none",
+      "reason": "Demo traffic simulation switch in Configuration. The PDF has no simulated intake; normal intake and reminders stay."
+    },
+    "profilePasswordChange": {
+      "enabled": false,
+      "baseline": "none",
+      "reason": "In-app password change card. Sign-in uses Google Workspace OIDC, so passwords are owned by Google; contact details and theme remain."
+    },
+    "notificationPopupsToggle": {
+      "enabled": false,
+      "baseline": "none",
+      "reason": "Pop-up preference inside the notification tray. Assignment notifications and the notification centre stay."
     }
   }
 }

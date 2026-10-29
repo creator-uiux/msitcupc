@@ -1283,7 +1283,6 @@ def main():
     site = "http://%s:%d/" % (view, port)
     print("ITC Maintenance System  --  serving %s" % site)
     print("  site      : %s" % site)
-    print("  gallery   : http://%s:%d/index.html" % (view, port))
     print("  health    : http://%s:%d/api/health" % (view, port))
     print("  storage   : %s" % (args.db or database.DB_PATH))
     if httpd.oidc["client_id"]:

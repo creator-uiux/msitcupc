@@ -365,6 +365,19 @@ The authoritative workflow is the 29 step SOP in the bundled
 | 27.9 | Checks | DONE | `pagetest.js` 555 passed; `rolepages_test.js` 182 passed; `smoke.js` 60 passed; `server/tests.py` 383 passed; `validate.py`, `ui_check.py` (73 pages), `html_check.js` (365), `script_order_check.js` (69), `parity_check.js` (54) and `content_check.js` (178) pass; `permission_parity_check.py`, `appendix_c_check.py`, `em_dash_check.py` and `js_syntax_check.py` (24 files, 193 blocks) pass; `role_pages.py --check` 50 files pass; `responsive.py` on the six changed screens at 390, 768, 1024, 1280, 1366 and 1440 px reports 0 page or viewport problems after the `dash-split` fix, and the closing sweep of 18 base pages at 320, 390, 768, 1024, 1366 and 1440 px reports 0 page or viewport problems |
 | 27.10 | The screens left long are reference reading, not daily work | DONE | reviewed at 1440x900: the workflow guide (12,515 px) and the capability matrix on Roles &amp; access (6,620 px) are read-once documentation whose rows cannot be paired into columns without shrinking the four role columns below a readable width; the register (1,129 px), ticket detail (1,241 px), intake form (1,516 px) and notifications (1,020 px) are data or form pages with no empty rail. All report `scrollWidth == clientWidth` with no card overflow |
 
+## Phase 28. Scope guard: hide everything outside the PDF and the pictures
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 28.1 | One central feature registry, all out-of-scope features off | DONE | `features.json` holds 11 flags, all `enabled:false`; `tools/build_features.py` writes `js/features.js`; `tools/feature_parity_check.py` passes on 70 workspace pages |
+| 28.2 | Hide the optional extras | DONE | board, command palette, maintenance planner, KPI sparklines, design gallery and roles reference are absent from navigation, deep links and the DOM; direct gallery and roles addresses show the neutral panel |
+| 28.3 | Hide untraceable conveniences | DONE | ticket jump picker, visible idempotency key, demo simulation switch, in-app password card and notification pop-up toggle are behind named flags; all remain restorable |
+| 28.4 | Remove out-of-scope wording | DONE | "Relevant files / chat notes" becomes "Photos and files"; "past SLA" becomes "past due"; the Configuration hint no longer names simulation |
+| 28.5 | Same feature set on every width | DONE | `pagetest.js` asserts exact navigation sets for the four roles at 390, 768 and 1440 px, cross-width equality, and the hidden surfaces at each width |
+| 28.6 | Frozen surfaces | DONE | no diff in `login.html`, `css/login.css`, `js/login.js`, `css/app.css`, `css/green.css` or `css/kit.css`; only `css/console.css` conventions were used in earlier phases |
+| 28.7 | Checks | DONE | `pagetest.js` 693 passed; `rolepages_test.js` 182; `server/tests.py` 383; `validate.py` passed; `ui_check.py` 73 pages; `content_check.js` 178; `ui_audit.js` 345; `script_order_check.js` 69; `js_syntax_check.py` 25 files and 194 blocks; permission parity, feature parity, role pages, em dash and Appendix C checks pass. The full `responsive.py` sweep was not run this phase |
+| 28.8 | Report and owner decisions | DONE | `docs/SCOPE_REPORT.md` lists every surface, its baseline source, its flag and eight items that need an owner answer |
+
 ## Known gaps
 
 The items that remain partial or unverified are listed in

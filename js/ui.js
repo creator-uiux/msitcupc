@@ -325,6 +325,17 @@
     return !allow || allow.indexOf(role) > -1;
   }
 
+  /* A page can also be behind a registry flag. The permission map still
+     decides the role; the flag decides whether the screen is part of this
+     product edition. Navigation, the phone More sheet and guardPage all ask
+     the same question. */
+  var FEATURE_PAGES = { 'roles.html': 'rolesReferencePage' };
+  function pageOpen(page, role) {
+    var key = String(page || '').split('?')[0].split('#')[0].replace(/^(or|itc|ic|mgmt)-/, '');
+    var gate = FEATURE_PAGES[key];
+    return can(page, role) && (!gate || feature(gate));
+  }
+
   /* ------------------------------------------------------------
      bindUrlRole()  --  reconcile the URL prefix with the session role.
        * no prefix            -> nothing to do (bare page keeps working)
@@ -975,7 +986,7 @@
   function navModel(role) {
     var groups = [];
     function add(label, items) {
-      var keep = (items || []).filter(function (n) { return can(n.href, role); });
+      var keep = (items || []).filter(function (n) { return pageOpen(n.href, role); });
       if (keep.length) groups.push({ label: label, items: keep });
     }
     add('Workspace', [
@@ -1038,7 +1049,7 @@
     return [
       { href: 'notifications.html', label: 'Notifications', ic: 'bell', pill: 'pillNotif' },
       { href: 'profile.html', label: 'Profile and Account', ic: 'user' }
-    ].filter(function (n) { return can(n.href, role); });
+    ].filter(function (n) { return pageOpen(n.href, role); });
   }
 
   function bellHTML(id) {
@@ -1052,8 +1063,10 @@
       '<ul class="notifList"></ul>' +
       '<div class="notif-foot">' +
       '<a href="' + urlFor('notifications.html', roleKey()) + '">Open notification centre</a>' +
-      '<button type="button" class="popups-toggle" data-popups aria-pressed="true">' +
-      '<span>Pop-ups</span><span class="popups-state">On</span></button>' +
+      (feature('notificationPopupsToggle')
+        ? '<button type="button" class="popups-toggle" data-popups aria-pressed="true">' +
+          '<span>Pop-ups</span><span class="popups-state">On</span></button>'
+        : '') +
       '</div>' +
       '</div></div>';
   }
@@ -1578,7 +1591,7 @@
         { href: 'reports.html', label: 'Reports', ic: 'chart' }
       ]
     };
-    return (map[role] || map.coordinator).filter(function (n) { return can(n.href, role); });
+    return (map[role] || map.coordinator).filter(function (n) { return pageOpen(n.href, role); });
   }
 
   function renderBottom() {
@@ -1681,7 +1694,7 @@
   function guardPage() {
     var page = pageId();
     var content = document.querySelector('.content');
-    if (!can(page)) {
+    if (!pageOpen(page)) {
       document.body.classList.add('access-denied');
       if (content && !document.getElementById('accessPanel')) {
         var panel = document.createElement('div');

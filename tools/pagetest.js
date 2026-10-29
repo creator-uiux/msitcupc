@@ -138,7 +138,35 @@ function forceFeatures(win, forced) {
   });
 }
 
-function openOnce(url, forced) {
+function setViewport(win, width) {
+  function fixed(name, value) {
+    try {
+      Object.defineProperty(win, name, { configurable: true, get: function () { return value; } });
+    } catch (e) { /* property is not configurable in this jsdom build */ }
+  }
+  fixed('innerWidth', width);
+  fixed('innerHeight', width < 600 ? 844 : 900);
+  fixed('outerWidth', width);
+  fixed('outerHeight', width < 600 ? 844 : 900);
+  fixed('devicePixelRatio', 1);
+  try {
+    win.matchMedia = function (query) {
+      var max = /max-width:\s*(\d+)px/.exec(query);
+      var min = /min-width:\s*(\d+)px/.exec(query);
+      var matches = true;
+      if (max) matches = matches && width <= parseInt(max[1], 10);
+      if (min) matches = matches && width >= parseInt(min[1], 10);
+      return {
+        matches: matches, media: query, onchange: null,
+        addListener: function () { }, removeListener: function () { },
+        addEventListener: function () { }, removeEventListener: function () { },
+        dispatchEvent: function () { return false; }
+      };
+    };
+  } catch (e) { /* keep jsdom's default */ }
+}
+
+function openOnce(url, forced, width) {
   var vc = new VirtualConsole();
   var errors = [];
   vc.on('jsdomError', function (e) { errors.push('jsdomError: ' + (e.message || e)); });
@@ -147,7 +175,10 @@ function openOnce(url, forced) {
     runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true,
     virtualConsole: vc,
     requestInterceptor: localOnlyInterceptor(),
-    beforeParse: function (win) { if (forced) forceFeatures(win, forced); }
+    beforeParse: function (win) {
+      if (width) setViewport(win, width);
+      if (forced) forceFeatures(win, forced);
+    }
   }).then(function (dom) {
     return new Promise(function (resolve) {
       var done = false;
@@ -168,16 +199,16 @@ function openOnce(url, forced) {
 /* The static python http.server occasionally drops a script connection under
    load; that shows up as a transient "Could not load script" rather than an app
    bug, so re-fetch the page a couple of times before trusting the result. */
-function open(url, tries, forced) {
+function open(url, tries, forced, width) {
   tries = tries || 0;
-  return openOnce(url, forced).then(function (p) {
+  return openOnce(url, forced, width).then(function (p) {
     var transient = p.errors.some(function (e) { return /Could not load script|ERR_|ECONNRESET|socket hang up|is not defined/i.test(e); });
     /* the app scripts are still loading when the harness evaluates the page:
        treat a missing global as transient and fetch the page again */
     if (!transient && !p.w.UI) transient = true;
     if (transient && tries < 3) {
       try { p.w.close(); } catch (e) { }
-      return new Promise(function (r) { setTimeout(r, 200); }).then(function () { return open(url, tries + 1, forced); });
+      return new Promise(function (r) { setTimeout(r, 200); }).then(function () { return open(url, tries + 1, forced, width); });
     }
     CUR = p;
     return p;
@@ -192,6 +223,7 @@ function setVal(p, el, v) { el.value = v; el.dispatchEvent(new p.w.Event('change
 function asRole(p, role) { p.w.UI.signIn(role); p.w.UI.remount(); }
 function fld(form, name) { return form.querySelector('[name="' + name + '"]'); }
 function openFeatures(url, flags) { return open(url, 0, flags); }
+function openWidth(url, width) { return open(url, 0, null, width); }
 
 /* ---------- tests ---------- */
 var tests = [];
@@ -358,7 +390,7 @@ tests.push(async function requestRespond() {
 tests.push(async function ticketDetail() {
   var p = await open(BASE + 'ticket.html?id=IT-2026-000130');
   ok(p.errors.length === 0, 'ticket page loads with no errors' + (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));
-  ok($('#tPick').value === 'IT-2026-000130', 'deep link selects the requested ticket');
+  ok($('#tPickerBar') === null, 'the ticket chooser is absent by default');
   ok(/IT-2026-000130/.test($('#tHead').textContent), 'ticket header shows the id');
   ok($('#tHistory').textContent.includes('Assigned to J. Tan'), 'audit history rendered');
 
@@ -825,7 +857,72 @@ tests.push(async function scopeDefaults() {
   asRole(d, 'coordinator');
   ok(d.errors.length === 0, 'dashboard loads with the registry defaults');
   ok(d.d.querySelectorAll('#kpiGrid .spark').length === 0, 'the KPI sparklines are absent by default');
+  ok(d.d.querySelector('[data-popups]') === null, 'the notification pop-up toggle is absent by default');
   close(d);
+});
+
+tests.push(async function scopeConveniences() {
+  /* Conveniences that neither the PDF nor the screenshots carry stay off
+     until the owner asks for them. Each one is restorable from its flag. */
+  var tk = await open(BASE + 'ticket.html?id=IT-2026-000142');
+  asRole(tk, 'coordinator');
+  ok(tk.errors.length === 0, 'ticket detail loads with the registry defaults');
+  ok(tk.d.getElementById('tPickerBar') === null, 'the ticket chooser is absent by default');
+  ok(tk.d.getElementById('tPick') === null && tk.d.getElementById('tSearch') === null,
+    'the ticket chooser leaves no controls behind');
+  close(tk);
+
+  var rq = await open(BASE + 'request.html');
+  asRole(rq, 'requester');
+  ok(rq.errors.length === 0, 'intake loads with the registry defaults');
+  ok(rq.d.getElementById('fIdempotencyField').hidden === true,
+    'the duplicate protection key is hidden by default');
+  ok(rq.d.body.textContent.indexOf('chat notes') === -1,
+    'the intake form no longer mentions chat notes');
+  close(rq);
+
+  var st = await open(BASE + 'settings.html');
+  asRole(st, 'management');
+  ok(st.errors.length === 0, 'settings loads with the registry defaults');
+  ok(st.d.querySelector('[name="simulate"]').tagName === 'INPUT' &&
+     st.d.querySelector('[name="simulate"]').type === 'hidden',
+    'the demo simulation switch is a hidden value by default');
+  ok(st.d.getElementById('opSettings').textContent.indexOf('Simulation (demo intake)') === -1,
+    'Configuration shows no simulation switch by default');
+  close(st);
+
+  var pf = await open(BASE + 'profile.html');
+  asRole(pf, 'coordinator');
+  ok(pf.errors.length === 0, 'profile loads with the registry defaults');
+  ok(pf.d.getElementById('passwordCard') === null, 'the password card is absent by default');
+  ok(pf.d.body.textContent.indexOf('Change password') === -1,
+    'the profile page does not advertise a password change by default');
+  close(pf);
+
+  /* Turning a flag on restores the same surface. */
+  var tkOn = await openFeatures(BASE + 'ticket.html?id=IT-2026-000142', { ticketJumpPicker: true });
+  ok(tkOn.d.getElementById('tPickerBar') !== null, 'the ticket chooser returns when its flag is on');
+  close(tkOn);
+
+  var rqOn = await openFeatures(BASE + 'request.html', { requestIdempotencyField: true });
+  ok(rqOn.d.getElementById('fIdempotencyField').hidden === false,
+    'the duplicate protection field returns when its flag is on');
+  close(rqOn);
+
+  var stOn = await openFeatures(BASE + 'settings.html', { demoIntakeSimulation: true });
+  asRole(stOn, 'management');
+  ok(stOn.d.querySelector('[name="simulate"]').tagName === 'SELECT',
+    'the simulation switch returns when its flag is on');
+  close(stOn);
+
+  var pfOn = await openFeatures(BASE + 'profile.html', { profilePasswordChange: true });
+  ok(pfOn.d.getElementById('passwordCard') !== null, 'the password card returns when its flag is on');
+  close(pfOn);
+
+  var dOn = await openFeatures(BASE + 'dashboard.html', { notificationPopupsToggle: true });
+  asRole(dOn, 'coordinator');
+  ok(dOn.d.querySelector('[data-popups]') !== null, 'the pop-up toggle returns when its flag is on');
+  close(dOn);
 });
 
 tests.push(async function login() {
@@ -913,13 +1010,24 @@ tests.push(async function attachmentViewer() {
   close(p);
 });
 
-tests.push(async function rolesPage() {  var p = await open(BASE + 'roles.html');
-  ok(p.errors.length === 0, 'roles page loads with no errors' + (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));
-  ok($$('.role-card').length === 4, 'four role cards rendered');
-  ok($$('#capBody tr').length >= 20, 'feature matrix rendered (' + $$('#capBody tr').length + ' rows)');
+tests.push(async function rolesPage() {
+  /* The standalone matrix is not reachable from navigation, so its address
+     answers with the neutral screen. The permission map itself is unchanged. */
+  var off = await open(BASE + 'roles.html');
+  ok(off.errors.length === 0, 'roles route loads with no errors' + (off.errors.length ? ' -> ' + off.errors.join(' | ') : ''));
+  ok(off.d.body.classList.contains('access-denied'), 'the roles reference is closed by default');
+  ok(off.d.getElementById('accessPanel') !== null, 'the roles route shows the neutral screen');
+  ok(off.d.getElementById('accessPanel').textContent.indexOf('This page is not available') > -1,
+    'the neutral screen is titled');
+  close(off);
+
+  var on = await openFeatures(BASE + 'roles.html', { rolesReferencePage: true });
+  ok(on.errors.length === 0, 'roles route loads with its flag on');
+  ok($$('.role-card').length === 4, 'four role cards rendered when the flag is on');
+  ok($$('#capBody tr').length >= 20, 'feature matrix rendered when the flag is on (' + $$('#capBody tr').length + ' rows)');
   ok($('#myRoleCard').textContent.indexOf('features unlocked') > -1, 'your-role summary shown');
-  ok($('#adminCard').textContent.indexOf('Review role assignments') > -1, 'roles & access reference visible to the coordinator');
-  close(p);
+  ok($('#adminCard').textContent.indexOf('Review role assignments') > -1, 'roles and access reference visible when the flag is on');
+  close(on);
 });
 
 tests.push(async function roleNav() {
@@ -1646,7 +1754,7 @@ tests.push(async function technicianToday() {
 /* The pop-up switch: the live notices can be paused, but the feedback that
    follows an action, and the notifications themselves, are never lost. */
 tests.push(async function popupsSwitch() {
-  var p = await open(BASE + 'dashboard.html');
+  var p = await openFeatures(BASE + 'dashboard.html', { notificationPopupsToggle: true });
   asRole(p, 'coordinator');
   ok(p.errors.length === 0, 'dashboard loads for the pop-up switch test');
   var sw = $('[data-popups]');
@@ -1680,6 +1788,128 @@ tests.push(async function popupsSwitch() {
   }
   ok(p.errors.length === 0, 'no errors from the pop-up switch');
   close(p);
+});
+
+/* Screen sizes must not add or remove a feature. The navigation set is the
+   same at 390, 768 and 1440 px, and every optional extra is absent at each
+   width. The hidden extras also have no backend endpoint to call. */
+function navDestinations(p) {
+  var out = {};
+  function add(el) {
+    var h = el.getAttribute('href');
+    if (!h) return;
+    h = String(h).replace(/^(or|itc|ic|mgmt)-/, '');
+    out[h] = 1;
+  }
+  p.d.querySelectorAll('#chromeSide .side-link[href], #chromeBottom a[href]').forEach(add);
+  var more = p.d.getElementById('bottomMore');
+  if (more) {
+    more.click();
+    var sheet = p.d.querySelector('.more-sheet');
+    if (sheet) sheet.querySelectorAll('.more-item[href]').forEach(add);
+  }
+  return Object.keys(out).sort();
+}
+
+tests.push(async function scopeAcrossWidths() {
+  var widths = [390, 768, 1440];
+  var roles = [
+    ['or', 'requester'],
+    ['itc', 'technician'],
+    ['ic', 'coordinator'],
+    ['mgmt', 'management']
+  ];
+  var expected = {
+    requester: ['confirm.html', 'dashboard.html', 'notifications.html', 'profile.html',
+      'register.html', 'reports.html', 'request.html', 'tickets.html?queue=mine', 'visits.html'],
+    technician: ['dashboard.html', 'maintenance.html', 'notifications.html', 'profile.html',
+      'register.html', 'reports.html', 'technician.html'],
+    coordinator: ['confirm.html', 'dashboard.html', 'maintenance.html', 'notifications.html',
+      'profile.html', 'register.html', 'reports.html', 'request.html', 'review.html', 'tickets.html'],
+    management: ['audit.html', 'dashboard.html', 'maintenance.html', 'notifications.html',
+      'offices.html', 'profile.html', 'register.html', 'reports.html', 'settings.html',
+      'tickets.html', 'users.html']
+  };
+  var seen = {};
+
+  for (var i = 0; i < roles.length; i++) {
+    var prefix = roles[i][0], role = roles[i][1];
+    seen[role] = {};
+    for (var j = 0; j < widths.length; j++) {
+      var w = widths[j];
+      var p = await openWidth(BASE + prefix + '-dashboard.html', w);
+      ok(p.errors.length === 0, role + ' at ' + w + 'px loads with no errors' +
+        (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));
+      var got = navDestinations(p);
+      seen[role][w] = got.join('|');
+      ok(got.join('|') === expected[role].slice().sort().join('|'),
+        role + ' at ' + w + 'px lists exactly the baseline destinations');
+      ok(p.d.getElementById('tbSearch') === null && p.d.getElementById('tbSearchMobile') === null,
+        role + ' at ' + w + 'px has no command palette trigger');
+      ok(p.d.querySelectorAll('#kpiGrid .spark').length === 0,
+        role + ' at ' + w + 'px has no KPI sparkline');
+      close(p);
+    }
+    ok(seen[role][390] === seen[role][768] && seen[role][768] === seen[role][1440],
+      role + ' navigation is identical at 390, 768 and 1440 px');
+  }
+
+  for (var k = 0; k < widths.length; k++) {
+    var width = widths[k];
+    var t = await openWidth(BASE + 'ic-tickets.html', width);
+    ok(t.errors.length === 0, 'register at ' + width + 'px loads with no errors');
+    ok(t.d.querySelector('#tkView [data-view="board"]') === null,
+      'register at ' + width + 'px has no board layout');
+    ok(t.d.getElementById('tkBoard') === null, 'register at ' + width + 'px has no board container');
+    t.d.dispatchEvent(new t.w.KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+    ok(t.d.getElementById('cmdk') === null, 'register at ' + width + 'px has no palette shortcut');
+    close(t);
+
+    var m = await openWidth(BASE + 'itc-maintenance.html', width);
+    ok(m.errors.length === 0, 'maintenance at ' + width + 'px loads with no errors');
+    ok(m.d.getElementById('plannerCard') === null,
+      'maintenance at ' + width + 'px has no calendar planner');
+    close(m);
+
+    var g = await openWidth(BASE + 'index.html', width);
+    ok(g.d.body.classList.contains('access-denied'),
+      'the gallery route is neutral at ' + width + 'px');
+    close(g);
+
+    var r = await openWidth(BASE + 'roles.html', width);
+    ok(r.d.body.classList.contains('access-denied'),
+      'the roles reference route is neutral at ' + width + 'px');
+    close(r);
+
+    var tk = await openWidth(BASE + 'ic-ticket.html?id=IT-2026-000142', width);
+    ok(tk.d.getElementById('tPickerBar') === null,
+      'ticket detail at ' + width + 'px has no ticket chooser');
+    close(tk);
+
+    var pf = await openWidth(BASE + 'or-profile.html', width);
+    ok(pf.d.getElementById('passwordCard') === null,
+      'profile at ' + width + 'px has no password card');
+    close(pf);
+
+    var st = await openWidth(BASE + 'mgmt-settings.html', width);
+    ok(st.d.querySelector('[name="simulate"]').type === 'hidden',
+      'settings at ' + width + 'px shows no simulation switch');
+    close(st);
+
+    var rq = await openWidth(BASE + 'or-request.html', width);
+    ok(rq.d.getElementById('fIdempotencyField').hidden === true,
+      'intake at ' + width + 'px hides the duplicate protection key');
+    close(rq);
+  }
+
+  var backend = fs.readFileSync(path.join(ROOT, 'server', 'app.py'), 'utf8') +
+    fs.readFileSync(path.join(ROOT, 'server', 'engine.py'), 'utf8');
+  ['board', 'palette', 'planner', 'sparkline', 'gallery'].forEach(function (term) {
+    var api = new RegExp('["\']/api/[^"\']*' + term, 'i');
+    var word = new RegExp('\\b' + term + '\\b', 'i');
+    ok(!api.test(backend), 'the backend exposes no ' + term + ' API route');
+    ok(!word.test(backend), 'the backend source carries no hidden ' + term + ' feature');
+  });
 });
 
 /* ---------- run ---------- */

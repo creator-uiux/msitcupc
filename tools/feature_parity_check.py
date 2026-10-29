@@ -20,6 +20,8 @@ SOURCE = os.path.join(ROOT, "features.json")
 MIRROR = os.path.join(ROOT, "js", "features.js")
 FROZEN = {"login.html", "404.html", "offline.html"}
 REF_RE = re.compile(r"\b(?:UI\.feature|Features\.(?:on|off)|feature)\(\s*['\"]([a-zA-Z0-9]+)['\"]\s*\)")
+PAGE_MAP_RE = re.compile(r"FEATURE_PAGES\s*=\s*\{(.*?)\};", re.S)
+PAGE_ENTRY_RE = re.compile(r"['\"][^'\"]+\.html['\"]\s*:\s*['\"]([a-zA-Z0-9]+)['\"]")
 
 problems = []
 
@@ -73,6 +75,9 @@ def main():
     for name, text in walk_sources():
         for m in REF_RE.finditer(text):
             referenced.setdefault(m.group(1), set()).add(name)
+        for block in PAGE_MAP_RE.finditer(text):
+            for m in PAGE_ENTRY_RE.finditer(block.group(1)):
+                referenced.setdefault(m.group(1), set()).add(name + " (route map)")
         if not name.endswith(".html") or name in FROZEN:
             continue
         pages.append(name)

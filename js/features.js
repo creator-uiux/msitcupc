@@ -12,8 +12,14 @@
   'use strict';
   var FLAGS = {
   "dashboardKpiSparklines": false,
+  "demoIntakeSimulation": false,
   "designGallery": false,
   "maintenancePlanner": false,
+  "notificationPopupsToggle": false,
+  "profilePasswordChange": false,
+  "requestIdempotencyField": false,
+  "rolesReferencePage": false,
+  "ticketJumpPicker": false,
   "ticketsBoardView": false,
   "workspaceCommandPalette": false
 };

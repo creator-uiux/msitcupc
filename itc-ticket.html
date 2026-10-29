@@ -33,7 +33,7 @@
         <span class="hint">Service record and audit trail</span>
       </div>
 
-      <div class="toolbar mb-md">
+      <div class="toolbar mb-md" id="tPickerBar">
         <label class="field-inline pick"><span>Open ticket</span>
           <select id="tPick"></select>
         </label>
@@ -128,6 +128,12 @@
 <script>
 UI.mountChrome({ title: 'Ticket Detail', sub: 'Submit → Review → Assign → Diagnose → Test → Confirm → Close' });
 
+var PICKER = UI.feature('ticketJumpPicker');
+if (!PICKER) {
+  var pickerBar = document.getElementById('tPickerBar');
+  if (pickerBar) pickerBar.parentNode.removeChild(pickerBar);
+}
+
 var currentId = UI.qs('id') || '';
 var replyVisibility = 'public';
 /* The attachment records of the record on screen, in the order the chips
@@ -136,7 +142,9 @@ var attachRecords = [], attachTicketId = '';
 
 function pickList() {
   var sel = document.getElementById('tPick');
-  var search = document.getElementById('tSearch').value.toLowerCase();
+  if (!sel) return;
+  var searchEl = document.getElementById('tSearch');
+  var search = searchEl ? searchEl.value.toLowerCase() : '';
   var tickets = Store.db.tickets.filter(function (t) {
     return t.id.toLowerCase().includes(search) || t.office.toLowerCase().includes(search) || t.requester.toLowerCase().includes(search) || t.issue.toLowerCase().includes(search);
   });
@@ -249,12 +257,13 @@ function whereCard(t) {
 }
 
 function render() {
-  pickList();
+  if (PICKER) pickList();
   var role = Store.db.role;
   var t = Store.getTicket(currentId);
   if (!t) { document.getElementById('tTitle').textContent = 'No tickets'; return; }
   document.getElementById('tTitle').innerHTML = UI.esc(t.issue.slice(0, 54)) + (t.issue.length > 54 ? '…' : '');
-  document.getElementById('tPick').value = t.id;
+  var pickEl = document.getElementById('tPick');
+  if (pickEl) pickEl.value = t.id;
 
   /* head.  Priority is the IT assessment (hidden from the office and from
      technicians); the assigned technician and impact/urgency are staff
