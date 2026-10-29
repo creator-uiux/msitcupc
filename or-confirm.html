@@ -226,10 +226,14 @@ function render() {
     return h + '</div></div>';
   }).join('') : '<div class="empty"><img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No completed maintenance visit is awaiting confirmation.</div>';
 
+  /* visits pair up two per row: each block carries only a head and one
+     action row, so one per row left most of the page width empty */
   document.getElementById('cfJobs').innerHTML =
     '<div class="card-head-row"><h3 class="card-title">Awaiting office availability</h3>' +
-    '<span class="hint">Office available? Yes → coordinate the visit · No → agree a new maintenance date</span></div>' + openHTML +
-    '<div class="card-head-row mt"><h3 class="card-title">Completed visits  --  office decision</h3></div>' + doneHTML;
+    '<span class="hint">Office available? Yes → coordinate the visit · No → agree a new maintenance date</span></div>' +
+    '<div class="cf-jobs">' + openHTML + '</div>' +
+    '<div class="card-head-row mt"><h3 class="card-title">Completed visits  --  office decision</h3></div>' +
+    '<div class="cf-jobs">' + doneHTML + '</div>';
 
   document.querySelectorAll('#cfJobs [data-jact]').forEach(function (b) {
     b.addEventListener('click', function () { jobAct(b.dataset.jact, b.dataset.job); });

@@ -206,7 +206,7 @@ def build(check=False):
               % (len(jobs), len(titles)))
         return 0
 
-    print("wrote %d files -> mockups/" % len(written))
+    print("wrote %d role pages" % len(written))
     return 0
 
 

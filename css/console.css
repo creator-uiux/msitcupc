@@ -1104,3 +1104,44 @@ html[data-density="compact"] .list li{padding-top:8px;padding-bottom:8px}
 @media (max-width:899px){
   .notes-2{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Confirmation: maintenance visit blocks pair up two per row. */
+.cf-jobs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px}
+.cf-jobs > .card-block{border-top:0;border-bottom:1px solid var(--line);padding:14px 4px}
+.cf-jobs > .empty{grid-column:1/-1}
+@media (max-width:899px){
+  .cf-jobs{grid-template-columns:minmax(0,1fr)}
+}
+
+/* In a narrow card the office name or the status name keeps its words:
+   the numbers drop below the name, and the bar label wraps instead of
+   being cut to "Acc..." / "Needs info...". */
+.health-card{container-type:inline-size}
+@container (max-width:210px){
+  .health-top{flex-wrap:wrap}
+  .health-nums{flex:1 0 100%}
+}
+.hbar-list{container-type:inline-size}
+@container (max-width:270px){
+  .hbar-lbl{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.3}
+}
+
+/* Between the stacked phone layout and a wide desktop, a table in a
+   two-column card tightens its cell padding instead of spilling out. */
+@media (min-width:1024px) and (max-width:1365px){
+  .grid-2 .table th,.grid-2 .table td{padding-left:7px;padding-right:7px}
+}
+
+/* Dashboard: between the stacked phone layout and a wide desktop the
+   activity and status columns share the width evenly, because the 2.1fr
+   split leaves the status card too narrow for its own labels. */
+@media (max-width:1099px){
+  .dash-split{grid-template-columns:minmax(0,1fr)}
+}
+@media (min-width:1100px) and (max-width:1439px){
+  .dash-split{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+}
+
+/* A table cell breaks long words anywhere; an action button keeps its label
+   on one line, so "CSV" or "Activate" never splits into "CS / V". */
+.table .btn{white-space:nowrap}

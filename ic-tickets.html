@@ -139,11 +139,15 @@ var CHIPS = [
   ['open', 'Open'], ['mine', 'My tickets'], ['', 'All'], ['closed', 'Closed'],
   ['cancelled', 'Cancelled'], ['overdue', 'Overdue']
 ];
+/* "Mine" means a different record for each lane: a requester owns the requests
+   they raised, a technician owns the tickets assigned to them, and the other
+   staff own the requests they raised. */
 var F = {};           /* filter state forwarded to the query / API */
 var chip = 'open';
 var page = 1;
 var selected = {};
 var last = null;      /* last query envelope */
+var lastScopeTotal = 0; /* the size of the register this role may see */
 var VIEW_KEY = 'itc_ticket_view';
 var view = 'list';
 try {
@@ -175,9 +179,14 @@ function paramBag() {
     size: view === 'board' ? Query.MAX_SIZE : PER_PAGE
   };
   if (chip === 'open') p.status = 'open';
-  /* scope: requesters default to their own records; mine=0 widens to the office register */
-  if (UI.roleKey() === 'requester') p.mine = F.mine === '0' ? '0' : '1';
-  else if (F.mine === '1') p.mine = '1';
+  /* scope: "mine" is personal and differs by role; All drops the personal
+     scope, and a requester then reads the office register instead. */
+  if (chip === 'mine') {
+    if (UI.roleKey() === 'technician') p.technician = UI.viewerName();
+    else p.mine = '1';
+  } else if (UI.roleKey() === 'requester') {
+    p.mine = chip === '' ? '0' : '1';
+  } else if (F.mine === '1') p.mine = '1';
   else if (F.mine === '0') p.mine = '0';
   return p;
 }
@@ -210,6 +219,7 @@ function fillFilters() {
 
 /* ------------------------------- chips ------------------------------- */
 function renderChips() {
+  CHIPS[1][1] = UI.roleKey() === 'technician' ? 'My tickets' : 'My requests';
   document.getElementById('tkChips').innerHTML = CHIPS.map(function (c) {
     return '<label class="' + (chip === c[0] ? 'on' : '') + '" data-chip="' + c[0] + '">' + c[1] + '</label>';
   }).join('');
@@ -218,12 +228,26 @@ function renderChips() {
 /* ------------------------------- query ------------------------------- */
 function runQuery() {
   var bag = paramBag();
+  lastScopeTotal = Store.db.tickets.length;
   if (isLive()) {
     var env = Query.list(bag);
     if (env) return env;
     /* backend unreachable: degrade to the local mirror */
   }
-  var rows = Query.queryTickets(Store.db.tickets, bag, UI.viewerName());
+  /* The demo dataset is not tenancy-scoped the way the server snapshot is, so
+     mirror the same rules here: a requester sees the office register plus the
+     requests they raised, a technician only the tickets assigned to them. */
+  var pool = Store.db.tickets;
+  var me = UI.viewerName();
+  if (UI.roleKey() === 'requester') {
+    var office = (Store.db.auth && Store.db.auth.office) ||
+      (window.ROLES && window.ROLES[UI.roleKey()] ? window.ROLES[UI.roleKey()].office : '');
+    pool = pool.filter(function (t) { return !office || t.office === office || t.requester === me; });
+  } else if (UI.roleKey() === 'technician' && me) {
+    pool = pool.filter(function (t) { return t.technician === me; });
+  }
+  lastScopeTotal = pool.length;
+  var rows = Query.queryTickets(pool, bag, me);
   return {
     items: rows.items, total: rows.total, page: rows.page, pages: rows.pages,
     size: rows.size, counts: rows.counts, overdue: rows.overdue
@@ -257,7 +281,7 @@ function render() {
 
   last = runQuery();
 
-  document.getElementById('tkTotal').textContent = last.total + ' of ' + Store.db.tickets.length;
+  document.getElementById('tkTotal').textContent = last.total + ' of ' + lastScopeTotal;
   document.getElementById('tkScopeNote').textContent = UI.roleKey() === 'requester'
     ? 'office tenancy applied  --  you see your office records and the requests you raised'
     : 'the register you are authorized to view';
@@ -267,7 +291,7 @@ function render() {
   document.getElementById('tkCards').innerHTML = last.items.map(function (t) {
     return UI.workCard(t, { href: 'ticket.html?id=' + encodeURIComponent(t.id) });
   }).join('');
-  renderBoard();
+  if (view === 'board') renderBoard();
   applyView();
 
   document.querySelectorAll('#tkBody tr[data-href]').forEach(function (tr) {
@@ -296,6 +320,7 @@ function render() {
    total for that status, so a capped board still tells the whole story. */
 var BOARD_STATES = ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved'];
 var ARCHIVE_STATES = ['closed', 'cancelled'];
+var boardCapped = false;
 
 /* Which guarded action records a move to the target state. The action opens
    the form that the workflow requires (for example a dependency reason for
@@ -356,6 +381,7 @@ function renderBoard() {
 
   var note = document.getElementById('tkBoardNote');
   var capped = last && last.total > last.items.length;
+  boardCapped = !!capped;
   note.hidden = !capped;
   note.textContent = capped
     ? 'Showing the first ' + last.items.length + ' of ' + last.total + ' matching tickets. Narrow the filters to reach the rest.'
@@ -384,6 +410,7 @@ function applyView() {
   document.getElementById('tkTable').hidden = !table;
   document.getElementById('tkCards').hidden = !cards;
   document.getElementById('tkBoard').hidden = !board;
+  document.getElementById('tkBoardNote').hidden = !board || !boardCapped;
   document.querySelectorAll('#tkView [data-view]').forEach(function (b) {
     var on = b.dataset.view === view;
     b.classList.toggle('on', on);
@@ -453,6 +480,12 @@ document.getElementById('tkChips').addEventListener('click', function (e) {
   if (!l) return;
   chip = l.dataset.chip; F.status = '';
   document.getElementById('fStatus').value = '';
+  /* Keep the visible Scope control in step with the personal chips. */
+  if (UI.roleKey() !== 'technician' && (chip === 'mine' || chip === '')) {
+    F.mine = chip === 'mine' ? '1' : '0';
+    var scopeSel = document.getElementById('fMine');
+    if (scopeSel) scopeSel.value = F.mine;
+  }
   page = 1; render();
 });
 ['fOffice', 'fStatus', 'fPriority', 'fCategory', 'fTech', 'fSource', 'fFrom', 'fTo', 'fMine', 'fOverdue', 'fSort', 'fOrder'].forEach(function (id) {
@@ -477,7 +510,7 @@ document.getElementById('fReset').addEventListener('click', function () {
   ['fOffice', 'fStatus', 'fPriority', 'fCategory', 'fTech', 'fSource', 'fFrom', 'fTo', 'fOverdue'].forEach(function (id) {
     document.getElementById(id).value = '';
   });
-  document.getElementById('fMine').value = UI.roleKey() === 'requester' ? '1' : '';
+  document.getElementById('fMine').value = UI.roleKey() === 'requester' ? '1' : '0';
   document.getElementById('fSort').value = 'updated';
   document.getElementById('fOrder').value = 'desc';
   document.getElementById('tkQ').value = '';
@@ -515,13 +548,18 @@ document.getElementById('tkBulkAssign').addEventListener('click', function () {
   if (['open', 'mine', 'closed', 'all', 'cancelled', 'overdue'].indexOf(queue) > -1) {
     chip = queue === 'all' ? '' : queue;
   }
+  /* The Scope select is visible to the coordinator and the administrator; its
+     default must match the query, which starts on the whole register. */
+  if ((UI.roleKey() === 'coordinator' || UI.roleKey() === 'management') && chip !== 'mine') {
+    F.mine = '0';
+    document.getElementById('fMine').value = '0';
+  }
   var status = UI.qs('status');
   if (Query.ALL_STATES.indexOf(status) > -1) { F.status = status; chip = ''; }
   var office = UI.qs('office');
   if (office) F.office = office;
   var v = UI.qs('view');
   if (v === 'cards' || v === 'list' || v === 'board') view = v;
-  if (UI.roleKey() === 'requester') CHIPS[1][1] = 'My requests';
 })();
 
 Store.subscribe(render);
