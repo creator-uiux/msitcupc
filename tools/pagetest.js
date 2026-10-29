@@ -100,7 +100,45 @@ var ACTIVE_SRV = null;
 process.on('exit', function () { if (ACTIVE_SRV) stopServer(ACTIVE_SRV); });
 
 /* ---------- page harness ---------- */
-function openOnce(url) {
+/* A test may need to prove a registered feature still works when the owner
+   turns it on. The page loads the generated mirror, so the harness installs a
+   property whose setter merges the forced flags into whatever the mirror
+   assigns. Every other page still reads the committed registry unchanged. */
+function forceFeatures(win, forced) {
+  function make(flags) {
+    return {
+      flags: flags,
+      on: function (name) { return flags[name] === true; },
+      off: function (name) { return flags[name] !== true; },
+      all: function () {
+        var out = {};
+        for (var k in flags) {
+          if (Object.prototype.hasOwnProperty.call(flags, k)) out[k] = flags[k];
+        }
+        return out;
+      }
+    };
+  }
+  var current = make(forced);
+  Object.defineProperty(win, 'Features', {
+    configurable: true,
+    get: function () { return current; },
+    set: function (value) {
+      var flags = {};
+      if (value && value.flags) {
+        for (var k in value.flags) {
+          if (Object.prototype.hasOwnProperty.call(value.flags, k)) flags[k] = value.flags[k];
+        }
+      }
+      for (var f in forced) {
+        if (Object.prototype.hasOwnProperty.call(forced, f)) flags[f] = true;
+      }
+      current = make(flags);
+    }
+  });
+}
+
+function openOnce(url, forced) {
   var vc = new VirtualConsole();
   var errors = [];
   vc.on('jsdomError', function (e) { errors.push('jsdomError: ' + (e.message || e)); });
@@ -108,7 +146,8 @@ function openOnce(url) {
   return JSDOM.fromURL(url, {
     runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true,
     virtualConsole: vc,
-    requestInterceptor: localOnlyInterceptor()
+    requestInterceptor: localOnlyInterceptor(),
+    beforeParse: function (win) { if (forced) forceFeatures(win, forced); }
   }).then(function (dom) {
     return new Promise(function (resolve) {
       var done = false;
@@ -129,16 +168,16 @@ function openOnce(url) {
 /* The static python http.server occasionally drops a script connection under
    load; that shows up as a transient "Could not load script" rather than an app
    bug, so re-fetch the page a couple of times before trusting the result. */
-function open(url, tries) {
+function open(url, tries, forced) {
   tries = tries || 0;
-  return openOnce(url).then(function (p) {
+  return openOnce(url, forced).then(function (p) {
     var transient = p.errors.some(function (e) { return /Could not load script|ERR_|ECONNRESET|socket hang up|is not defined/i.test(e); });
     /* the app scripts are still loading when the harness evaluates the page:
        treat a missing global as transient and fetch the page again */
     if (!transient && !p.w.UI) transient = true;
     if (transient && tries < 3) {
       try { p.w.close(); } catch (e) { }
-      return new Promise(function (r) { setTimeout(r, 200); }).then(function () { return open(url, tries + 1); });
+      return new Promise(function (r) { setTimeout(r, 200); }).then(function () { return open(url, tries + 1, forced); });
     }
     CUR = p;
     return p;
@@ -152,6 +191,7 @@ function setVal(p, el, v) { el.value = v; el.dispatchEvent(new p.w.Event('change
 /* sign in as a role the way the app does (no impersonation UI any more) */
 function asRole(p, role) { p.w.UI.signIn(role); p.w.UI.remount(); }
 function fld(form, name) { return form.querySelector('[name="' + name + '"]'); }
+function openFeatures(url, flags) { return open(url, 0, flags); }
 
 /* ---------- tests ---------- */
 var tests = [];
@@ -619,7 +659,7 @@ tests.push(async function maintenancePage() {
 });
 
 tests.push(async function maintenancePlanner() {
-  var p = await open(BASE + 'maintenance.html');
+  var p = await openFeatures(BASE + 'maintenance.html', { maintenancePlanner: true });
   asRole(p, 'coordinator');
   ok($('#plannerCard') !== null, 'the maintenance page carries a planner');
   var days = $$('#plannerBody .pl-day');
@@ -735,11 +775,57 @@ tests.push(async function pwaShell() {
 });
 
 tests.push(async function gallery() {
-  var p = await open(BASE + 'index.html');
-  ok(p.errors.length === 0, 'gallery loads with no errors' + (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));
-  var links = $$('a.g-card').length;
-  ok(links >= 20, 'gallery lists every screen (' + links + ')');
-  close(p);
+  /* The development gallery is out of scope by default. Its address answers
+     with the neutral screen and offers the sign-in page instead. */
+  var off = await open(BASE + 'index.html');
+  ok(off.errors.length === 0, 'the gallery route loads with no errors' + (off.errors.length ? ' -> ' + off.errors.join(' | ') : ''));
+  ok(off.d.body.classList.contains('access-denied'), 'the gallery is closed by default');
+  var panel = off.d.getElementById('galleryClosed');
+  ok(panel !== null && panel.hidden === false, 'the gallery route shows the neutral screen');
+  ok(panel.textContent.indexOf('This page is not available') > -1, 'the neutral screen is titled');
+  close(off);
+
+  /* The owner can restore it by turning its flag on. */
+  var on = await openFeatures(BASE + 'index.html', { designGallery: true });
+  ok(on.errors.length === 0, 'the gallery route loads with its flag on');
+  ok(!on.d.body.classList.contains('access-denied'), 'the gallery is open when its flag is on');
+  ok($$('a.g-card').length >= 20, 'the gallery lists every screen when its flag is on');
+  close(on);
+});
+
+tests.push(async function scopeDefaults() {
+  /* Every optional extra is off in the committed registry, so the register,
+     the schedule page and the dashboard carry no trace of it. */
+  var t = await open(BASE + 'tickets.html');
+  asRole(t, 'coordinator');
+  ok(t.errors.length === 0, 'tickets loads with the registry defaults');
+  ok(t.d.querySelector('#tkView [data-view="board"]') === null, 'the board layout is absent by default');
+  ok(t.d.getElementById('tkBoard') === null, 'the board container is absent by default');
+  ok(t.d.getElementById('tbSearch') === null, 'the desktop palette trigger is absent by default');
+  ok(t.d.getElementById('tbSearchMobile') === null, 'the phone palette trigger is absent by default');
+  t.d.dispatchEvent(new t.w.KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+  ok(t.d.getElementById('cmdk') === null, 'Ctrl plus K does not open a palette by default');
+  t.w.UI.openPalette('Library');
+  ok(t.d.getElementById('cmdk') === null, 'the palette API stays closed by default');
+  close(t);
+
+  var b = await open(BASE + 'tickets.html?view=board');
+  asRole(b, 'coordinator');
+  ok(b.d.getElementById('tkTable').hidden === false, 'a board deep link falls back to the list by default');
+  ok(b.d.getElementById('tkBoard') === null, 'a board deep link creates no board container');
+  close(b);
+
+  var m = await open(BASE + 'maintenance.html');
+  asRole(m, 'coordinator');
+  ok(m.errors.length === 0, 'maintenance loads with the registry defaults');
+  ok(m.d.getElementById('plannerCard') === null, 'the maintenance planner is absent by default');
+  close(m);
+
+  var d = await open(BASE + 'dashboard.html');
+  asRole(d, 'coordinator');
+  ok(d.errors.length === 0, 'dashboard loads with the registry defaults');
+  ok(d.d.querySelectorAll('#kpiGrid .spark').length === 0, 'the KPI sparklines are absent by default');
+  close(d);
 });
 
 tests.push(async function login() {
@@ -962,7 +1048,7 @@ tests.push(async function dashboardActivity() {
 tests.push(async function dashboardWidgets() {
   /* Section 25.5A: the seven day sparkline on every highlight, the office
      health strip, the technician load bars and the compliance ring. */
-  var p = await open(BASE + 'dashboard.html');
+  var p = await openFeatures(BASE + 'dashboard.html', { dashboardKpiSparklines: true });
   asRole(p, 'coordinator');
   p.w.render();
 
@@ -1228,7 +1314,7 @@ tests.push(async function composerSeg() {
    and the due chip, and it never leaks an internal reply count to an office
    requester. */
 tests.push(async function workOrderCards() {
-  var p = await open(BASE + 'tickets.html');
+  var p = await openFeatures(BASE + 'tickets.html', { ticketsBoardView: true });
   asRole(p, 'coordinator');
   ok(p.errors.length === 0, 'tickets loads for the card view test');
   ok($('#tkView') !== null, 'the register offers a list and card layout switch');
@@ -1316,7 +1402,7 @@ tests.push(async function workOrderCards() {
 /* Ctrl or Cmd plus K opens one search over the records the signed-in role
    may open.  It stays inside the role's tenancy and can be closed with Esc. */
 tests.push(async function commandPalette() {
-  var p = await open(BASE + 'tickets.html');
+  var p = await openFeatures(BASE + 'tickets.html', { workspaceCommandPalette: true });
   asRole(p, 'coordinator');
   ok(p.errors.length === 0, 'tickets loads for the palette test');
   ok($('#tbSearch') !== null && $('#tbSearch').tagName === 'BUTTON',

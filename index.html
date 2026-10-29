@@ -19,7 +19,22 @@
 <meta name="theme-color" content="#1E3A5F">
 </head>
 <body>
+<script src="js/features.js"></script>
 <main class="content">
+
+  <div class="access-panel" id="galleryClosed" hidden>
+    <h2>This page is not available</h2>
+    <p class="ap-lead">The address may be mistyped, or the page may not be part of this workspace. Sign in to open your dashboard.</p>
+    <div class="row ap-actions"><a class="btn btn-primary" href="login.html">Sign in</a></div>
+  </div>
+  <script>
+  (function () {
+    if (window.Features && window.Features.on('designGallery')) return;
+    document.body.classList.add('access-denied');
+    var panel = document.getElementById('galleryClosed');
+    if (panel) panel.hidden = false;
+  })();
+  </script>
 
   <div class="hero">
     <div class="row row-between vp">

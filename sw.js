@@ -11,7 +11,7 @@
  */
 'use strict';
 
-var VERSION = 'itc-shell-v6';
+var VERSION = 'itc-shell-v7';
 var SHELL_CACHE = VERSION + '-shell';
 
 /* The app shell.  Role-prefixed pages are generated from these, so they are
@@ -43,6 +43,7 @@ var SHELL = [
   'css/green.css',
   'css/kit.css',
   'js/store.js',
+  'js/features.js',
   'js/permissions.js',
   'js/flow.js',
   'js/actions.js',

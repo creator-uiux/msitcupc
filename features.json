@@ -1,0 +1,30 @@
+{
+  "_comment": "Central feature registry. Every flag is a presentation switch for a capability that the source PDF, the owner's reference pictures and the owner's explicit requests do not require. Out-of-scope capabilities default to false and stay hidden until the owner asks for them. Edit this file, then run: python tools/build_features.py. Verify with: python tools/feature_parity_check.py.",
+  "features": {
+    "ticketsBoardView": {
+      "enabled": false,
+      "baseline": "none",
+      "reason": "Optional Kanban board grouped by status. The owner asked for the board to be off by default; the list and cards views remain."
+    },
+    "workspaceCommandPalette": {
+      "enabled": false,
+      "baseline": "none",
+      "reason": "Optional global search dialog opened from the top bar or Ctrl/Cmd K. The register keeps its own quick and advanced search."
+    },
+    "maintenancePlanner": {
+      "enabled": false,
+      "baseline": "none",
+      "reason": "Optional month, week and agenda calendar. The schedule list, check log and job register remain."
+    },
+    "dashboardKpiSparklines": {
+      "enabled": false,
+      "baseline": "none",
+      "reason": "Optional seven day sparklines under the dashboard KPI tiles. The tiles and their counts remain."
+    },
+    "designGallery": {
+      "enabled": false,
+      "baseline": "none",
+      "reason": "Development gallery and framed screen previews. It is not a workspace screen; the signed-in product starts at the dashboard."
+    }
+  }
+}

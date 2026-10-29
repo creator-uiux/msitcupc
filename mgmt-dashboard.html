@@ -222,10 +222,13 @@
 <script src="js/api.js"></script>
 <script src="js/permissions.js"></script>
 <script src="js/time.js"></script>
+<script src="js/features.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/live.js"></script>
 <script>
 UI.mountChrome({ title: 'Service Dashboard', sub: 'Office IT Service Request, Maintenance & Closure workflow' });
+
+var SPARKS = UI.feature('dashboardKpiSparklines');
 
 /* The dashboard is the same record set for every role, but the heading, the
    supporting panels and the links follow the signed-in lane. */
@@ -557,9 +560,9 @@ function render() {
     return t.target && new Date(t.target).getTime() < UI.nowMs();
   }).length;
   document.getElementById('kpiGrid').innerHTML = roleKpis(role, counts, overdue, jobs).map(function (k) {
-    var series = sparkSeries(k.spark, tickets, jobs, schedules);
+    var series = SPARKS ? sparkSeries(k.spark, tickets, jobs, schedules) : [];
     return kpi(k.label, k.value, k.delta, k.cls, UI.icon(k.ic), k.href,
-      UI.sparkline(series), SPARK_LABEL[k.spark]);
+      SPARKS ? UI.sparkline(series) : '', SPARK_LABEL[k.spark]);
   }).join('');
   renderStatusStrip(counts, overdue);
   renderHealth(tickets);

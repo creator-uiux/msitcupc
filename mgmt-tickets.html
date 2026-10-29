@@ -97,7 +97,7 @@
           <div class="seg seg-view" id="tkView" role="group" aria-label="Result layout">
             <button type="button" data-view="list">List</button>
             <button type="button" data-view="cards">Cards</button>
-            <button type="button" data-view="board">Board</button>
+            <button type="button" data-view="board" hidden>Board</button>
           </div>
         </div>
         <table class="table" id="tkTable">
@@ -127,6 +127,7 @@
 <script src="js/api.js"></script>
 <script src="js/permissions.js"></script>
 <script src="js/time.js"></script>
+<script src="js/features.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/query.js"></script>
 <script src="js/actions.js"></script>
@@ -149,13 +150,28 @@ var selected = {};
 var last = null;      /* last query envelope */
 var lastScopeTotal = 0; /* the size of the register this role may see */
 var VIEW_KEY = 'itc_ticket_view';
+var BOARD = UI.feature('ticketsBoardView');
 var view = 'list';
 try {
   var savedView = localStorage.getItem(VIEW_KEY);
-  if (savedView === 'cards' || savedView === 'list' || savedView === 'board') view = savedView;
+  if (savedView === 'cards' || savedView === 'list' || (BOARD && savedView === 'board')) view = savedView;
   else if (window.innerWidth < 600) view = 'cards';
 } catch (e) {
   if (window.innerWidth < 600) view = 'cards';
+}
+/* The board is an optional extra. When its flag is off, the button and the
+   column container leave the document, and a saved or linked board view
+   falls back to the list or cards layout. */
+if (!BOARD) {
+  var boardBtn = document.querySelector('#tkView [data-view="board"]');
+  if (boardBtn) boardBtn.remove();
+  var boardHost = document.getElementById('tkBoard');
+  if (boardHost) boardHost.remove();
+  var boardNote = document.getElementById('tkBoardNote');
+  if (boardNote) boardNote.remove();
+} else {
+  var boardShow = document.querySelector('#tkView [data-view="board"]');
+  if (boardShow) boardShow.hidden = false;
 }
 
 /* Priority is an IT assessment: the office and technicians cannot filter or
@@ -176,7 +192,7 @@ function paramBag() {
     technician: F.tech || '', source: F.source || '',
     from: F.from || '', to: F.to || '', overdue: chip === 'overdue' ? '1' : (F.overdue || ''),
     sort: F.sort || 'updated', order: F.order || 'desc', page: page,
-    size: view === 'board' ? Query.MAX_SIZE : PER_PAGE
+    size: BOARD && view === 'board' ? Query.MAX_SIZE : PER_PAGE
   };
   if (chip === 'open') p.status = 'open';
   /* scope: "mine" is personal and differs by role; All drops the personal
@@ -291,7 +307,7 @@ function render() {
   document.getElementById('tkCards').innerHTML = last.items.map(function (t) {
     return UI.workCard(t, { href: 'ticket.html?id=' + encodeURIComponent(t.id) });
   }).join('');
-  if (view === 'board') renderBoard();
+  if (BOARD && view === 'board') renderBoard();
   applyView();
 
   document.querySelectorAll('#tkBody tr[data-href]').forEach(function (tr) {
@@ -308,7 +324,7 @@ function render() {
   });
 
   var pg = { items: last.items, total: last.total, page: last.page, perPage: last.size, pages: last.pages };
-  if (view === 'board') document.getElementById('tkPagination').innerHTML = '';
+  if (BOARD && view === 'board') document.getElementById('tkPagination').innerHTML = '';
   else UI.renderPagination(document.getElementById('tkPagination'), pg, function (p) { page = p; render(); });
 
   renderBulk();
@@ -391,7 +407,7 @@ function renderBoard() {
 /* A move is recorded through the same guarded action the ticket screen uses.
    The backend rejects the same move when called directly; here a refusal is
    shown as a toast and the card stays where it was. */
-document.getElementById('tkBoard').addEventListener('click', function (e) {
+if (BOARD) document.getElementById('tkBoard').addEventListener('click', function (e) {
   var b = e.target.closest('[data-move]');
   if (!b) return;
   e.preventDefault();
@@ -404,13 +420,16 @@ document.getElementById('tkBoard').addEventListener('click', function (e) {
 
 
 function applyView() {
+  if (view === 'board' && !BOARD) view = window.innerWidth < 600 ? 'cards' : 'list';
   var table = view === 'list';
   var cards = view === 'cards';
   var board = view === 'board';
   document.getElementById('tkTable').hidden = !table;
   document.getElementById('tkCards').hidden = !cards;
-  document.getElementById('tkBoard').hidden = !board;
-  document.getElementById('tkBoardNote').hidden = !board || !boardCapped;
+  var boardHost = document.getElementById('tkBoard');
+  if (boardHost) boardHost.hidden = !board;
+  var boardNote = document.getElementById('tkBoardNote');
+  if (boardNote) boardNote.hidden = !board || !boardCapped;
   document.querySelectorAll('#tkView [data-view]').forEach(function (b) {
     var on = b.dataset.view === view;
     b.classList.toggle('on', on);
@@ -438,6 +457,7 @@ document.getElementById('tkMore').addEventListener('click', function () {
 document.getElementById('tkView').addEventListener('click', function (e) {
   var b = e.target.closest('[data-view]');
   if (!b || b.dataset.view === view) return;
+  if (b.dataset.view === 'board' && !BOARD) return;
   view = b.dataset.view;
   if (view === 'board') page = 1;
   try { localStorage.setItem(VIEW_KEY, view); } catch (err) { /* private mode */ }
@@ -559,7 +579,7 @@ document.getElementById('tkBulkAssign').addEventListener('click', function () {
   var office = UI.qs('office');
   if (office) F.office = office;
   var v = UI.qs('view');
-  if (v === 'cards' || v === 'list' || v === 'board') view = v;
+  if (v === 'cards' || v === 'list' || (BOARD && v === 'board')) view = v;
 })();
 
 Store.subscribe(render);

@@ -11,6 +11,13 @@
   }
   function attr(s) { return esc(s); }
 
+  /* The registry lives in features.json and its generated mirror. A page that
+     does not load the mirror (the frozen sign-in page) reads every flag as
+     off, which is the safe default. */
+  function feature(name) {
+    return !!(window.Features && window.Features.on && window.Features.on(name));
+  }
+
   var STATUS = {
     submitted: ['Submitted', 'b-submitted'], needs_info: ['Needs Information', 'b-needs-info'],
     assigned: ['Assigned', 'b-assigned'], in_progress: ['In Progress', 'b-progress'],
@@ -1219,11 +1226,12 @@
     var appbar = document.getElementById('chromeAppbar');
     if (!appbar) return;
     var a = auth();
+    var palette = feature('workspaceCommandPalette');
     appbar.innerHTML =
       '<button type="button" class="ico-btn" id="navToggle" aria-label="Open navigation" aria-expanded="false">' + icon('menu') + '</button>' +
       sealLockup('tb-lockup') +
       '<span class="spacer"></span>' +
-      '<button type="button" class="ico-btn" id="tbSearchMobile" aria-label="Search the workspace" aria-haspopup="dialog" aria-expanded="false">' + icon('search') + '</button>' +
+      (palette ? '<button type="button" class="ico-btn" id="tbSearchMobile" aria-label="Search the workspace" aria-haspopup="dialog" aria-expanded="false">' + icon('search') + '</button>' : '') +
       bellHTML('notifM') +
       accountHTML('acctM');
     var toggle = document.getElementById('navToggle');
@@ -1431,6 +1439,7 @@
   }
 
   function openPalette(query) {
+    if (!feature('workspaceCommandPalette')) return;
     var host = ensurePalette();
     host.hidden = false;
     document.body.classList.add('cmdk-open');
@@ -1473,6 +1482,7 @@
     location.href = el.dataset.href;
   }
   function bindPaletteKeys() {
+    if (!feature('workspaceCommandPalette')) return;
     if (bindPaletteKeys.bound) return;
     bindPaletteKeys.bound = true;
     document.addEventListener('keydown', function (e) {
@@ -1500,8 +1510,10 @@
     topbar.innerHTML =
       '<nav class="tb-crumbs" aria-label="Breadcrumb">' + crumbInner(true) + '</nav>' +
       '<span class="spacer"></span>' +
-      '<button type="button" class="tb-search" id="tbSearch" aria-label="Search the workspace" aria-haspopup="dialog" aria-expanded="false">' +
-      icon('search') + '<span class="tb-search-text">Search tickets, offices, assets…</span><kbd>Ctrl K</kbd></button>' +
+      (feature('workspaceCommandPalette')
+        ? '<button type="button" class="tb-search" id="tbSearch" aria-label="Search the workspace" aria-haspopup="dialog" aria-expanded="false">' +
+          icon('search') + '<span class="tb-search-text">Search tickets, offices, assets…</span><kbd>Ctrl K</kbd></button>'
+        : '') +
       '<span class="role-chip"><i aria-hidden="true"></i>' + esc(currentRole().title) + '</span>' +
       bellHTML('notifD') +
       accountHTML('acctD');
@@ -2095,7 +2107,7 @@
   }
 
   window.UI = {
-    esc: esc, attr: attr, badge: badge, prio: prio, timeAgo: timeAgo, clock: clock, dateOnly: dateOnly,
+    esc: esc, attr: attr, feature: feature, badge: badge, prio: prio, timeAgo: timeAgo, clock: clock, dateOnly: dateOnly,
     workCard: workCard, categoryIcon: categoryIcon, sparkline: sparkline, gauge: gauge,
     openPalette: openPalette, closePalette: closePalette, paletteResults: cmCommandResults,
     toast: toast, openModal: openModal, closeModal: closeModal, field: field, input: input,

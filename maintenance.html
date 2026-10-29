@@ -35,7 +35,7 @@
       <section class="grid grid-kpi" id="mKpi"></section>
 
       <!-- planner: the same schedules and visits on a calendar, a week or a list -->
-      <section class="card mt" id="plannerCard">
+      <section class="card mt" id="plannerCard" hidden>
         <div class="card-head">
           <h3>Maintenance planner</h3>
           <span class="hint" id="plannerRange"> -- </span>
@@ -116,10 +116,19 @@
 <script src="js/api.js"></script>
 <script src="js/permissions.js"></script>
 <script src="js/time.js"></script>
+<script src="js/features.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/live.js"></script>
 <script>
 UI.mountChrome({ title: 'Maintenance Schedule', sub: 'Schedules, linked jobs, checklists, outcomes & closure' });
+
+var PLANNER = UI.feature('maintenancePlanner');
+var plannerCard = document.getElementById('plannerCard');
+if (!PLANNER) {
+  if (plannerCard) plannerCard.remove();
+} else if (plannerCard) {
+  plannerCard.hidden = false;
+}
 
 var checkLog = [];
 var selJob = UI.qs('job') || '';
@@ -286,6 +295,7 @@ function renderTechToday() {
 }
 
 function renderPlanner() {
+  if (!PLANNER) return;
   var db = Store.db;
   var role = Store.db.role;
   var myName = (db.auth && db.auth.name) || (window.ROLES ? ROLES.technician.name : '');
@@ -334,28 +344,30 @@ function shiftPlanner(dir) {
   renderPlanner();
 }
 
-document.getElementById('plannerView').addEventListener('click', function (e) {
-  var b = e.target.closest('[data-pview]');
-  if (!b || b.dataset.pview === plannerView) return;
-  plannerView = b.dataset.pview;
-  agendaPage = 1;
-  try { localStorage.setItem(PLANNER_KEY, plannerView); } catch (err) { /* private mode */ }
-  renderPlanner();
-});
-document.getElementById('pPrev').addEventListener('click', function () { shiftPlanner(-1); });
-document.getElementById('pNext').addEventListener('click', function () { shiftPlanner(1); });
-document.getElementById('pToday').addEventListener('click', function () {
-  var today = Time.day(new Date(UI.nowMs()).toISOString());
-  plannerCursor = today;
-  if (plannerView === 'agenda') {
-    var idx = 0;
-    while (idx < plannerEvents.length && plannerEvents[idx].key < today) idx++;
-    agendaPage = Math.floor(idx / AGENDA_PER_PAGE) + 1;
-  } else {
+if (PLANNER) {
+  document.getElementById('plannerView').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-pview]');
+    if (!b || b.dataset.pview === plannerView) return;
+    plannerView = b.dataset.pview;
     agendaPage = 1;
-  }
-  renderPlanner();
-});
+    try { localStorage.setItem(PLANNER_KEY, plannerView); } catch (err) { /* private mode */ }
+    renderPlanner();
+  });
+  document.getElementById('pPrev').addEventListener('click', function () { shiftPlanner(-1); });
+  document.getElementById('pNext').addEventListener('click', function () { shiftPlanner(1); });
+  document.getElementById('pToday').addEventListener('click', function () {
+    var today = Time.day(new Date(UI.nowMs()).toISOString());
+    plannerCursor = today;
+    if (plannerView === 'agenda') {
+      var idx = 0;
+      while (idx < plannerEvents.length && plannerEvents[idx].key < today) idx++;
+      agendaPage = Math.floor(idx / AGENDA_PER_PAGE) + 1;
+    } else {
+      agendaPage = 1;
+    }
+    renderPlanner();
+  });
+}
 
 function kpi(l, v, d, c, dot) {
   return '<div class="card kpi ' + c + '"><div class="dot">' + dot + '</div><div class="label">' + l +
