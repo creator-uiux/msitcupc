@@ -16,7 +16,7 @@
   var TERMINAL_STATES = ['closed', 'cancelled'];
   var ALL_STATES = OPEN_STATES.concat(TERMINAL_STATES);
 
-  var PRIORITY_ORDER = { high: 3, medium: 2, low: 1 };
+  var PRIORITY_ORDER = { critical: 4, high: 3, medium: 2, low: 1 };
   var STATUS_ORDER = {};
   ALL_STATES.forEach(function (s, i) { STATUS_ORDER[s] = i; });
 

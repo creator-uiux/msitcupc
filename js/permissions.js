@@ -94,6 +94,9 @@
       "coordinator",
       "management"
     ],
+    "visits.html": [
+      "requester"
+    ],
     "confirm.html": [
       "requester",
       "coordinator"
@@ -137,12 +140,10 @@
       "coordinator"
     ],
     "reassign": [
-      "coordinator",
-      "management"
+      "coordinator"
     ],
     "approve": [
-      "coordinator",
-      "management"
+      "coordinator"
     ],
     "coordinate": [
       "coordinator",
@@ -180,12 +181,10 @@
     ],
     "close": [
       "coordinator",
-      "requester",
-      "management"
+      "requester"
     ],
     "send_reminder": [
       "coordinator",
-      "management",
       "system"
     ],
     "create_schedule": [
@@ -214,18 +213,15 @@
     ],
     "run_schedule_check": [
       "coordinator",
-      "management",
       "system"
     ],
     "close_job": [
-      "coordinator",
-      "management"
+      "coordinator"
     ],
     "job_confirmation": [
       "requester"
     ],
     "add_comment": [
-      "management",
       "coordinator",
       "technician",
       "requester"
@@ -249,11 +245,9 @@
       "management"
     ],
     "update_schedule": [
-      "management",
       "coordinator"
     ],
     "set_schedule_active": [
-      "management",
       "coordinator"
     ],
     "save_settings": [
@@ -314,8 +308,7 @@
     "resolved": {
       "closed": [
         "requester",
-        "coordinator",
-        "management"
+        "coordinator"
       ],
       "in_progress": [
         "requester"

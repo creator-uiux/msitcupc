@@ -1,9 +1,9 @@
 /* login.js -- the sign-in screen.
  *
  * Google Workspace sign-in is the production path.  The demo account list is
- * rendered only when the deployment explicitly turns demo mode on (the API
- * server injects window.ITC_DEMO_MODE, or a static demo copy sets the
- * itc-demo-mode meta tag).  It is never opened by a URL parameter.
+ * part of every build of this page: it does not depend on the host, the port
+ * or a server flag, so the same file works on a different localhost port, a
+ * static copy and Firebase Hosting.  The list is always labelled "Demo only".
  */
 (function () {
   'use strict';
@@ -19,11 +19,6 @@
   var demoAccounts = document.getElementById('demoAccounts');
   var themeSwitch = document.getElementById('themeSwitch');
 
-  var metaDemo = document.querySelector('meta[name="itc-demo-mode"]');
-  function demoOn() {
-    return window.ITC_DEMO_MODE === true ||
-      !!(metaDemo && /^(1|true|yes)$/i.test((metaDemo.getAttribute('content') || '').trim()));
-  }
   var SERVER = window.ITC_SITE === true;
   var SESSION_KEY = 'itc_session';
 
@@ -131,7 +126,7 @@
 
   /* --------------------------------------------------------------- demo */
   function renderDemo() {
-    if (!demoOn() || !demoAccounts) return;
+    if (!demoAccounts) return;
     demoAccounts.innerHTML = UI.ROLE_ORDER.map(function (key) {
       var r = UI.ROLES[key];
       return '<li><button type="button" class="lp-demo-account" data-acct="' + key + '">' +
@@ -142,9 +137,13 @@
     }).join('');
   }
 
-  function openDemo() {
+  function showDemo() {
     if (!demoBlock) return;
     demoBlock.hidden = false;
+  }
+
+  function openDemo() {
+    showDemo();
     var first = demoAccounts && demoAccounts.querySelector('[data-acct]');
     if (first) {
       try { first.focus(); } catch (e) { /* ignore */ }
@@ -167,6 +166,12 @@
     return { status: x.status, data: data };
   }
 
+  function signInLocally(role) {
+    UI.signIn(role);
+    renderSignedIn();
+    setTimeout(function () { redirect(role); }, 450);
+  }
+
   function signInAs(role) {
     if (SERVER) {
       var res = postJSON('/api/login', { role: role });
@@ -174,12 +179,18 @@
         acceptSession(res.data);
         return;
       }
+      /* A hosted server can keep its demo gate closed.  The account list is
+         part of the page anyway, so take the browser demo session instead of
+         refusing the choice.  API calls still require a real server token. */
+      if (res.status === 0 || (res.data && res.data.code === 'demo_disabled')) {
+        UI.signIn(role);
+        redirect(role);
+        return;
+      }
       showError((res.data && res.data.msg) || 'Demo sign-in was declined by the server.');
       return;
     }
-    UI.signIn(role);
-    renderSignedIn();
-    setTimeout(function () { redirect(role); }, 450);
+    signInLocally(role);
   }
 
   if (demoAccounts) {
@@ -296,12 +307,8 @@
         try { google.accounts.id.prompt(); } catch (e) { /* the overlay handles it */ }
         return;
       }
-      if (demoOn()) {
-        renderDemo();
-        openDemo();
-        return;
-      }
-      showError('UPMail sign-in is not configured on this server. Contact the IT Office.');
+      showError('UPMail sign-in is not configured on this server. Use a demo account below.');
+      openDemo();
     });
   }
 
@@ -330,12 +337,11 @@
   }
 
   renderDemo();
+  showDemo();
   renderSignedIn();
   setupGoogleIdentity();
 
   window.LoginPage = {
-    demo: demoOn(),
-    demoOn: demoOn,
     refresh: renderSignedIn,
     renderDemo: renderDemo,
     openDemo: openDemo

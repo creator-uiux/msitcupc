@@ -43,6 +43,25 @@
     return t;
   }
 
+  /* ---------- table density ----------
+     Comfortable is the default; compact tightens the long registers so more
+     rows fit on one screen.  The choice is set before first paint, like the
+     theme, so a saved compact view never flashes the roomy layout. */
+  var DENSITY_KEY = 'itc_density';
+
+  function readDensity() {
+    try {
+      return localStorage.getItem(DENSITY_KEY) === 'compact' ? 'compact' : 'comfortable';
+    } catch (e) { return 'comfortable'; }
+  }
+
+  function applyDensity(choice) {
+    var d = choice === 'compact' ? 'compact' : 'comfortable';
+    document.documentElement.setAttribute('data-density', d);
+    try { localStorage.setItem(DENSITY_KEY, d); } catch (e) { /* quota */ }
+    return d;
+  }
+
   /* The theme that is actually on screen.  The saved choice may be "system",
      and the sheet paints that with the light palette, so a switch has to
      report what is really applied rather than the name of the choice. */
@@ -50,6 +69,13 @@
     return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
   }
 
-  window.Theme = { apply: apply, current: function () { return read(); }, resolved: resolved };
+  window.Theme = {
+    apply: apply,
+    current: function () { return read(); },
+    resolved: resolved,
+    density: readDensity,
+    applyDensity: applyDensity
+  };
   apply();
+  applyDensity();
 })();

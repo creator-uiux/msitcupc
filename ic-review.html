@@ -109,10 +109,12 @@ function actionsHTML(t) {
     h += '<div class="row mt">' + btn('Record cancellation', 'cancel', 'btn-danger-soft') + '</div>';
   } else if (t.status === 'assigned') {
     h += btn('Coordinate service schedule', 'coord', 'btn-primary') +
+      btn('Reassign technician', 'reassign', 'btn-soft') +
       btn('Record cancellation', 'cancel', 'btn-danger-soft');
   } else if (t.status === 'on_hold') {
     h += btn('Record follow-up update', 'followup', 'btn-ghost') +
       btn('Dependency resolved  --  resume', 'resolve', 'btn-primary') +
+      btn('Reassign technician', 'reassign', 'btn-soft') +
       btn('Cannot proceed  --  cancel', 'cannot', 'btn-danger-soft');
   }
   return h;

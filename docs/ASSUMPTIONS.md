@@ -24,7 +24,7 @@ frequencies) is likewise editable on `settings.html`.
 | A9 | Additional fault is unknown until the technician answers | `unknown` | `jobs.additionalFault` |
 | A10 | Outcome success may only be recorded after every checklist item is done | enforced | `engine.record_outcome` |
 | A11 | Preventive job closes only after office confirmation of the outcome | enforced | `engine.job_confirmation` |
-| A12 | On behalf intake is permitted for coordinators only, requester stays office scoped | coordinator only | `settings.onBehalfRoles` |
+| A12 | On behalf intake with a typed requester name is permitted for coordinators only. A requester files under their signed-in name but may choose any active office; they can follow the requests they raised | requester name locked, office defaults to their own | `request.html` `applyRequesterLock`; `engine.create_ticket` |
 
 ## Data assumptions
 
@@ -45,7 +45,7 @@ frequencies) is likewise editable on `settings.html`.
 | A20 | Four roles: Requester, Technician, Coordinator, System Administrator | as named | `js/ui.js ROLES` |
 | A21 | System Administrator is read only on the operational workflow and may perform authorized closure | read only plus authorized closure | `settings.roleActions` |
 | A22 | Technician acts only on tickets assigned to them | enforced | `engine` guards |
-| A23 | Requester may close a Resolved ticket for their own office | enabled | `engine.close` |
+| A23 | Requester may close a Resolved ticket for their own office, or a request they raised for another office | enabled | `engine.close` |
 | A24 | Role by action matrix is configurable | current matrix shipped as default; narrowing-only (may not widen the default) | `settings.roleActions` |
 
 ## Demo assumptions
@@ -53,7 +53,7 @@ frequencies) is likewise editable on `settings.html`.
 | # | Assumption | Default | Where configured |
 |---|---|---|---|
 | A25 | Authorized closure is limited to configurable roles | default: `["coordinator", "management"]` | `settings.authorizedClosureRoles` |
-| A26 | Role only sign in shortcut exists for the offline demo only and is disabled by default | disabled in live mode | `settings.demoLogin` |
+| A26 | The demo account list is always on the sign-in page, so it works on any host; on a server with the demo gate closed a chosen account gets a browser-only demo session | always on for the page; server gate off by default on a network bind | `js/login.js`, `server/app.py` |
 | A27 | Maintenance job status uses the eight canonical labels | status drawn from {submitted, needs_info, assigned, in_progress, on_hold, resolved, closed, cancelled} | `engine._LABELS`, `engine.record_outcome` |
 
 ## Open items (not assumed, deferred)

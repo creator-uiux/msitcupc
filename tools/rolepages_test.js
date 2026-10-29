@@ -105,9 +105,14 @@ function captureSeed() {
     requestInterceptor: localOnlyInterceptor()
   }).then(function (dom) {
     return new Promise(function (resolve) {
+      var started = Date.now();
       function go() {
+        var w = dom.window;
+        /* The dashboard renders every role widget, so a cold jsdom load on a
+           busy machine can pass six seconds.  Wait for Store, then give up
+           after twenty; the app itself is unaffected. */
+        if (!w.Store && Date.now() - started < 20000) { setTimeout(go, 200); return; }
         try {
-          var w = dom.window;
           w.Store.reset();                       /* canonical seed, persisted */
           SEED_DB = w.localStorage.getItem('itc_db_v3');
         } catch (e) { SEED_DB = null; }
@@ -116,7 +121,7 @@ function captureSeed() {
       }
       if (dom.window.document.readyState === 'complete') setTimeout(go, 150);
       else dom.window.addEventListener('load', function () { setTimeout(go, 150); });
-      setTimeout(go, 6000);
+      setTimeout(go, 20000);
     });
   });
 }
@@ -470,7 +475,7 @@ tests.push(async function roleVisibility() {
 
     ['technician', 'itc-maintenance.html', '.schedule-manage', false],
     ['coordinator', 'ic-maintenance.html', '.schedule-manage', true],
-    ['management', 'mgmt-maintenance.html', '.schedule-manage', true],
+    ['management', 'mgmt-maintenance.html', '.schedule-manage', false],
     ['management', 'mgmt-maintenance.html', '#btnNewSched', false],
     ['coordinator', 'ic-maintenance.html', '#btnNewSched', true],
 

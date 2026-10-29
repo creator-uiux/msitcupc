@@ -36,7 +36,7 @@
         <div class="stack">
           <div class="card">
             <div class="card-head"><h3>Reference data</h3><span class="hint">used by intake, assessment and scheduling</span></div>
-            <div class="card-pad"><div id="refGroups"></div></div>
+            <div class="card-pad"><div id="refGroups" class="ref-cols"></div></div>
           </div>
         </div>
 
@@ -47,17 +47,19 @@
           </div>
 
           <div class="card">
-            <div class="card-head"><h3>Approval, priority and closure</h3><span class="hint">policy the workflow enforces</span></div>
-            <div class="card-pad"><div id="policySettings"></div></div>
-          </div>
-
-          <div class="card">
             <div class="card-head"><h3>Maintenance frequencies</h3><span class="hint">previous due date + these days = next due</span></div>
             <div class="card-pad"><div id="freqTable"></div></div>
           </div>
 
           <div class="note"><span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3l7 3v5c0 4.4-3 8.2-7 10-4-1.8-7-5.6-7-10V6z"/><path d="M9.3 12l1.9 1.9 3.6-3.7"/></svg></span><div><b>Audited:</b> every change here is written to the audit log with the actor, time and the exact option changed.</div></div>
         </div>
+      </section>
+
+      <!-- policy gets the page width so its three sections sit side by side
+           instead of stacking into a 1,387px column -->
+      <section class="card mt">
+        <div class="card-head"><h3>Approval, priority and closure</h3><span class="hint">policy the workflow enforces</span></div>
+        <div class="card-pad" id="policySettings"></div>
       </section>
     </main>
 
@@ -149,10 +151,13 @@ function render() {
   }
   var approvalCats = s.approvalCategories || [];
   var allCats = (s.categories || []).slice();
-  var closureRoles = s.authorizedClosureRoles || ['coordinator', 'management'];
-  var ROLE_OPTS = [['coordinator', 'IT Coordinator'], ['management', 'System Administrator']];
+  var closureRoles = (s.authorizedClosureRoles || ['coordinator']).filter(function (r) { return r !== 'management'; });
+  /* The System Administrator holds no ticket work, so closure stays with the IT Coordinator. */
+  var ROLE_OPTS = [['coordinator', 'IT Coordinator']];
 
   document.getElementById('policySettings').innerHTML =
+    '<div class="policy-cols">' +
+    '<div class="policy-col">' +
     '<div class="card-title mb-sm">Categories that need coordinator approval</div>' +
     '<p class="card-sub">Approval is off by default and is never required for every service. A gated category cannot start work until the coordinator signs it off.</p>' +
     '<ul class="policy-list">' +
@@ -163,17 +168,6 @@ function render() {
         (approvalCats.indexOf(c) > -1 ? ' checked' : '') + '>' +
         '<span class="body">' + UI.esc(c) + '</span></label></li>';
     }).join('') + '</ul>' +
-    '<div class="card-title mt-md mb-sm">Impact and urgency matrix</div>' +
-    '<p class="card-sub">The coordinator records the impact and the urgency. The matrix decides the priority, and the entry is always stored with all three.</p>' +
-    '<div class="matrix-list">' +
-    IMPACTS.map(function (i) {
-      return '<div class="matrix-group">' + i[1] + ' impact</div>' +
-        URGENCIES.map(function (u) {
-          return '<div class="matrix-row">' +
-            '<label for="fpm_' + i[0] + '_' + u[0] + '">Urgency ' + u[1] + '</label>' +
-            cell(i[0], u[0]) + '</div>';
-        }).join('');
-    }).join('') + '</div>' +
     '<div class="card-title mt-md mb-sm">Authorized closure</div>' +
     '<p class="card-sub">Only these roles may close a Resolved record without an office confirmation. A reason is always required and the closure is always visible in the history.</p>' +
     '<ul class="policy-list">' +
@@ -184,6 +178,21 @@ function render() {
         (closureRoles.indexOf(r[0]) > -1 ? ' checked' : '') + '>' +
         '<span class="body">' + UI.esc(r[1]) + '</span></label></li>';
     }).join('') + '</ul>' +
+    '</div>' +
+    '<div class="policy-col">' +
+    '<div class="card-title mb-sm">Impact and urgency matrix</div>' +
+    '<p class="card-sub">The coordinator records the impact and the urgency. The matrix decides the priority, and the entry is always stored with all three.</p>' +
+    '<div class="matrix-list">' +
+    IMPACTS.map(function (i) {
+      return '<div class="matrix-group">' + i[1] + ' impact</div>' +
+        URGENCIES.map(function (u) {
+          return '<div class="matrix-row">' +
+            '<label for="fpm_' + i[0] + '_' + u[0] + '">Urgency ' + u[1] + '</label>' +
+            cell(i[0], u[0]) + '</div>';
+        }).join('');
+    }).join('') + '</div>' +
+    '</div>' +
+    '</div>' +
     '<div class="form-actions">' +
     '<button class="btn btn-primary" id="savePolicy">Save policy</button></div>';
 

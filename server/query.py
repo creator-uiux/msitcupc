@@ -16,7 +16,7 @@ OPEN_STATES = ("submitted", "needs_info", "assigned", "in_progress", "on_hold", 
 TERMINAL_STATES = ("closed", "cancelled")
 ALL_STATES = OPEN_STATES + TERMINAL_STATES
 
-PRIORITY_ORDER = {"high": 3, "medium": 2, "low": 1}
+PRIORITY_ORDER = {"critical": 4, "high": 3, "medium": 2, "low": 1}
 STATUS_ORDER = {s: i for i, s in enumerate(ALL_STATES)}
 
 # One definition of "overdue": a target date when the coordinator set one,

@@ -649,6 +649,12 @@ Run existing tests, lint, type checks, and the production build. Add unit, integ
 97. Unavailable actions are hidden, not disabled or grayed out. Where the user must wait, a text line such as "Waiting on IT Coordinator" is shown.
 98. Every authenticated page uses the Canvas-style global navigation rail, the Firebase-style top bar and tabs, the seal lockup, and the existing theme, and works in light and dark mode at 390, 768, and 1440 px.
 
+**Maintenance visual language and responsive matrix**
+99. The Board view lists tickets in workflow order, allows only valid and role-permitted moves, snaps back invalid moves with an explanation, and the backend rejects the same moves when called directly.
+100. Technician mobile experience: the default landing is Today and My queue, checklist cards have 44 px targets, a progress indicator with text, evidence capture, and a sticky "Save progress" and "Flag additional fault" bar.
+101. The responsive matrix in Section 25.5B passes (no horizontal overflow, clipped text, overlap, or unreachable actions) at the listed widths, landscape sizes, light and dark mode, and 200 percent zoom, or the limitation is disclosed. The login page is excluded and unchanged.
+102. Dashboards show only role-purposeful widgets (at most about eight tiles above the fold), with click-through to filtered lists, and the command palette searches tickets, offices, assets, and schedules within the user's permitted scope.
+
 ## 18. IMPLEMENTATION RULES
 
 Make real changes. Follow the current architecture. Reuse components. Avoid unnecessary dependencies and duplicate business logic. Keep business rules in shared services or the backend. Use consistent date handling with Asia/Manila display. Do not hardcode production metrics. Do not bypass authorization. Do not change the documented workflow to simplify development. Do not add unrelated modules or extra mandatory approval steps. No em dashes in generated text.
@@ -667,7 +673,7 @@ Make real changes. Follow the current architecture. Reuse components. Avoid unne
 
 ## 20. SOURCE LIMITATIONS TO DISCLOSE
 
-State in `docs/KNOWN_LIMITATIONS.md`: all shapes, lanes, and arrows were read from the PDF geometry and visually spot checked. A few connectors have their arrowheads hidden behind edge labels or drawn as duplicates. They are listed in Appendix B.6 and were implemented from the label text and SOP numbering. The Process context frame, relevant files, and chat notes seen in the PDF are viewer elements and are not part of the process. The PDF is not dated consistently (Last Updated January 30, 2021, generated September 30, 2026), which does not affect the process.
+State in `docs/KNOWN_LIMITATIONS.md`: all shapes, lanes, and arrows were read from the PDF geometry and visually spot checked. Two connectors are drawn without arrowheads and one label has no line at all. They are listed in Appendix B.6 and were implemented from the label text and SOP numbering. The Process context frame, relevant files, and chat notes seen in the PDF are viewer elements and are not part of the process. The PDF is not dated consistently (Last Updated January 30, 2021, generated September 30, 2026), which does not affect the process.
 
 ## 21. REQUIRED FINAL AUDIT
 
@@ -707,6 +713,7 @@ Create a traceability table: Requirement, Implementation location, Verification 
 32. The login page matches the required reference design (Section 14.15), enforces the institutional domain on the trusted layer, and keeps demo sign-in out of production.
 33. The UI polish pass (Section 25) is complete, the login page and color theme are provably unchanged, and the identity is clearly University of the Philippines Cebu.
 34. Each role sees only its permitted features in the UI, and the backend rejects everything else.
+35. The maintenance visual language (Section 25.5A) and the responsive matrix (Section 25.5B) are implemented and verified, with the login page untouched.
 
 ## 22. EXECUTION ORDER
 
@@ -856,6 +863,47 @@ Apply the design direction to every authenticated page, but NOT the login page:
 ### 25.5 ACCESSIBILITY AND QUALITY
 
 Semantic HTML, correct heading order, labeled inputs, keyboard navigation, visible focus rings, contrast at least 4.5:1 in light and dark mode (including text over any photo), accessible dialogs, aria-live for errors and toasts, alt text for the seals ("University of the Philippines seal", "University of the Philippines Cebu seal"), status never by color alone, charts with data tables, and reduced motion support.
+
+### 25.5A MAINTENANCE-SYSTEM VISUAL LANGUAGE
+
+**Why this section exists:** the owner wants the UI to feel like a real maintenance system, not a generic admin template. Maintenance and work-order software works best when it is built around how maintenance work actually happens: clear prioritization (open and overdue work visible at a glance), fast search, dashboards with a clear purpose per role (a manager sees the whole operation, a technician sees today's schedule and own work), simple work-order creation, and photos, notes, and instant updates added directly on the record. Apply these ideas in the existing Canvas and Firebase style, with the existing color theme. The owner's Dribbble inspiration page could not be opened by tools (it needs a browser), so these patterns come from well-known maintenance (CMMS) and IT service desk practice. If inspiration images are attached in the chat, use them for mood and layout only, never copy a design.
+
+**Signature components (build once, reuse everywhere):**
+- **Ticket card ("work order card"):** ticket number, subject, office, category icon, status chip, priority shown as a colored left edge plus a text chip, assignee avatar, due or overdue chip, and small attachment and reply counts. Used in Card view, the Board view, dashboards, and on phones.
+- **Board view for tickets:** a Kanban-style board with columns in workflow order: Submitted, Needs Information, Assigned, In Progress, On Hold, Resolved. Closed and Cancelled sit in a collapsed archive lane. Cards can be moved only where the role may perform that transition and the transition is valid. An invalid move snaps back with a short explanation, and the backend enforces the same rule. On phones, show status tabs or horizontally swipeable columns instead of drag and drop.
+- **Service timeline:** a vertical timeline with icons for each event (created, assigned, diagnosed, tested, confirmed, cancelled, maintenance), used for ticket History, the Office Register, and asset history.
+- **Office and asset health strip:** a compact header on the Office Register and asset pages with open tickets, overdue count, last service date, next maintenance due, and recurring issues, each as a small stat with an icon.
+- **Maintenance planner:** month, week, and agenda views with due, overdue, and rescheduled chips. On phones show an agenda list by default. Technicians get a "Today" view of their visits.
+- **Checklist cards:** each checklist item is a card with a large Pass, Fail, or Not applicable segmented control, a findings field, a photo or evidence button, and a visible progress ring or bar ("7 of 12 done", also as text). A sticky bottom bar offers "Save progress" and "Flag additional fault" (creates the linked corrective ticket).
+- **KPI tiles with purpose:** Open, Overdue, Awaiting confirmation, On hold, Average turnaround, On-time completion rate, and Preventive maintenance compliance, each with a tiny trend sparkline and a click-through that opens the filtered list. Show at most about eight tiles above the fold, ordered by what the role must act on first. Avoid clutter: every widget must answer a question for that role.
+- **Technician workload:** horizontal stacked bars by status, with a text value for each bar.
+- **Compliance gauge:** a donut or progress bar with the percentage and counts as text.
+- **Global quick actions:** a "+" button for New request (and, for the IT Coordinator, New request on behalf of an office and New schedule), and a command palette (Ctrl or Cmd plus K) that searches tickets, offices, assets, and schedules and lists recent items.
+- **Technician-first mobile design:** default landing on Today and My queue, large touch targets, primary actions in the thumb zone (bottom third), quick status actions, one-tap call or email links for the requester (`tel:` and `mailto:`), camera evidence capture, and drafts kept safe while typing.
+- **Charts:** clean line, area, and bar charts in the existing palette, thin gridlines, direct labels where possible, accessible tooltips, a data table alternative, and no 3D or decorative effects.
+- **Icons and illustrations:** one outline icon set with maintenance metaphors (wrench, clipboard-check, calendar-check, monitor, printer, network, key, shield) and simple single-color line illustrations for empty states.
+
+### 25.5B RESPONSIVE MATRIX (ALL DEVICE SIZES)
+
+**Goal:** every page looks intentional and feels comfortable on any device, from small phones to ultra-wide monitors, in portrait and landscape, in light and dark mode, with touch, mouse, and keyboard.
+
+**Size classes and what changes**
+| Class | Width | Layout |
+|---|---|---|
+| Small phone | 320 to 479 px | One column, bottom tab bar, cards instead of tables, bottom sheets for dialogs and filters, full-width buttons, 16 px inputs (no zoom on focus). |
+| Large phone | 480 to 767 px | Same as above, with two-column stat tiles and wider cards. |
+| Tablet portrait | 768 to 1023 px | Icon rail navigation, two-column dashboard grid, tables with the most important columns, optional master-detail on tickets. |
+| Tablet landscape and small laptop | 1024 to 1279 px | Rail plus collapsible contextual menu, 12-column grid, ticket detail with a narrow side panel. |
+| Desktop | 1280 to 1919 px | Full layout: rail, contextual menu, content, and the ticket detail side rail. |
+| Large and ultra-wide | 1920 px and up | Content stays within about 1440 to 1600 px and is centered. Extra space goes to side panels and gutters, tables are never stretched across the whole screen. |
+
+**Techniques to use:** CSS grid and flexbox, container queries for components, fluid type and spacing with `clamp()`, `min-width: 0` on flex and grid children, `dvh` units instead of `100vh`, safe-area insets, logical properties, tables that convert to cards, sticky headers and action bars that respect safe areas, and no hover-only interactions. Use `@media (pointer: coarse)` to enlarge touch targets to at least 44 px and `@media (hover: hover)` for hover effects. Support text zoom and browser zoom to 200 percent without clipped content or horizontal scrolling (reflow at 320 px). Handle landscape phones (short heights such as 844 by 390), foldables, and orientation changes without fixed heights that clip content.
+
+**Comfort rules:** body text at least 14 px on desktop and inputs at least 16 px on phones, comfortable line length, a Comfortable and Compact density toggle for tables, primary actions within thumb reach on phones, destructive actions never next to primary actions, generous tap spacing, and calm motion that respects `prefers-reduced-motion`.
+
+**Performance for comfort:** code splitting per route, lazy loaded images and charts, skeleton loaders, no layout shift, compressed assets, and a target of fast first render on a mid-range phone.
+
+**Verification matrix:** check the main pages of every role at 320, 360, 375, 390, 412, 430, 600, 768, 820, 1024, 1180, 1280, 1366, 1440, 1536, 1920, and 2560 px, plus landscape phone (844 by 390) and landscape tablet (1180 by 820), in light and dark mode, and at 200 percent zoom. There must be no horizontal page overflow, clipped text, overlapping elements, or unreachable actions. If you cannot view images, use automated overflow, bounding-box, contrast, and touch-target checks and report them. The login page is excluded from this pass and must remain untouched.
 
 ### 25.6 METHOD
 
@@ -1038,7 +1086,7 @@ Method: the PDF page was rendered and its vector data was read. Each shape was a
 
 1. Start (IT Coordinator), then Create maintenance schedule (IT Coordinator), then Record maintenance schedule (System). Record maintenance schedule also writes to the Maintenance Job Record store and to the Office IT Service Register.
 2. Record maintenance schedule to Check maintenance schedule, then Maintenance due?.
-3. No: Keep schedule active and wait. Edge label "Next scheduled check" returns to Check maintenance schedule.
+3. No: Keep schedule active and wait. The label "Next scheduled check" sits next to this step but NO line is drawn from it. As SOP step 20.1 says, the schedule stays active and the Check maintenance schedule step runs again at the next scheduled check.
 4. Yes: Check job for schedule occurrence, then Job already exists?.
 5. Yes: Use existing job; do not duplicate, then Maintenance Job Record.
 6. No: Generate linked maintenance job, then Maintenance Job Record.
@@ -1055,13 +1103,13 @@ Method: the PDF page was rendered and its vector data was read. Each shape was a
 - The Office IT Service Register receives writes from: Record service request (two connectors), Record diagnosis, actions, parts, costs, labor, dates, and evidence, Record maintenance schedule, Record maintenance outcome, Update office and asset service history, and Update office service history and reporting.
 - Office IT Service Register to Generate Office IT Service Reports, then Filter by office, date range, category, technician, and status, then "Service history, completed totals, pending and overdue, workload, turnaround, costs, recurring issues, compliance". The Register also links to the system-controls annotation.
 - Status and audit history receives writes from Status: Submitted, Status: Resolved, and Record diagnosis. Implement the rule for all eight statuses, as the SOP requires audit history for every status change.
-- **Links where the arrowhead is hidden behind a label (implemented from label text and SOP numbering):** (a) Office accepts result? with label "Accepted" to Record confirmation; (b) Continue follow-up between Dependency outcome? and Record follow-up updates; (c) Next scheduled check from Keep schedule active and wait back to Check maintenance schedule. Verified with a real arrowhead (not hidden): Office available? (top exit, the No branch) to Agree on new maintenance date. The two parallel connectors from Record service request to the Register are both real and both must be implemented as written.
+- **Three places where the drawing itself is incomplete (checked against the PDF vector data):** (a) "Accepted": a line (two short pieces on either side of the label) connects Office accepts result? to Record confirmation, but no arrowhead is drawn. Direction is decision to confirmation (SOP 15.1). (b) "Continue follow-up": a line without an arrowhead connects Record follow-up updates and Dependency outcome?. Implement the loop: after a follow-up update is recorded, the dependency outcome is assessed again (SOP 8.2). (c) "Next scheduled check": only a label, no line or arrowhead exists. Implement SOP 20.1: the schedule stays active and is checked again at the next scheduled check. Verified with a real line and arrowhead: Office available? (the No branch) to Agree on new maintenance date, and Start (IT Coordinator) to Create maintenance schedule. The two parallel connectors from Record service request to the Register are both real and both must be implemented.
 
 ---
 
 # APPENDIX C: MACHINE-READABLE NODES AND EDGES (use this to build the Workflow Guide and the traceability checks)
 
-Source: the PDF. IDs are stable (N00 to N80). Lanes are in PDF order. Use these exact texts for node labels. N75 (legend box) and its two connectors are drawing artifacts: do not render or implement them. Edges marked "[arrowhead hidden]" are implemented from label text and SOP numbering.
+Source: the PDF. IDs are stable (N00 to N80). Lanes are in PDF order. Use these exact texts for node labels. N75 (legend box) and its two connectors are drawing artifacts: do not render or implement them. Three edges carry a special note: "Accepted" and "Continue follow-up" are drawn lines without arrowheads, and "Next scheduled check" is a label with no line at all. Each is implemented as written in Appendix B.6.
 
 ## C.1 Nodes
 
@@ -1183,7 +1231,7 @@ Source: the PDF. IDs are stable (N00 to N80). Lanes are in PDF order. Use these 
 - N20 to N21  (Follow up dependency to Dependency outcome?)
 - N21 to N58 [Resolved]  (Dependency outcome? to Status: In Progress)
 - N21 to N22 [Still pending]  (Dependency outcome? to Record follow-up updates)
-- N22 to N21 [Continue follow-up [arrowhead hidden]]  (Record follow-up updates to Dependency outcome?)
+- N22 to N21 [Continue follow-up: a line without an arrowhead; implemented as the loop back to the outcome decision]  (Record follow-up updates to Dependency outcome?)
 - N21 to N23 [Cannot proceed]  (Dependency outcome? to Record cancellation reason)
 - N23 to N62  (Record cancellation reason to Status: Cancelled)
 - N58 to N32 [After dependency resolved]  (Status: In Progress to Perform repair, installation, configur)
@@ -1199,7 +1247,7 @@ Source: the PDF. IDs are stable (N00 to N80). Lanes are in PDF order. Use these 
 - N60 to N53  (Status: Resolved to Status and audit history)
 - N61 to N05 [To Section 3]  (Notify office ready for confirmation to Review and verify service result)
 - N05 to N06  (Review and verify service result to Office accepts result?)
-- N06 to N07 [Accepted [arrowhead hidden]]  (Office accepts result? to Record confirmation, confirming person)
+- N06 to N07 [Accepted: a line without an arrowhead]  (Office accepts result? to Record confirmation, confirming person)
 - N06 to N08 [Rejected]  (Office accepts result? to Record office feedback)
 - N06 to N65 [No response]  (Office accepts result? to Keep status: Resolved)
 - N08 to N58 [Return to Section 2 diagnosis (status In Progress)]  (Record office feedback to Status: In Progress)
@@ -1225,7 +1273,7 @@ Source: the PDF. IDs are stable (N00 to N80). Lanes are in PDF order. Use these 
 - N39 to N74  (Record maintenance schedule: office, a to Office IT Service Register)
 - N40 to N43  (Check maintenance schedule to Maintenance due?)
 - N43 to N41 [No]  (Maintenance due? to Keep schedule active and wait)
-- N41 to N40 [Next scheduled check [arrowhead hidden]]  (Keep schedule active and wait to Check maintenance schedule)
+- N41 to N40 [Next scheduled check: label only, NO line is drawn in the PDF; implemented from SOP step 20.1]  (Keep schedule active and wait to Check maintenance schedule)
 - N43 to N44 [Yes]  (Maintenance due? to Check job for schedule occurrence)
 - N44 to N45  (Check job for schedule occurrence to Job already exists?)
 - N45 to N47 [Yes]  (Job already exists? to Use existing job; do not duplicate)
@@ -1285,7 +1333,7 @@ These are final. Implement them as written. Each is configurable where the text 
 | D14 | Administrator | Manages configuration and users only. No operational ticket steps unless also given an operational role. Cannot edit audit history. |
 | D15 | Requester withdrawal | The Requester sends a "request withdrawal" message. The IT Coordinator records the reason and sets Cancelled (as in the PDF lane). |
 | D16 | Swimlane for System steps | System steps are automatic application behavior, triggered by the human step that precedes them. Office availability is answered by the Office Requester and recorded by the System. |
-| D17 | Hidden-arrow links | Implement the three hidden-arrowhead links and the verified links listed in Appendix B.6 as written. |
+| D17 | Incomplete drawing spots | Implement the three spots listed in Appendix B.6 exactly as written there. |
 | D18 | Needs Information return | After the office supplies information the same ticket returns to Submitted for review (no new ticket). |
 | D19 | Ticket number | Format `IT-YYYY-NNNNNN` (year plus zero-padded yearly sequence, for example IT-2026-000101), generated inside a transaction on a counter record so numbers are unique and never reused. |
 | D20 | Queues | Open means Submitted, Needs Information, Assigned, In Progress, On Hold, and Resolved. Closed queue means Closed and Cancelled, with a filter to separate them. My Tickets means assigned to me (Technician) or created by me (Requester). |
@@ -1406,3 +1454,4 @@ Every operation validates the caller's role (Section 4A), office scope, the curr
 | D24 | Sign-in domain | Google sign-in limited to `@upcebu.edu.ph` (configurable), enforced on the trusted layer. Users must be provisioned with a role. Unprovisioned users see "Access not granted". |
 | D25 | Demo sign-in | Demo account list appears only when an explicit demo flag is on, never in production. |
 | D26 | Frozen UI | The existing color theme and the existing login page are frozen. The UI polish pass may add structure, typography, layout, and role visibility but not new brand colors or login changes. |
+| D27 | Design language | The interface follows Section 25.5A (maintenance-system visual language) and 25.5B (responsive matrix) on top of the Canvas and Firebase layout patterns, using the existing color theme. Dribbble inspiration images, if attached, guide mood only. |

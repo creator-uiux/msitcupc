@@ -22,12 +22,16 @@
     if (roles.indexOf(S.db.role) === -1) return { ok: false, msg: 'Blocked by role-based access (28.2).' };
     return { ok: true };
   }
-  /* Tenancy (SOP 28.2): a requester may only touch records for their own office. */
-  function officeBlock(office) {
+  /* Tenancy (SOP 28.2): a requester may touch their own office's records and
+     the requests they raised for another office. */
+  function officeBlock(office, requester) {
     if (S.db.role !== 'requester') return null;
     var u = S.db.user;
     var scope = u && u.office;
-    if (scope && office && office !== scope) return { ok: false, msg: 'Blocked by office-based access (28.2).' };
+    if (scope && office && office !== scope) {
+      if (requester && requester === who().by) return null;
+      return { ok: false, msg: 'Blocked by office-based access (28.2).' };
+    }
     return null;
   }
   /* Append-only audit event (actor, timestamp, status, reason)  --  mirrors engine._audit. */
@@ -57,7 +61,7 @@
     assigned: { in_progress: ['technician'], on_hold: ['technician'], cancelled: ['coordinator'] },
     in_progress: { on_hold: ['technician'], resolved: ['technician'], cancelled: ['coordinator'] },
     on_hold: { in_progress: ['coordinator'], cancelled: ['coordinator'] },
-    resolved: { closed: ['requester', 'coordinator', 'management'], in_progress: ['requester'], cancelled: ['coordinator'] },
+    resolved: { closed: ['requester', 'coordinator'], in_progress: ['requester'], cancelled: ['coordinator'] },
     closed: {},
     cancelled: {}
   };
@@ -119,14 +123,24 @@
       var roles = d && d.linkedTo ? ['requester', 'coordinator', 'technician'] : ['requester', 'coordinator'];
       var g = guardRole(roles); if (!g.ok) return g;
       if (!d.office || !d.issue || !d.category || !d.requester) return { ok: false, msg: 'Office, requester, category and issue are required.' };
+      var priority = String(d.priority || 'medium').trim().toLowerCase();
+      if (['low', 'medium', 'high'].indexOf(priority) === -1) priority = 'medium';
+      /* The office never sets priority; the coordinator assesses it. */
+      if (S.db.role === 'requester') priority = 'medium';
+      var key = String(d.idempotencyKey || '').trim();
+      if (key) {
+        var dup = S.db.tickets.filter(function (x) { return x.idempotencyKey === key; })[0];
+        if (dup) return { ok: true, msg: dup.id + ' already recorded  --  Status: Submitted.', id: dup.id, duplicate: true };
+      }
       var id = S.nextId('ticket'), t;
       S.update(function (db) {
         t = {
           id: id, office: d.office, requester: d.requester, category: d.category, source: d.source || 'email',
           issue: d.issue, asset: d.asset || '', attachments: (d.attachments || []).slice(),
-          status: 'submitted', impact: null, urgency: null, priority: 'medium', target: null,
+          dateReported: d.dateReported || NOW(), idempotencyKey: key,
+          status: 'submitted', impact: null, urgency: null, priority: priority, target: null,
           technician: null, createdAt: NOW(), updatedAt: NOW(), reviewed: false,
-          history: [{ at: NOW(), by: d.requester, role: 'requester', status: 'submitted', kind: 'status', text: 'Request recorded  --  Status: Submitted. Captured ticket, office, requester, category, issue, date, asset, attachments, source.' }],
+          history: [{ at: NOW(), by: d.requester, role: 'requester', status: 'submitted', kind: 'status', text: 'Request recorded  --  Status: Submitted. Captured ticket, office, requester, category, priority, issue, date, asset, attachments, source.' }],
           tests: [], reminders: [], dependency: null, linkedTo: d.linkedTo || null,
           cancelReason: null, closure: null, authorizedReason: '', recurring: !!d.linkedTo, withdrawal: null,
           diagnosis: { findings: '', actions: '', parts: '', cost: 0, labor: 0, dates: '', evidence: [] },
@@ -144,6 +158,7 @@
       var g = guardRole(['requester', 'coordinator']); if (!g.ok) return g;
       var t = S.getTicket(id);
       if (!t) return { ok: false, msg: 'Ticket not found.' };
+      var ob = officeBlock(t.office, t.requester); if (ob) return ob;
       if (t.status !== 'needs_info') return { ok: false, msg: 'Ticket is not in Needs Information.' };
       if (!d.issue && !d.asset && !d.note) return { ok: false, msg: 'Provide the missing information.' };
       S.update(function () {
@@ -165,18 +180,21 @@
       var g = guardRole(['requester']); if (!g.ok) return g;
       var t = S.getTicket(id);
       if (!t) return { ok: false, msg: 'Ticket not found.' };
-      var ob = officeBlock(t.office); if (ob) return ob;
+      var ob = officeBlock(t.office, t.requester); if (ob) return ob;
       if (t.status !== 'resolved') return { ok: false, msg: 'Office confirmation applies to Resolved tickets (' + id + ' is ' + label(t.status) + ').' };
       if (t.confirmation.state !== 'pending' && decision !== 'no_response') return { ok: false, msg: 'No confirmation is pending on ' + id + '.' };
       if (decision === 'accepted') {
         if (!data.person) return { ok: false, msg: 'Confirmation requires the confirming person.' };
+        var ac = checkTransition(t, 'closed'); if (ac) return ac;
         S.update(function () {
           t.confirmation = { state: 'accepted', person: data.person, date: NOW(), feedback: data.feedback || '' };
-          hist(t, t.status, 'confirm', 'Office accepts result  --  confirmation recorded for ' + data.person + ' on ' + data.person + '’s behalf.', data.person, 'requester');
-          audit('ticket', id, 'confirm', 'Office accepted the result  --  confirmation recorded for ' + data.person + '.', label(t.status));
-          S.notify('coordinator', t.id + ' confirmed by office  --  ready to close.', 'confirm', { ticketId: t.id });
+          t.status = 'closed'; t.closedAt = NOW(); t.closure = 'confirmation'; t.authorizedReason = '';
+          hist(t, 'closed', 'confirm', 'Office accepts result  --  confirmation recorded for ' + data.person + '. Status: Closed.', data.person, 'requester');
+          auditStatus(t.id, 'resolved', 'closed', 'confirm', 'Office accepted the result  --  confirmation recorded for ' + data.person + '; closed after confirmation.');
+          S.notify('coordinator', t.id + ' confirmed and closed by the office.', 'confirm', { ticketId: t.id });
+          S.notify('requester', t.id + ' is now Closed. Thank you.', 'confirm', { ticketId: t.id, office: t.office });
         });
-        return { ok: true, msg: 'Confirmation recorded for ' + id + '.' };
+        return { ok: true, msg: 'Confirmation recorded for ' + id + '  --  Status: Closed.' };
       }
       if (decision === 'rejected') {
         if (!data.feedback) return { ok: false, msg: 'Record office feedback before rejecting.' };
@@ -193,10 +211,12 @@
       }
       S.update(function () {
         t.confirmation.state = 'no_response';
-        hist(t, t.status, 'confirm', 'No response from office  --  Status kept Resolved; follow-up reminder scheduled.', 'System', 'system');
-        audit('ticket', id, 'confirm', 'No response from office  --  Status kept ' + label(t.status) + '; reminder scheduled.', label(t.status));
+        t.reminders.push(NOW());
+        hist(t, t.status, 'confirm', 'No response from office  --  Status kept Resolved; follow-up reminder 1 sent to the office.', 'System', 'system');
+        audit('ticket', id, 'confirm', 'No response from office  --  Status kept ' + label(t.status) + '; follow-up reminder sent.', label(t.status));
+        S.notify('requester', 'Follow-up reminder: please confirm the result of ' + t.id + ' (' + t.office + ').', 'remind', { ticketId: t.id, office: t.office });
       });
-      return { ok: true, msg: 'No response recorded  --  ' + id + ' stays Resolved.' };
+      return { ok: true, msg: 'No response recorded  --  ' + id + ' stays Resolved, reminder sent.' };
     },
 
     // Create new ticket linked to previous service record (issue recurs after closure)
@@ -276,9 +296,29 @@
         hist(t, 'assigned', 'status', 'Assigned to ' + tech + '  --  Status: Assigned. Notify technician and requester.', 'K. Ramos', 'coordinator');
         auditStatus(t.id, 'submitted', 'assigned', 'status', 'Assigned to ' + tech + '.');
         S.notify('technician', t.id + ' assigned to you (' + t.office + '  --  ' + t.category + ').', 'assign', { ticketId: t.id });
-        S.notify('requester', t.id + ' assigned to ' + tech + '  --  Status: Assigned.', 'assign', { ticketId: t.id, office: t.office });
+        S.notify('requester', t.id + ' has been assigned to a technician  --  Status: Assigned.', 'assign', { ticketId: t.id, office: t.office });
       });
       return { ok: true, msg: 'Status: Assigned  --  technician and requester notified.' };
+    },
+
+    // Move an active ticket to a different technician.  The status is
+    // preserved; only ownership moves.  Mirrors engine.reassign.
+    reassign: function (id, tech) {
+      var g = guardRole(['coordinator']); if (!g.ok) return g;
+      var t = S.getTicket(id);
+      if (!t) return { ok: false, msg: 'Ticket not found.' };
+      if (['assigned', 'in_progress', 'on_hold'].indexOf(t.status) === -1) return { ok: false, msg: 'Only Assigned, In Progress or On Hold tickets can be reassigned.' };
+      if (!tech) return { ok: false, msg: 'Choose a technician.' };
+      if (tech === t.technician) return { ok: false, msg: 'Already assigned to ' + tech + '.' };
+      var old = t.technician;
+      S.update(function () {
+        t.technician = tech;
+        hist(t, t.status, 'assign', 'Reassigned from ' + (old || 'unassigned') + ' to ' + tech + '.', 'K. Ramos', 'coordinator');
+        audit('ticket', id, 'reassign', 'Reassigned from ' + (old || 'unassigned') + ' to ' + tech + '.', label(t.status));
+        S.notify('technician', t.id + ' reassigned to you (' + t.office + ').', 'assign', { ticketId: t.id });
+        S.notify('requester', t.id + ' is now handled by a different technician.', 'assign', { ticketId: t.id, office: t.office });
+      });
+      return { ok: true, msg: 'Reassigned to ' + tech + '.' };
     },
 
     // Coordinate service schedule (IT Technician lane; the coordinator also
@@ -306,7 +346,7 @@
       var g = guardRole(['requester']); if (!g.ok) return g;
       var t = S.getTicket(id);
       if (!t) return { ok: false, msg: 'Ticket not found.' };
-      var ob = officeBlock(t.office); if (ob) return ob;
+      var ob = officeBlock(t.office, t.requester); if (ob) return ob;
       if (t.status === 'closed' || t.status === 'cancelled') return { ok: false, msg: 'This request is already closed or cancelled.' };
       if (t.withdrawal) return { ok: false, msg: 'Withdrawal already requested  --  the IT Coordinator will action it.' };
       if (!reason) return { ok: false, msg: 'Record why the request is no longer needed.' };
@@ -321,10 +361,10 @@
 
     // Active request withdrawn -> record cancellation reason -> Status: Cancelled
     cancel: function (id, reason) {
-      var g = guardRole(['coordinator', 'management']); if (!g.ok) return g;
+      var g = guardRole(['coordinator']); if (!g.ok) return g;
       var t = S.getTicket(id);
       if (!t) return { ok: false, msg: 'Ticket not found.' };
-      var ob = officeBlock(t.office); if (ob) return ob;
+      var ob = officeBlock(t.office, t.requester); if (ob) return ob;
       if (t.status === 'closed' || t.status === 'cancelled') return { ok: false, msg: 'Terminal tickets cannot be cancelled.' };
       if (!reason) return { ok: false, msg: 'Record the cancellation reason.' };
       var ct = checkTransition(t, 'cancelled'); if (ct) return ct;
@@ -518,17 +558,18 @@
 
     // Status: Closed after confirmation (office decision), or authorized closure
     close: function (id, mode, reason) {
-      var g = guardRole(['coordinator', 'requester', 'management']); if (!g.ok) return g;
+      var g = guardRole(['coordinator', 'requester']); if (!g.ok) return g;
       var t = S.getTicket(id);
       if (!t) return { ok: false, msg: 'Ticket not found.' };
-      var ob = officeBlock(t.office); if (ob) return ob;
+      var ob = officeBlock(t.office, t.requester); if (ob) return ob;
       if (t.status !== 'resolved') return { ok: false, msg: 'Only Resolved tickets can be closed.' };
       if (mode === 'confirmation') {
         if (S.db.role !== 'requester') return { ok: false, msg: 'Confirmation closure is limited to the owning office requester.' };
         if (t.confirmation.state !== 'accepted') return { ok: false, msg: 'Confirmation not yet accepted  --  use authorized closure only when allowed.' };
       } else {
         if (!reason) return { ok: false, msg: 'Authorized closure requires a reason.' };
-        var allowed = (S.db.settings && S.db.settings.authorizedClosureRoles) || ['coordinator', 'management'];
+        var allowed = ((S.db.settings && S.db.settings.authorizedClosureRoles) || ['coordinator']).filter(function (r) { return r !== 'management'; });
+        if (!allowed.length) allowed = ['coordinator'];
         if (allowed.indexOf(S.db.role) === -1) return { ok: false, msg: 'Authorized closure is limited to: ' + allowed.join(', ') + '.' };
       }
       var ct = checkTransition(t, 'closed'); if (ct) return ct;
@@ -545,10 +586,10 @@
 
     // Reply composer: public message or internal staff note (Flow.addComment)
     addComment: function (id, d) {
-      var g = guardRole(['management', 'coordinator', 'technician', 'requester']); if (!g.ok) return g;
+      var g = guardRole(['coordinator', 'technician', 'requester']); if (!g.ok) return g;
       var t = S.getTicket(id);
       if (!t) return { ok: false, msg: 'Ticket not found.' };
-      var ob = officeBlock(t.office); if (ob) return ob;
+      var ob = officeBlock(t.office, t.requester); if (ob) return ob;
       d = d || {};
       var text = (d.text || '').trim();
       if (!text) return { ok: false, msg: 'Write a message before sending.' };
@@ -603,6 +644,7 @@
 
     // Send follow-up reminder while Status kept Resolved (15.3)
     sendReminder: function (id) {
+      var g = guardRole(['coordinator']); if (!g.ok) return g;
       var t = S.getTicket(id);
       if (!t) return { ok: false, msg: 'Ticket not found.' };
       if (t.status !== 'resolved') return { ok: false, msg: 'Reminders apply to Resolved tickets awaiting confirmation.' };
@@ -644,7 +686,7 @@
     runScheduleCheck: function (silent) {
       /* The manual, idempotent schedule check.  The IT Coordinator owns it
          (specification 12); the system worker runs the same check. */
-      var g = guardRole(['coordinator', 'management']); if (!g.ok) return g;
+      var g = guardRole(['coordinator']); if (!g.ok) return g;
       var events = [];
       S.update(function (db) {
         var now = Date.now();
@@ -820,7 +862,7 @@
 
     // Authorized closure of a maintenance job (Section 3, D4)
     closeJob: function (jobId, reason) {
-      var g = guardRole(['coordinator', 'management']); if (!g.ok) return g;
+      var g = guardRole(['coordinator']); if (!g.ok) return g;
       var j = S.getJob(jobId);
       if (!j) return { ok: false, msg: 'Job not found.' };
       if (j.status === 'closed') return { ok: false, msg: 'Job already closed.' };
@@ -876,7 +918,7 @@
 
     // Coordinator / administrator edits a preventive maintenance schedule
     updateSchedule: function (id, d) {
-      var g = guardRole(['management', 'coordinator']); if (!g.ok) return g;
+      var g = guardRole(['coordinator']); if (!g.ok) return g;
       var sc = S.getSchedule(id);
       if (!sc) return { ok: false, msg: 'Schedule not found.' };
       var ob = officeBlock(sc.office); if (ob) return ob;
@@ -895,7 +937,7 @@
 
     // Pause or resume a preventive maintenance schedule
     setScheduleActive: function (id, active) {
-      var g = guardRole(['management', 'coordinator']); if (!g.ok) return g;
+      var g = guardRole(['coordinator']); if (!g.ok) return g;
       var sc = S.getSchedule(id);
       if (!sc) return { ok: false, msg: 'Schedule not found.' };
       var ob = officeBlock(sc.office); if (ob) return ob;
@@ -1155,6 +1197,10 @@
       return { ok: true, msg: 'Settings updated (' + changed.join(', ') + ').' };
     }
   };
+
+  /* The status board offers only moves this role may make from the current
+     state; the backend still re-checks every call. */
+  Flow.canTransition = function (cur, next) { return canTransition(cur, next); };
 
   window.Flow = Flow;
   window.Maint = Maint;

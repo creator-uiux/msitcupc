@@ -9,10 +9,10 @@ current commit. Blocked or unverified items are listed first.
   `docs/source/Maintenance_System.pdf` was opened and its text extracted; the
   29 step SOP matches Appendix A verbatim and the owner is Anthony Derecho.
   The lane ownership, the decision diamonds and the connectors in Appendix B
-  were produced by rendering the page and reading its vector data. A few
-  connectors have their arrowhead hidden behind an edge label; they are
-  listed in Appendix B.6 and were implemented from the label text and the SOP
-  numbering.
+  were produced by rendering the page and reading its vector data. Two
+  connectors are drawn without arrowheads and one label has no line at all;
+  they are listed in Appendix B.6 and were implemented from the label text
+  and the SOP numbering.
 - **The PDF is not dated consistently.** The title block reads "Last Updated
   January 30, 2021" while the file metadata says it was generated September
   30, 2026. This does not affect the process.
@@ -73,8 +73,8 @@ current commit. Blocked or unverified items are listed first.
 - No virus scanning on attachments. Files are size limited, type limited and
   stored outside the web root; they are not scanned.
 - No password sign-in. Production uses UPMail Google sign-in restricted to
-  `@upcebu.edu.ph`; the demo account shortcut exists behind an explicit flag
-  and is off by default.
+  `@upcebu.edu.ph`; the demo account list on the sign-in page is always
+  available and labelled "Demo only".
 - **One navigation column, not a rail plus a contextual menu.** Section 25.5B
   suggests a narrow rail with a collapsible contextual menu between 1024 and
   1919 px. The owner asked for the double navigation to be removed, so the
@@ -94,12 +94,10 @@ current commit. Blocked or unverified items are listed first.
   name and the details and the viewer says that the file itself is not kept
   here. The intake form records the names of the files it was given for the
   same reason: it does not upload the bytes.
-- **The requester has no Maintenance Visits page in the sidebar.** The
-  permission map does not grant `maintenance.html` to the requester, and the
-  frozen security rules forbid changing it. Upcoming visits still appear on
-  the dashboard and availability is still answered on `confirm.html`. A
-  read-only maintenance page for the office would require a permission map
-  change and a backend review.
+- **The requester's Maintenance Visits page is read-only and office-scoped.**
+  `visits.html` is granted to the requester and lists the visits and plans for
+  the requester's own office only. It cannot edit, reschedule or confirm a
+  visit; those actions stay on `confirm.html` and in the coordinator lane.
 - **The System Administrator does not see the create-schedule control.**
   `create_schedule` is coordinator-only. Edit and pause remain visible
   because `update_schedule` and `set_schedule_active` include that role.
@@ -111,8 +109,12 @@ current commit. Blocked or unverified items are listed first.
   are hidden with body-class rules, not removed from the markup. The
   permission map and the backend guards remain the security boundary, and
   the parity checks prove they agree with the mirror.
-- **The demo account chooser is development-only.** It appears only behind
-  the explicit demo flag; it is never shown in a network-facing deployment.
+- **The demo account list is on the sign-in page everywhere.** It is labelled
+  "Demo only" and does not depend on the host, the port or a server flag, so
+  it is visible on a different localhost port, a static copy and Firebase
+  Hosting. On a live server whose demo gate is closed, choosing an account
+  takes a browser-only demo session backed by `js/store.js`; API calls still
+  require a real server token, so the list never widens server access.
 - **The page test suite is flaky while another process edits the same tree.**
   The suite takes a free port, serves through a threaded server and answers
   the external font request locally, so it is stable on a quiet tree. When a
@@ -120,6 +122,11 @@ current commit. Blocked or unverified items are listed first.
   time, the browser can receive a partially written script and the suite
   reports failures that are not real. This is a harness limitation, not an
   application defect.
+- **The responsive sweep can outlive a single browser session.** On Windows
+  the headless browser occasionally closes its debugging socket after a few
+  hundred navigations. `tools/responsive.py` detects the drop, starts a fresh
+  browser and retries the page it was measuring, so the full matrix still
+  completes; the run output reports how many times that happened.
 - **The requester cannot cancel directly.** The office may request a
   withdrawal, and the IT Coordinator records the cancellation reason, because
   the PDF places that step in the coordinator lane. A requester therefore
@@ -132,20 +139,23 @@ current commit. Blocked or unverified items are listed first.
 - **Installability was checked by the manifest and the service worker**, by
   loading the pages over HTTP with the worker registered; it was not verified
   by a real install on a phone's home screen.
-- **The frozen sign-in screen scrolls vertically on short viewports.** At
-  360x640 it needs 725 px, at 320x480 it needs 499 px, and in a 844x390 phone
-  landscape it needs 465 px. The login page is a frozen surface, so it was
-  measured, not edited. `tools/responsive.py` records the overshoot and
-  accepts it up to a bound of 120 px; the rest of the app fits every audited
+- **The sign-in screen scrolls vertically on short viewports.** The demo
+  account list is always part of the page, so at 360x640 the page needs
+  1017 px (377 px over), at 320x480 it needs 816 px (336 px over), in a
+  844x390 phone landscape it needs 735 px (345 px over), and at 200 percent
+  zoom it needs 788 px at 640x360 (428 px over) and 404 px over at 683x384.
+  `tools/responsive.py` records the overshoot in `FROZEN_SCREEN_SCROLL` and
+  accepts it up to a bound of 460 px; the rest of the app fits every audited
   viewport from 320 to 7680 px wide without page overflow.
 - **The Workflow Guide and Roles and Access are routable but not listed.**
   Both pages remain at `flow.html` and `roles.html` under the unchanged
   permission map, so a direct link still opens them, but the sidebar, the top
   bar and the mobile More sheet no longer offer either page.
-- **The demo flag gates the account list, not the backend.** When demo mode is
-  off, the demo usernames are refused by `server/app.py`; the browser-only
-  demo still runs from `js/store.js` when the API is absent, which is why the
-  live server is the supported path.
+- **The demo flag gates server credentials, not the account list.** The
+  account list is always on the page. When the server demo gate is off, the
+  demo usernames are refused by `server/app.py`; the browser-only demo still
+  runs from `js/store.js` when the API refuses or is absent, which is why the
+  live server is the supported path for real data.
 
 ## Resolved during this work
 

@@ -2,15 +2,16 @@
 
 ## 0. HOW TO USE THIS PROMPT (READ FIRST)
 
-You are running in a CLI agent. You cannot reliably open PDFs, screenshots, or external websites. Therefore:
+You are running as an agentic coding assistant inside the owner's IDE (Qoder). Some sources (PDFs, screenshots, external websites) may not be readable in your environment, so the full process and UI requirements are written out in this prompt. Therefore:
 
 1. The full business process is embedded in this prompt (Sections 6 to 13, Appendix A, and Appendix B). Treat this prompt as the complete, authoritative copy of the Maintenance System PDF. Appendix B was produced by rendering the PDF and reading its vector data: every shape, its text, its swimlane, and every connector with its arrowhead (105 arrows) were traced from source to target. Swimlane ownership (Section 4) and the flow (Appendix B) are therefore VERIFIED from the PDF. Appendix B.6 lists the few places where the drawing itself hides an arrowhead behind a label, so you know exactly which links come from label placement and SOP numbering.
 2. If `docs/source/Maintenance_System.pdf` exists in the repository, try to read it and report any difference from the appendices. If you cannot read it, say so and continue with the appendices. Never claim you inspected something you could not open.
-3. Reference files to look for (use them if present, never claim to have read a file you could not open): `docs/source/Maintenance_System.pdf` (the process diagram), `docs/reference/` (ticket list, ticket details, and dashboard screenshots supplied by the owner, the required login design `UPLoginUI.PNG`, and `it-service-demo.html`, a role-based visual demo that shows the intended look and role behavior; use it as a visual baseline for layout, tokens, and role scoping, not as code to copy). If images cannot be read in your environment (the owner's OpenCode CLI is text-only), rely on the written UI requirements in this prompt. The login design is fully described in text in Section 14.15.
+3. Reference files to look for (use them if present, never claim to have read a file you could not open): `docs/source/Maintenance_System.pdf` (the process diagram), `docs/reference/` (`ticket-list.png`, `ticket-details.png`, and `dashboard.png`, the owner's screenshots of the existing ITC helpdesk, described in Appendix E, the required login design `UPLoginUI.PNG`, and `it-service-demo.html`, a role-based visual demo that shows the intended look and role behavior; use it as a visual baseline for layout, tokens, and role scoping, not as code to copy). If you cannot read images in your environment, rely on the written UI requirements in this prompt. If the owner attaches reference images in the chat (for example the login design), use them as well. The login design is fully described in text in Section 14.15.
 4. Try to fetch the project website and the Figma kit page. If you cannot, continue using the UI requirements in Section 14 and document the limitation.
 5. Work in phases (Section 22). After each phase: update `docs/IMPLEMENTATION_CHECKLIST.md`, run build and tests, and make a git commit. Do not stop after an audit or plan. Keep going until the Definition of Done (Section 24) is met or a genuine blocker exists.
 6. Items marked **[DECISION]** are final defaults chosen where the PDF is silent (they are listed in Appendix D). Implement them exactly as written, make them configurable where stated, and record them in `docs/DECISIONS.md`. They are not open questions, so do not stop to ask about them. The owner can change a default later through configuration.
 7. Do not use em dashes in any generated documentation, UI text, comments, or commit messages.
+8. **UI precedence:** Section 25 (UI polish pass) overrides Section 14 where they differ. The existing color theme and the existing login page are frozen and must not be changed.
 
 ## 1. ROLE
 
@@ -344,7 +345,7 @@ The interface must look professional, formal, calm, and trustworthy, like a mode
 
 Before building pages, create a small design system, and then build every page from it. Document it in `docs/DESIGN_SYSTEM.md` and implement it as design tokens (CSS variables or the project's theme file) plus reusable components. Reuse the existing styling system and component library of the project if there is one. Use the Figma kit page only as a component reference. Do not import every component from it, and do not copy the old ticket-system look from the screenshots.
 
-### 14.2 Visual language (use these defaults unless the project already has an approved brand)
+### 14.2 Visual language (use these defaults ONLY if the project has no existing color theme; an existing theme must be kept unchanged, see Section 25)
 
 **Color tokens** (adjust slightly to match existing institutional colors or logo, keep contrast accessible):
 
@@ -469,6 +470,8 @@ Run the app and use a headless browser (for example Playwright) to capture scree
 - Compare the result with `docs/reference/it-service-demo.html` (if present) and the screenshots, and raise the quality bar above them. Do not ship a page that looks inconsistent with the others.
 
 ### 14.15 Login page (REQUIRED, must match the owner's reference image)
+
+**If a login page already exists in the project, do NOT modify it (see Section 25.0). Compare it to this spec read-only and list any differences in `docs/KNOWN_LIMITATIONS.md`. Build it from this spec only when no login page exists.**
 
 The reference image is `docs/reference/UPLoginUI.PNG`. If you cannot view images, build it from the exact description below, which was written from that image. This overrides the generic login description in Section 14.5 and the "no large background images" rule in 14.2 and 14.10 (the login page is the one allowed exception).
 
@@ -627,7 +630,7 @@ Run existing tests, lint, type checks, and the production build. Add unit, integ
 **Reference screens, data, and operations**
 83. The ticket list has the queues, columns, sorting, pagination, quick search, advanced filters, chips, and exports described in Appendix E.1, and queue membership follows D20.
 84. The ticket detail page has the header, information blocks, tabs, thread entry types, composer, and valid-transition status selector described in Appendix E.2.
-85. The dashboard has the timeframe selector, activity chart with data table, tiles, and office, category, and technician tables described in Appendix E.3, using the D12 definitions.
+85. The dashboard has the report timeframe controls (date, period, Refresh), the Ticket Activity chart with a data table alternative, the Statistics panel with the Range line and Offices, Categories, and Technicians tabs, the columns and tooltips described in Appendix E.3 (using the D12 definitions), and the Export link.
 86. Ticket numbers follow D19 and are unique under concurrent submissions.
 87. Every operation in Appendix G rejects callers whose role, office scope, or current status does not allow it, and writes its audit event and register entry in the same transaction.
 88. Attachments follow D21 and invalid files are rejected on the trusted layer.
@@ -638,6 +641,19 @@ Run existing tests, lint, type checks, and the production build. Add unit, integ
 91. Google sign-in from a non-institutional account is rejected on the trusted layer, and an unprovisioned institutional account sees "Access not granted".
 92. The demo account list appears only when the demo flag is on and never in production.
 93. The login page is readable and correct in light and dark mode, with text contrast of at least 4.5:1 over the photo.
+
+**UI polish pass**
+94. The login page files are unchanged (`git diff`) and its render or computed styles are identical before and after.
+95. Final theme tokens are identical to `docs/THEME_SNAPSHOT.md`, and no new hard-coded colors were added.
+96. For each role, only that role's navigation, dashboard panels, ticket actions, table columns, filters, and report types appear, and a forbidden URL shows "This page is not available".
+97. Unavailable actions are hidden, not disabled or grayed out. Where the user must wait, a text line such as "Waiting on IT Coordinator" is shown.
+98. Every authenticated page uses the Canvas-style global navigation rail, the Firebase-style top bar and tabs, the seal lockup, and the existing theme, and works in light and dark mode at 390, 768, and 1440 px.
+
+**Maintenance visual language and responsive matrix**
+99. The Board view lists tickets in workflow order, allows only valid and role-permitted moves, snaps back invalid moves with an explanation, and the backend rejects the same moves when called directly.
+100. Technician mobile experience: the default landing is Today and My queue, checklist cards have 44 px targets, a progress indicator with text, evidence capture, and a sticky "Save progress" and "Flag additional fault" bar.
+101. The responsive matrix in Section 25.5B passes (no horizontal overflow, clipped text, overlap, or unreachable actions) at the listed widths, landscape sizes, light and dark mode, and 200 percent zoom, or the limitation is disclosed. The login page is excluded and unchanged.
+102. Dashboards show only role-purposeful widgets (at most about eight tiles above the fold), with click-through to filtered lists, and the command palette searches tickets, offices, assets, and schedules within the user's permitted scope.
 
 ## 18. IMPLEMENTATION RULES
 
@@ -651,12 +667,13 @@ Make real changes. Follow the current architecture. Reuse components. Avoid unne
 - `docs/REPORT_DEFINITIONS.md`
 - `docs/TRACEABILITY.md` (Section 21)
 - `docs/KNOWN_LIMITATIONS.md` (blocked or unverified items, including unreadable PDF, screenshots, Firebase plan limits, email dependency)
+- `docs/THEME_SNAPSHOT.md` (existing color, font, radius, spacing tokens, frozen) and `docs/UI_POLISH_REPORT.md` (Section 25 results and proofs)
 - `docs/ROLE_MATRIX.md` (the permission map from Section 4A, per role: pages, actions, transitions, data scope)
 - `docs/DESIGN_SYSTEM.md` (tokens for light and dark, components, page patterns, PWA and mobile patterns) and `docs/screenshots/` (final visual review images)
 
 ## 20. SOURCE LIMITATIONS TO DISCLOSE
 
-State in `docs/KNOWN_LIMITATIONS.md`: all shapes, lanes, and arrows were read from the PDF geometry and visually spot checked. A few connectors have their arrowheads hidden behind edge labels or drawn as duplicates. They are listed in Appendix B.6 and were implemented from the label text and SOP numbering. The Process context frame, relevant files, and chat notes seen in the PDF are viewer elements and are not part of the process. The PDF is not dated consistently (Last Updated January 30, 2021, generated September 30, 2026), which does not affect the process.
+State in `docs/KNOWN_LIMITATIONS.md`: all shapes, lanes, and arrows were read from the PDF geometry and visually spot checked. Two connectors are drawn without arrowheads and one label has no line at all. They are listed in Appendix B.6 and were implemented from the label text and SOP numbering. The Process context frame, relevant files, and chat notes seen in the PDF are viewer elements and are not part of the process. The PDF is not dated consistently (Last Updated January 30, 2021, generated September 30, 2026), which does not affect the process.
 
 ## 21. REQUIRED FINAL AUDIT
 
@@ -694,6 +711,9 @@ Create a traceability table: Requirement, Implementation location, Verification 
 30. Appendix C is fully represented: every node and edge (except the legend artifacts) is covered by the implemented workflow, the Workflow Guide, and the traceability checklist.
 31. Appendices E to H are implemented: reference screens, data model, operations, defaults, notification templates, seed data (dev only), and deployment notes.
 32. The login page matches the required reference design (Section 14.15), enforces the institutional domain on the trusted layer, and keeps demo sign-in out of production.
+33. The UI polish pass (Section 25) is complete, the login page and color theme are provably unchanged, and the identity is clearly University of the Philippines Cebu.
+34. Each role sees only its permitted features in the UI, and the backend rejects everything else.
+35. The maintenance visual language (Section 25.5A) and the responsive matrix (Section 25.5B) are implemented and verified, with the login page untouched.
 
 ## 22. EXECUTION ORDER
 
@@ -706,7 +726,8 @@ Create a traceability table: Requirement, Implementation location, Verification 
 - Phase 7: Create the design system (Section 14) first, then build the ticket list, ticket details, thread, dashboard, forms, maintenance, register, reports, and administration pages from it.
 - Phase 8: Responsive, light and dark themes, mobile app (PWA) fit, accessibility, and the visual quality gate (Sections 14.11 to 14.14).
 - Phase 9: Tests, lint, type checks, build, workflow verification, fix defects.
-- Phase 10: Traceability, known limitations, concise summary.
+- Phase 10: UI polish pass (Section 25): theme and login page frozen, role-based visibility, formal UP Cebu identity, responsive and accessibility checks.
+- Phase 11: Traceability, known limitations, concise summary.
 
 Commit after each phase. If blocked, finish all independent work and state exactly what remains blocked.
 
@@ -725,6 +746,202 @@ Faithful workflow first, complete functionality second, polished responsive UI t
 - All assumptions and limitations are disclosed, and the traceability checklist separates verified from unverified items.
 
 Begin by inspecting the repository, then execute. Do not repeat this prompt back to me.
+
+## 25. UI POLISH PASS (RUN AFTER THE FUNCTIONAL BUILD)
+
+This section is the UI polish and role-visibility pass for the finished application. It makes the interface unique, beautiful, professional, formal, and aesthetic in the layout style of Canvas LMS and the Firebase Console, with a University of the Philippines Cebu identity, and makes every screen match each role's features and permissions.
+
+**Precedence:** where this section and Section 14 differ, this section wins. In particular: (1) the app shell, navigation, and page layouts follow the Canvas LMS and Firebase Console patterns in Section 25.1 (this replaces the sidebar and layout described in Section 14.3 and 14.5), (2) keep the project's existing color theme unchanged (the palette in Section 14.2 is only a fallback if no theme exists), and (3) never modify an existing login page (Section 14.15 is then used only as a read-only comparison).
+
+### 25.0 Hard rules (read first)
+
+1. **Do NOT touch the login page.** Do not edit its route, component, styles, assets, copy, or behavior. Before you start, record the files that make up the login page. After you finish, prove with `git diff` (no changes in those files) and with a before and after render that it is unchanged. If a shared stylesheet or token file is used by the login page, do not change the values it uses, and add new styles only in new, scoped files.
+2. **Do NOT change the color theme.** Keep the existing palette exactly. Before changing anything, extract the current colors, fonts, radii, and spacing into `docs/THEME_SNAPSHOT.md` (a table of token name and value, light and dark if both exist). If colors are hard-coded, move them into tokens WITHOUT changing their values. After you finish, the values must be identical. Do not add new brand colors. You may use tints, shades, and opacity of the existing colors for surfaces and borders, and the existing semantic colors for status.
+3. **Do NOT change business logic, the workflow, status names, routes, data, API, or security rules.** This is a presentation and role-visibility pass only. Keep all eight status labels exactly: Submitted, Needs Information, Assigned, In Progress, On Hold, Resolved, Closed, Cancelled.
+4. **Hide, do not just disable, what a role cannot use.** Backend and database rules must keep enforcing permissions. Hiding in the UI is an additional layer, never the only one. If you find an action that is only protected in the UI, report it in `docs/UI_POLISH_REPORT.md` and fix it on the backend only if it is a small, safe change.
+5. Do not use em dashes in any text you write (UI copy, comments, docs, commit messages).
+6. Do not invent official logos, slogans, or mottos. Reuse only the seal and logo files that already exist in the project.
+7. Work in phases, commit after each phase, run build, lint, and tests after each phase, and never claim a check you did not run. If you cannot view images, verify with DOM and CSS checks (computed styles, overflow checks, contrast calculations, token diffs) and say so.
+
+### 25.1 DESIGN DIRECTION
+
+**Reference style (layout and interaction patterns only):** Canvas LMS and the Firebase Console (including Firebase Hosting). The result must feel like a clean, modern, familiar web console for a university: the structure and ease of Canvas LMS plus the tidy, tabbed, data-focused pages of Firebase. Do not copy their logos, icons, artwork, names, or proprietary fonts, and do not make it a clone. Everything uses the project's EXISTING color theme, fonts, and assets. You cannot open those products, so follow the pattern descriptions below.
+
+**Canvas LMS patterns to follow:**
+- **Global navigation rail** on the far left: a narrow, fixed vertical rail with the user avatar at the top and a short list of icon-over-label items (Dashboard, Tickets, Maintenance, Register, Reports, Notifications, Account). Show only items the role may use. The active item has a clear highlight. "Account" opens a slide-out tray with profile, role, office, theme toggle (Light, Dark, System), and Sign out. "Notifications" opens a slide-out tray too.
+- **Contextual side menu** inside a section (like a course menu): for Tickets show the queues (Open, My Tickets, Closed, All, Search); for Maintenance show Schedules, Jobs, Calendar; for Administration show its sections.
+- **Dashboard as a card grid plus a right sidebar.** Cards have a colored header band (existing theme colors), a title, and small stats. Sidebar panels: "Needs your action" (like Canvas To Do), "Coming up" (maintenance visits and due dates), and "Recent updates". Offer a Card view and List view toggle.
+- **Breadcrumb trail** on every page, a plain page title, simple white content areas on a light page background, thin borders, collapsible sections with chevrons, and right-aligned action buttons.
+- **Phones:** top bar with a menu button and a bottom tab bar for the role's main destinations.
+
+**Firebase Console and Firebase Hosting patterns to follow:**
+- **Slim top bar:** seal lockup and system name on the left, a context selector and breadcrumb (for example "Office: Registrar Office" for IT roles, or the current section), global search, help, notification bell, and account avatar on the right.
+- **Collapsible left navigation** with grouped sections that expand and collapse, the selected item shown as a rounded highlight, icons plus labels.
+- **Page layout:** page title, an optional one-line description, a row of underlined tabs (for example on Ticket detail: Conversation, Service record, Dependencies, History, Related), and the main action as a filled button on the right.
+- **Data tables** with a toolbar above (search, filter chips, column visibility, density), clean rows, status chips, row hover, kebab menus, and pagination. Use this style for tickets, jobs, schedules, register, and reports. Treat ticket History like Hosting's release history: a table of status changes with actor, time, remarks, and clear status chips.
+- **Stat cards** with big numbers and small charts on the Dashboard and Reports.
+- **Empty states** with a simple illustration, a short explanation, and one call-to-action button.
+- **Modal dialogs** with a clear title, short body, and Cancel and confirm buttons; **snackbars** at the bottom left for saved or failed actions; inline helper text and validation.
+- **Settings-style pages:** stacked cards, each with a title, description, and controls.
+- **Density and shape:** compact and readable, 14 px base text, medium-weight headings, 8 px spacing grid, 8 px corner radius, one subtle elevation level.
+
+**University of the Philippines Cebu identity (keep it, subtle):** the seal lockup (UP seal and UP Cebu seal, "University of the Philippines Cebu", and the system name) in the top bar and the Account tray; seals with alt text; a very subtle seal watermark (4 to 6 percent opacity) in empty states and report letterheads; a quiet footer line "(c) {current year} University of the Philippines Cebu. All rights reserved." (the same wording as the existing ITC helpdesk footer, with the year computed automatically); formal tone. Use the existing serif only for the Dashboard greeting and the printed report title, and the existing sans-serif everywhere else. An optional slim campus banner on the Dashboard only, using the existing campus photo with an overlay from existing theme colors (4.5:1 contrast, lazy loaded, hidden on phones); skip it if no asset exists.
+
+**Polish and tone:**
+- Formal tone: sentence case, concise labels, polite and precise messages, dates as `MMM d, yyyy h:mm a` in Asia/Manila, currency in PHP. No emoji, no slang, no exclamation marks.
+- Consistent 4 px spacing grid, generous white space, strong hierarchy, one icon set with a consistent stroke width and text labels in navigation and badges, and no heavy shadows, glow, or loud gradients.
+- Status and priority badges use the existing semantic colors, each with an icon and text. Resolved and Closed must look clearly different.
+- Subtle motion only (120 to 200 ms), skeleton loaders, and respect for `prefers-reduced-motion`.
+- Light and dark mode must both look finished using the existing tokens. If dark mode does not exist, derive dark surfaces from the existing palette and keep the Light, Dark, System toggle in the Account tray.
+
+### 25.2 ROLE-BASED VISIBILITY (THE MOST IMPORTANT PART)
+
+Every role gets a different, purpose-built experience. A feature the role cannot use must not appear at all: no locked buttons, no grayed-out menu items, no empty sections. Where a user must wait for someone else, show a plain text line such as "Waiting on IT Coordinator" instead of a disabled button.
+
+Create ONE shared permission map (for example `permissions.ts`) and drive navigation, routes, buttons, table columns, filters, dashboard widgets, and report types from it. Add a route guard so a forbidden URL shows a neutral "This page is not available" screen (never reveal that the page exists). Show the role as a small chip in the header ("Office Requester", "IT Coordinator", "IT Technician", "System Administrator") and the user's office when relevant.
+
+#### 25.2.1 Office Requester or Office Representative (own offices only)
+
+- **Navigation:** Dashboard, My Requests (tickets of their offices), New Request, Maintenance Visits (read-only), Office Register (read-only), Workflow Guide, Notifications.
+- **Dashboard:** greeting in serif; a "Needs your action" panel (tickets in Needs Information and Resolved awaiting confirmation); counts for their office; recent updates; upcoming maintenance visits needing an availability answer.
+- **Ticket detail (plain-language view):** status stepper, description, conversation, diagnosis summary, test result, and the confirmation panel. Available actions only: Reply, Supply information, Accept result, Reject result (with feedback), Request withdrawal, Report recurrence (only on Closed tickets).
+- **Hidden from this role:** internal notes, costs and parts pricing, assignment and priority controls, technician-only sections, other offices, the technician and coordinator filters, bulk actions, schedules, organization-wide reports, administration.
+
+#### 25.2.2 IT Coordinator (all offices)
+
+- **Navigation:** Dashboard, Tickets, New Request (on behalf of an office), Maintenance Schedules, Maintenance Jobs, Office Register, Reports, Workflow Guide, Notifications.
+- **Dashboard:** "Needs your action" (Submitted awaiting review, On Hold awaiting follow-up), unassigned and overdue tickets, technician workload, maintenance due and overdue, and recent activity.
+- **Ticket detail:** full view with the assignment panel (impact, urgency, priority, target date, technician), dependency follow-up panel, internal notes, and history. Actions only: Request information, Assign or reassign, Record follow-up update, Dependency resolved, Cancel request (reason), Authorized closure (if configured), Send reminder, Reply, Internal note.
+- **Hidden from this role:** diagnosis and test recording controls, accept or reject controls, administration and user management.
+
+#### 25.2.3 IT Technician (assigned work only)
+
+- **Navigation:** Dashboard, My Tickets, My Maintenance Jobs, Office Register (read-only, limited), Workflow Guide, Notifications.
+- **Dashboard:** "Your queue" (Assigned, In Progress), items On Hold, today's maintenance visits, and personal workload and completed counts.
+- **Ticket detail (service console):** history of the office or asset, diagnosis and service entry form, parts, costs, labor, dates, evidence upload, test recording, and the dependency form. Actions only: Start work, Record diagnosis, Place on hold, Record failed test, Record passed test and mark resolved, Reply, Internal note.
+- **Maintenance job view:** interactive checklist (each item with result, findings, date, evidence), "Additional fault found" panel that creates the linked corrective ticket.
+- **Hidden from this role:** assignment, priority, cancel, close, schedule editing, other technicians' tickets, organization-wide reports, administration.
+
+#### 25.2.4 System Administrator
+
+- **Navigation:** Administration (users, roles, office membership, offices, categories, assets, configuration), Audit viewer (read-only), Workflow Guide, Notifications.
+- **Hidden from this role:** operational ticket actions unless the person also holds an operational role. Audit history can never be edited or deleted.
+
+#### 25.2.5 System (automatic, no screen)
+
+Show its work only as timeline events labeled "System" (status updates, reminders, notifications, register updates, generated jobs, corrective tickets).
+
+#### 25.2.6 Things that must differ visibly by role
+
+Navigation items, dashboard panels, ticket action bars, ticket detail sections, table columns (for example Cost and Internal only for IT roles), filters (technician and office filters only where allowed), bulk actions (IT Coordinator only), export options, report types, and the Workflow Guide highlight (the role's own lane is emphasized).
+
+### 25.3 PAGES TO POLISH
+
+Apply the design direction to every authenticated page, but NOT the login page:
+
+1. **App shell:** Canvas-style global navigation rail, Firebase-style top bar with the seal lockup, breadcrumb, search, notification bell, and account avatar, a contextual side menu per section, role chip, and footer line. Only permitted items appear. On phones: top bar plus a bottom tab bar with the role's four main destinations and a More menu.
+2. **Dashboard** (different per role as in the role visibility section): Canvas-style card grid with a right sidebar ("Needs your action", "Coming up", "Recent updates"), Firebase-style stat cards with big numbers, a ticket activity chart with a data table alternative, and role-appropriate tables.
+3. **Tickets list:** Firebase-style table page: queue menu with counts (Open, My Tickets, Closed, All), toolbar with quick search, advanced filter drawer, removable filter chips, column and density controls, sortable columns, status and priority chips, row indicators (overdue, new reply, attachment, recurring) with text or tooltip, kebab row actions limited by role, pagination, and a card layout on phones.
+4. **Ticket detail:** page title with ticket number and subject, status chip, role-limited action buttons, a horizontal status stepper with a "Waiting on" label, Firebase-style underlined tabs (Conversation, Service record, Dependencies, History, Related), and a Canvas-style right sidebar with properties, assignment, and links. The conversation is a clean timeline with avatars, role labels, and distinct internal-note styling for IT roles only. History is a Hosting-style table. On phones the sidebar becomes a collapsible section.
+5. **New request form:** sectioned form (Office and requester, Service details, Asset, Attachments, and Source for coordinators), inline validation, camera attachment on phones, and a confirmation screen showing the ticket number.
+6. **Maintenance:** schedules and jobs as tables with due and overdue chips and a list or calendar toggle; schedule form; job detail with stepper, availability and reschedule history, the checklist, and the corrective ticket panel.
+7. **Office IT Service Register:** office selector, summary stat cards, and tabs for service history, assets, maintenance, and audit trail.
+8. **Reports:** sticky filter toolbar, stat cards, chart plus table per report, definitions in a help popover, CSV export, and a print view with a formal letterhead (seal watermark, university name, system name, report title in the existing serif, filters used, date generated).
+9. **Notifications:** slide-out tray and a full page.
+10. **Workflow Guide:** four swimlanes in the PDF order and names, the current role's lane emphasized, readable on phones as a lane-grouped list.
+11. **Administration pages** (System Administrator only) in Firebase-style settings layout.
+12. **Error, empty, loading, and not-available states** with line illustrations and formal copy.
+
+### 25.4 RESPONSIVE AND MOBILE APP FEEL
+
+- Verify at 320, 375, 390, 430, 768, 1024, 1280, and 1440 px with no horizontal page overflow.
+- Phones: compact header, bottom tab bar, cards instead of wide tables, bottom sheets instead of side drawers, 44 px touch targets, safe-area padding, sticky primary action where useful.
+- Tablets: icon rail or overlay sidebar, adaptive columns, collapsible filters.
+- Desktop: full sidebar, two-column ticket detail, efficient tables.
+- Keep the app installable and fast: lazy load images, avoid heavy assets, no layout shift.
+
+### 25.5 ACCESSIBILITY AND QUALITY
+
+Semantic HTML, correct heading order, labeled inputs, keyboard navigation, visible focus rings, contrast at least 4.5:1 in light and dark mode (including text over any photo), accessible dialogs, aria-live for errors and toasts, alt text for the seals ("University of the Philippines seal", "University of the Philippines Cebu seal"), status never by color alone, charts with data tables, and reduced motion support.
+
+### 25.5A MAINTENANCE-SYSTEM VISUAL LANGUAGE
+
+**Why this section exists:** the owner wants the UI to feel like a real maintenance system, not a generic admin template. Maintenance and work-order software works best when it is built around how maintenance work actually happens: clear prioritization (open and overdue work visible at a glance), fast search, dashboards with a clear purpose per role (a manager sees the whole operation, a technician sees today's schedule and own work), simple work-order creation, and photos, notes, and instant updates added directly on the record. Apply these ideas in the existing Canvas and Firebase style, with the existing color theme. The owner's Dribbble inspiration page could not be opened by tools (it needs a browser), so these patterns come from well-known maintenance (CMMS) and IT service desk practice. If inspiration images are attached in the chat, use them for mood and layout only, never copy a design.
+
+**Signature components (build once, reuse everywhere):**
+- **Ticket card ("work order card"):** ticket number, subject, office, category icon, status chip, priority shown as a colored left edge plus a text chip, assignee avatar, due or overdue chip, and small attachment and reply counts. Used in Card view, the Board view, dashboards, and on phones.
+- **Board view for tickets:** a Kanban-style board with columns in workflow order: Submitted, Needs Information, Assigned, In Progress, On Hold, Resolved. Closed and Cancelled sit in a collapsed archive lane. Cards can be moved only where the role may perform that transition and the transition is valid. An invalid move snaps back with a short explanation, and the backend enforces the same rule. On phones, show status tabs or horizontally swipeable columns instead of drag and drop.
+- **Service timeline:** a vertical timeline with icons for each event (created, assigned, diagnosed, tested, confirmed, cancelled, maintenance), used for ticket History, the Office Register, and asset history.
+- **Office and asset health strip:** a compact header on the Office Register and asset pages with open tickets, overdue count, last service date, next maintenance due, and recurring issues, each as a small stat with an icon.
+- **Maintenance planner:** month, week, and agenda views with due, overdue, and rescheduled chips. On phones show an agenda list by default. Technicians get a "Today" view of their visits.
+- **Checklist cards:** each checklist item is a card with a large Pass, Fail, or Not applicable segmented control, a findings field, a photo or evidence button, and a visible progress ring or bar ("7 of 12 done", also as text). A sticky bottom bar offers "Save progress" and "Flag additional fault" (creates the linked corrective ticket).
+- **KPI tiles with purpose:** Open, Overdue, Awaiting confirmation, On hold, Average turnaround, On-time completion rate, and Preventive maintenance compliance, each with a tiny trend sparkline and a click-through that opens the filtered list. Show at most about eight tiles above the fold, ordered by what the role must act on first. Avoid clutter: every widget must answer a question for that role.
+- **Technician workload:** horizontal stacked bars by status, with a text value for each bar.
+- **Compliance gauge:** a donut or progress bar with the percentage and counts as text.
+- **Global quick actions:** a "+" button for New request (and, for the IT Coordinator, New request on behalf of an office and New schedule), and a command palette (Ctrl or Cmd plus K) that searches tickets, offices, assets, and schedules and lists recent items.
+- **Technician-first mobile design:** default landing on Today and My queue, large touch targets, primary actions in the thumb zone (bottom third), quick status actions, one-tap call or email links for the requester (`tel:` and `mailto:`), camera evidence capture, and drafts kept safe while typing.
+- **Charts:** clean line, area, and bar charts in the existing palette, thin gridlines, direct labels where possible, accessible tooltips, a data table alternative, and no 3D or decorative effects.
+- **Icons and illustrations:** one outline icon set with maintenance metaphors (wrench, clipboard-check, calendar-check, monitor, printer, network, key, shield) and simple single-color line illustrations for empty states.
+
+### 25.5B RESPONSIVE MATRIX (ALL DEVICE SIZES)
+
+**Goal:** every page looks intentional and feels comfortable on any device, from small phones to ultra-wide monitors, in portrait and landscape, in light and dark mode, with touch, mouse, and keyboard.
+
+**Size classes and what changes**
+| Class | Width | Layout |
+|---|---|---|
+| Small phone | 320 to 479 px | One column, bottom tab bar, cards instead of tables, bottom sheets for dialogs and filters, full-width buttons, 16 px inputs (no zoom on focus). |
+| Large phone | 480 to 767 px | Same as above, with two-column stat tiles and wider cards. |
+| Tablet portrait | 768 to 1023 px | Icon rail navigation, two-column dashboard grid, tables with the most important columns, optional master-detail on tickets. |
+| Tablet landscape and small laptop | 1024 to 1279 px | Rail plus collapsible contextual menu, 12-column grid, ticket detail with a narrow side panel. |
+| Desktop | 1280 to 1919 px | Full layout: rail, contextual menu, content, and the ticket detail side rail. |
+| Large and ultra-wide | 1920 px and up | Content stays within about 1440 to 1600 px and is centered. Extra space goes to side panels and gutters, tables are never stretched across the whole screen. |
+
+**Techniques to use:** CSS grid and flexbox, container queries for components, fluid type and spacing with `clamp()`, `min-width: 0` on flex and grid children, `dvh` units instead of `100vh`, safe-area insets, logical properties, tables that convert to cards, sticky headers and action bars that respect safe areas, and no hover-only interactions. Use `@media (pointer: coarse)` to enlarge touch targets to at least 44 px and `@media (hover: hover)` for hover effects. Support text zoom and browser zoom to 200 percent without clipped content or horizontal scrolling (reflow at 320 px). Handle landscape phones (short heights such as 844 by 390), foldables, and orientation changes without fixed heights that clip content.
+
+**Comfort rules:** body text at least 14 px on desktop and inputs at least 16 px on phones, comfortable line length, a Comfortable and Compact density toggle for tables, primary actions within thumb reach on phones, destructive actions never next to primary actions, generous tap spacing, and calm motion that respects `prefers-reduced-motion`.
+
+**Performance for comfort:** code splitting per route, lazy loaded images and charts, skeleton loaders, no layout shift, compressed assets, and a target of fast first render on a mid-range phone.
+
+**Verification matrix:** check the main pages of every role at 320, 360, 375, 390, 412, 430, 600, 768, 820, 1024, 1180, 1280, 1366, 1440, 1536, 1920, and 2560 px, plus landscape phone (844 by 390) and landscape tablet (1180 by 820), in light and dark mode, and at 200 percent zoom. There must be no horizontal page overflow, clipped text, overlapping elements, or unreachable actions. If you cannot view images, use automated overflow, bounding-box, contrast, and touch-target checks and report them. The login page is excluded from this pass and must remain untouched.
+
+### 25.6 METHOD
+
+- **Polish step 1:** snapshot the theme (`docs/THEME_SNAPSHOT.md`), list the login page files, inventory all pages and components, and capture baseline renders if possible.
+- **Polish step 2:** build or refine the design system layer using existing tokens: typography, spacing, cards, badges, tables, forms, empty states, shell, seal lockup.
+- **Polish step 3:** implement the shared permission map, route guards, and role-driven navigation, actions, columns, filters, and widgets.
+- **Polish step 4:** redesign pages in this order: shell, dashboard (each role), tickets list, ticket detail, new request, maintenance, register, reports, notifications, workflow guide, administration.
+- **Polish step 5:** responsive and mobile pass, light and dark mode pass, accessibility pass.
+- **Polish step 6:** verification and report.
+
+### 25.7 VERIFICATION (REQUIRED)
+
+1. Login page unchanged: `git diff` shows no changes in the login files, and a before and after render (or DOM and computed-style comparison) is identical.
+2. Theme unchanged: compare the final tokens with `docs/THEME_SNAPSHOT.md` and list any difference (there must be none). Search the code for new hard-coded colors and remove them.
+3. For each role (Office Requester, IT Coordinator, IT Technician, System Administrator), log in with a demo or test account in a development environment and confirm: only that role's navigation, dashboard panels, ticket actions, columns, filters, and reports appear, and a forbidden URL shows the "not available" screen. Add automated tests for this (for example Playwright or component tests) and for the shared permission map.
+4. Confirm the backend still rejects actions outside the role even when called directly.
+5. Capture screenshots at 390, 768, and 1440 px, light and dark, for each role's dashboard and the ticket detail, and save them in `docs/screenshots/`. If you cannot capture or view images, run overflow, contrast, and token checks instead and say so.
+6. Run build, lint, type checks, and the existing tests. Report what passed, failed, or could not be run. Never claim a result you did not obtain.
+7. Write `docs/UI_POLISH_REPORT.md` with: what changed per page, the role visibility matrix as implemented, security gaps found, limitations, and the proof for the login page and theme.
+
+### 25.8 DEFINITION OF DONE
+
+- Every authenticated page looks unique, polished, professional, formal, and clearly University of the Philippines Cebu, using the existing color theme without changes.
+- The login page is untouched.
+- Each role sees only its own features, and nothing it cannot use appears on screen.
+- The interface works well on phones, tablets, and desktops, in light and dark mode.
+- Build and tests pass, and the report honestly lists any limitation.
+
+
+Run this section as Phase 10 (Section 22), after the functional build, tests, and fixes. Do not summarize it back to me.
+
+## 26. WORKING IN QODER (TOOLING NOTES)
+
+- **Context and files:** this prompt is large. Keep it saved as `docs/MASTER_PROMPT_COMPLETE.md` and read it section by section as each phase needs it, instead of holding all of it at once. The checklist in `docs/IMPLEMENTATION_CHECKLIST.md` is the working source of truth between conversations. At the start of every new conversation, read the checklist and `AGENTS.md`, then continue from the first unfinished item.
+- **Project rules:** `AGENTS.md` at the project root holds the short permanent rules (frozen login page and theme, exact status labels, role scoping, honesty about tests, no em dashes). Do not copy this whole prompt into rule files, because rule files have a size limit. Follow `AGENTS.md` and the active rules at all times.
+- **Modes:** prefer Quest mode with a Spec for large, multi-file phases (use the phase text as the requirement and keep the Spec aligned to this prompt), and Agent mode for smaller fixes and polish. Work one phase at a time, run build, lint, and tests, update the checklist, and commit.
+- **Visual verification:** if Qoder's Browser Agent or another browser tool is available, run the app and review each role's pages at 390, 768, and 1440 px in light and dark mode. If no browser tool is available, use DOM, CSS, overflow, contrast, and token checks, and say so in `docs/KNOWN_LIMITATIONS.md`.
+- **Honesty:** report what you built and what you tested separately. Never mark a checklist item done without evidence (a test, a command output, or a rendered check).
 
 ---
 
@@ -869,7 +1086,7 @@ Method: the PDF page was rendered and its vector data was read. Each shape was a
 
 1. Start (IT Coordinator), then Create maintenance schedule (IT Coordinator), then Record maintenance schedule (System). Record maintenance schedule also writes to the Maintenance Job Record store and to the Office IT Service Register.
 2. Record maintenance schedule to Check maintenance schedule, then Maintenance due?.
-3. No: Keep schedule active and wait. Edge label "Next scheduled check" returns to Check maintenance schedule.
+3. No: Keep schedule active and wait. The label "Next scheduled check" sits next to this step but NO line is drawn from it. As SOP step 20.1 says, the schedule stays active and the Check maintenance schedule step runs again at the next scheduled check.
 4. Yes: Check job for schedule occurrence, then Job already exists?.
 5. Yes: Use existing job; do not duplicate, then Maintenance Job Record.
 6. No: Generate linked maintenance job, then Maintenance Job Record.
@@ -886,13 +1103,13 @@ Method: the PDF page was rendered and its vector data was read. Each shape was a
 - The Office IT Service Register receives writes from: Record service request (two connectors), Record diagnosis, actions, parts, costs, labor, dates, and evidence, Record maintenance schedule, Record maintenance outcome, Update office and asset service history, and Update office service history and reporting.
 - Office IT Service Register to Generate Office IT Service Reports, then Filter by office, date range, category, technician, and status, then "Service history, completed totals, pending and overdue, workload, turnaround, costs, recurring issues, compliance". The Register also links to the system-controls annotation.
 - Status and audit history receives writes from Status: Submitted, Status: Resolved, and Record diagnosis. Implement the rule for all eight statuses, as the SOP requires audit history for every status change.
-- **Links where the arrowhead is hidden behind a label (implemented from label text and SOP numbering):** (a) Office accepts result? with label "Accepted" to Record confirmation; (b) Continue follow-up between Dependency outcome? and Record follow-up updates; (c) Next scheduled check from Keep schedule active and wait back to Check maintenance schedule. Verified with a real arrowhead (not hidden): Office available? (top exit, the No branch) to Agree on new maintenance date. The two parallel connectors from Record service request to the Register are both real and both must be implemented as written.
+- **Three places where the drawing itself is incomplete (checked against the PDF vector data):** (a) "Accepted": a line (two short pieces on either side of the label) connects Office accepts result? to Record confirmation, but no arrowhead is drawn. Direction is decision to confirmation (SOP 15.1). (b) "Continue follow-up": a line without an arrowhead connects Record follow-up updates and Dependency outcome?. Implement the loop: after a follow-up update is recorded, the dependency outcome is assessed again (SOP 8.2). (c) "Next scheduled check": only a label, no line or arrowhead exists. Implement SOP 20.1: the schedule stays active and is checked again at the next scheduled check. Verified with a real line and arrowhead: Office available? (the No branch) to Agree on new maintenance date, and Start (IT Coordinator) to Create maintenance schedule. The two parallel connectors from Record service request to the Register are both real and both must be implemented.
 
 ---
 
 # APPENDIX C: MACHINE-READABLE NODES AND EDGES (use this to build the Workflow Guide and the traceability checks)
 
-Source: the PDF. IDs are stable (N00 to N80). Lanes are in PDF order. Use these exact texts for node labels. N75 (legend box) and its two connectors are drawing artifacts: do not render or implement them. Edges marked "[arrowhead hidden]" are implemented from label text and SOP numbering.
+Source: the PDF. IDs are stable (N00 to N80). Lanes are in PDF order. Use these exact texts for node labels. N75 (legend box) and its two connectors are drawing artifacts: do not render or implement them. Three edges carry a special note: "Accepted" and "Continue follow-up" are drawn lines without arrowheads, and "Next scheduled check" is a label with no line at all. Each is implemented as written in Appendix B.6.
 
 ## C.1 Nodes
 
@@ -1014,7 +1231,7 @@ Source: the PDF. IDs are stable (N00 to N80). Lanes are in PDF order. Use these 
 - N20 to N21  (Follow up dependency to Dependency outcome?)
 - N21 to N58 [Resolved]  (Dependency outcome? to Status: In Progress)
 - N21 to N22 [Still pending]  (Dependency outcome? to Record follow-up updates)
-- N22 to N21 [Continue follow-up [arrowhead hidden]]  (Record follow-up updates to Dependency outcome?)
+- N22 to N21 [Continue follow-up: a line without an arrowhead; implemented as the loop back to the outcome decision]  (Record follow-up updates to Dependency outcome?)
 - N21 to N23 [Cannot proceed]  (Dependency outcome? to Record cancellation reason)
 - N23 to N62  (Record cancellation reason to Status: Cancelled)
 - N58 to N32 [After dependency resolved]  (Status: In Progress to Perform repair, installation, configur)
@@ -1030,7 +1247,7 @@ Source: the PDF. IDs are stable (N00 to N80). Lanes are in PDF order. Use these 
 - N60 to N53  (Status: Resolved to Status and audit history)
 - N61 to N05 [To Section 3]  (Notify office ready for confirmation to Review and verify service result)
 - N05 to N06  (Review and verify service result to Office accepts result?)
-- N06 to N07 [Accepted [arrowhead hidden]]  (Office accepts result? to Record confirmation, confirming person)
+- N06 to N07 [Accepted: a line without an arrowhead]  (Office accepts result? to Record confirmation, confirming person)
 - N06 to N08 [Rejected]  (Office accepts result? to Record office feedback)
 - N06 to N65 [No response]  (Office accepts result? to Keep status: Resolved)
 - N08 to N58 [Return to Section 2 diagnosis (status In Progress)]  (Record office feedback to Status: In Progress)
@@ -1056,7 +1273,7 @@ Source: the PDF. IDs are stable (N00 to N80). Lanes are in PDF order. Use these 
 - N39 to N74  (Record maintenance schedule: office, a to Office IT Service Register)
 - N40 to N43  (Check maintenance schedule to Maintenance due?)
 - N43 to N41 [No]  (Maintenance due? to Keep schedule active and wait)
-- N41 to N40 [Next scheduled check [arrowhead hidden]]  (Keep schedule active and wait to Check maintenance schedule)
+- N41 to N40 [Next scheduled check: label only, NO line is drawn in the PDF; implemented from SOP step 20.1]  (Keep schedule active and wait to Check maintenance schedule)
 - N43 to N44 [Yes]  (Maintenance due? to Check job for schedule occurrence)
 - N44 to N45  (Check job for schedule occurrence to Job already exists?)
 - N45 to N47 [Yes]  (Job already exists? to Use existing job; do not duplicate)
@@ -1116,7 +1333,7 @@ These are final. Implement them as written. Each is configurable where the text 
 | D14 | Administrator | Manages configuration and users only. No operational ticket steps unless also given an operational role. Cannot edit audit history. |
 | D15 | Requester withdrawal | The Requester sends a "request withdrawal" message. The IT Coordinator records the reason and sets Cancelled (as in the PDF lane). |
 | D16 | Swimlane for System steps | System steps are automatic application behavior, triggered by the human step that precedes them. Office availability is answered by the Office Requester and recorded by the System. |
-| D17 | Hidden-arrow links | Implement the three hidden-arrowhead links and the verified links listed in Appendix B.6 as written. |
+| D17 | Incomplete drawing spots | Implement the three spots listed in Appendix B.6 exactly as written there. |
 | D18 | Needs Information return | After the office supplies information the same ticket returns to Submitted for review (no new ticket). |
 | D19 | Ticket number | Format `IT-YYYY-NNNNNN` (year plus zero-padded yearly sequence, for example IT-2026-000101), generated inside a transaction on a counter record so numbers are unique and never reused. |
 | D20 | Queues | Open means Submitted, Needs Information, Assigned, In Progress, On Hold, and Resolved. Closed queue means Closed and Cancelled, with a filter to separate them. My Tickets means assigned to me (Technician) or created by me (Requester). |
@@ -1126,36 +1343,59 @@ These are final. Implement them as written. Each is configurable where the text 
 
 ---
 
-# APPENDIX E: REFERENCE SCREEN SPEC (ticket list, ticket details, dashboard)
+# APPENDIX E: REFERENCE SCREEN SPEC (from the owner's three screenshots)
 
-This spec turns the owner's screenshot references (a classic helpdesk ticket system) into concrete requirements. The business workflow always overrides the screenshots. Use modern styling from Section 14, not the dated look.
+Source: `docs/reference/ticket-list.png`, `docs/reference/ticket-details.png`, and `docs/reference/dashboard.png`. They show the existing University of the Philippines Cebu ITC helpdesk ticket system (an Agent Panel in the style of a classic helpdesk). Recreate its useful functions in the modern interface of Section 25 (Canvas LMS and Firebase Console patterns), mapped to this system's offices, roles, statuses, and workflow. The PDF workflow always overrides the screenshots. Do not copy personal data from the screenshots (names, emails, ticket subjects); use generic sample data in development.
 
-## E.1 Ticket list
+## E.0 What the screenshots show overall
 
-- Top queue tabs with live counts: Open, My Tickets, Closed, Search, New Ticket (queue definitions in D20).
-- Columns: Ticket (number, link), Last Updated, Subject, From (requester), Priority, Office (department), plus Status, Category, and Assignee. Sort by any column ascending or descending, default Last Updated descending. Pagination with total count and a page-size control.
-- Quick search box (ticket number, subject, requester, asset tag) and an Advanced search drawer: status, priority, office, category, assignee, request source, created date range, last updated range, overdue only. Active filters appear as removable chips. Saved searches are optional.
-- Row indicators: overdue, new reply since last visit, has attachments, linked to maintenance, recurring (linked to a previous ticket). Each indicator has text or a tooltip, not color alone.
-- Row selection with bulk actions only for roles that own them (the IT Coordinator may bulk assign). A per-row menu shows only actions allowed for the role and status.
-- Export the filtered list to CSV for IT roles. Office users export only their own offices.
+- A header with the UP seal and the UP Cebu seal at the top left, and at the top right a greeting "Welcome, {name}." with links to the Agent Panel, Profile, and Log Out. Map this to the seal lockup, the Account tray, Profile, and Sign out.
+- Main tabs Dashboard, Users, Tasks, Tickets, Knowledgebase, with sub-tabs (Dashboard has Dashboard, Agent Directory, My Profile; Tickets has My Tickets, Closed, Search, New Ticket).
+- A footer line "Copyright 2006-2026 University of the Philippines Cebu. All Rights Reserved." Use "(c) {current year} University of the Philippines Cebu. All rights reserved." with the year computed automatically.
+- Not part of the PDF, so NOT implemented (unrelated modules): Tasks, Knowledgebase. Users and Agent Directory map to Administration (users and roles) and a technician directory visible to IT roles.
 
-## E.2 Ticket details
+## E.1 Ticket list (screenshot 1)
 
-- Header: ticket number and subject, status and priority badges, workflow stepper, "Waiting on" label, and the action bar for the current role and status (Reply, Internal note for IT roles, Assign, Change status through the allowed transitions only, More: print, link ticket).
-- Information block: Status, Priority, Impact, Urgency, Office, Category, Request source, Created, Last updated, Target completion date, Actual service dates, Equipment or asset. Requester block: name, email, phone, office. Assignment block: technician, target date, previous record link, maintenance link.
-- Tabs: Conversation (the chronological thread), Service record (diagnosis, actions, parts, materials, costs, labor, test results, evidence), Dependencies, History (status changes and audit events), Related (previous service record, recurrence tickets, corrective tickets, maintenance job).
-- Thread entry types: Message, Reply, Internal note (IT only, visually distinct), System event (actor "System"). Each entry shows avatar, name, role, exact and relative time in Asia/Manila, text, and attachments.
-- Composer: tabs for Reply and Internal note, attachments (with camera on phones), and a status selector that lists only valid transitions for the user's role with the required fields (for example dependency fields for On Hold, feedback for reject, reason for cancel).
-- Print-friendly ticket view.
+- Sub-navigation with queue dropdowns: **My Tickets**, **Closed**, **Search**, and **New Ticket**. Implement queues as Open (Submitted, Needs Information, Assigned, In Progress, On Hold, Resolved), My Tickets (assigned to me for technicians, created by me for requesters), Closed (Closed and Cancelled, with a filter to separate them), Search, and New Ticket. Each queue may have sub-queues in a dropdown (for example Open: All open, Unassigned, Overdue).
+- A quick search box beside the queue menu with an "advanced" link that opens the advanced search (status, priority, office, category, assignee, request source, created range, last updated range, overdue only).
+- Table columns in this order: selection checkbox, **Ticket** (number, link), **Last Update** (date and time), **Subject** (with a paperclip icon when there are attachments, a reply or message count icon, and bold text for unread updates), **From** (requester), **Priority**, **Department** (office). Add Status, Category, and Assignee, and a column picker. Sortable headers with a sort indicator, default Last Update descending, and pagination with a total count.
+- Overdue rows are tinted and also labeled "Overdue" (not color alone).
+- A bulk-action icon toolbar at the right of the table header (the screenshot shows icon buttons for flagging, assigning, transferring, and tools). Implement only what the role may use: Assign (IT Coordinator only), change status through allowed transitions only, print, and export. There is NO delete: records are preserved, and Cancelled replaces deletion.
 
-## E.3 Dashboard
+## E.2 Ticket details (screenshot 2)
 
-- Header "Ticket activity" with a timeframe selector (Last 7 days, Last 30 days, Last 90 days, This month, Custom range), a refresh button with last updated time, and an export button.
-- Activity chart over the period: Submitted, Resolved, Closed, and Cancelled per day, with a data table alternative.
-- Summary tiles for the eight statuses plus Overdue.
-- Tabs for Offices (departments), Categories (topics), and Technicians (agents). Table columns: name, Submitted, Assigned, Overdue, Resolved, Closed, Cancelled, Recurring (new tickets linked to a previous Closed ticket), Average turnaround, Average time to assignment. Definitions follow D12.
-- Also show technician workload, service costs, recurring issues, and preventive maintenance compliance.
-- Everything respects role scoping (Section 4A).
+- A summary block in two columns. Left: **Status**, **Priority**, **Department** (office), **Create Date**. Right: **User** (requester, with the count of tickets from this requester), **Email**, **Source** (Online Portal, Telephone, Email, Walk-in, On-site).
+- A second block: **Assigned To** (technician), **Due Date** (target completion date), **Last Message** (time of the last requester message), **Last Response** (time of the last IT response), and **Help Topic** (category). The SLA plan field is not used.
+- A "Ticket Details" area for extra fields (asset, location, previous service record).
+- Tabs with counts, such as "Ticket Thread (3)". Our tabs: Conversation (count), Service record, Dependencies, History, Related. There is no generic Tasks tab.
+- The thread is chronological. Each message has a header bar with the author, "posted", and the time. System events appear inline as small lines (created by, assigned to, status changed). When the assignment changes, show a highlighted notice banner at the top of the thread ("Ticket assigned to {technician}").
+- A composer below the thread with two tabs: **Post Reply** and **Post Internal Note** (internal notes for IT roles only), a recipient area (To, and Cc for notifications), a rich text editor, attachments, a status selector listing only valid transitions with their required fields, and a Post button.
+- A print view of the ticket.
+
+## E.3 Dashboard (screenshot 3)
+
+- Sub-tabs: Dashboard, Agent Directory (technician directory for IT roles), My Profile.
+- **Report timeframe** controls: a date field (default last month), a **period** dropdown (for example Up to today), and a **Refresh** button, with an info icon.
+- **Ticket Activity** line chart: dates on the horizontal axis, counts on the vertical axis, and a multi-series legend (the screenshot shows assigned, closed, created, deleted, overdue, reopened, and one more series). Our series: created (Submitted), assigned, resolved, closed, cancelled, overdue, and recurring. Cancelled replaces deleted and recurring replaces reopened. Interactive tooltips, hover highlight, and a data table alternative.
+- **Statistics** panel: a one-line description ("Statistics of tickets organized by office, category, and technician") and a **Range** line showing the start and end dates and the time zone "(Asia/Manila)". Tabs **Department | Topics | Agent** become **Offices | Categories | Technicians**.
+- Table columns: name, **Opened**, **Assigned**, **Overdue**, **Closed**, **Reopened**, **Deleted**, **Service Time**, **Response Time**, each with an info tooltip. Our columns: name, Submitted (opened), Assigned, Overdue, Resolved, Closed, Cancelled, Recurring, Service time (average hours from Submitted to Resolved), and Response time (average hours from Submitted to Assigned). Tooltips use the D12 definitions. An **Export** link under the table downloads CSV.
+- Everything respects role scoping (Section 4A): requesters see only their offices, technicians only their own work.
+
+## E.4 Term mapping (screenshots to this system)
+
+| Screenshot term | This system |
+|---|---|
+| Department | Office |
+| Help Topic | Category |
+| Agent | IT Technician (or IT staff) |
+| Due Date | Target completion date |
+| Create Date | Date reported and created time |
+| Last Message, Last Response | Last requester message, last IT response |
+| Open / Closed queues | Open (six statuses) / Closed (Closed and Cancelled) |
+| Reopened | Recurring (a new linked ticket, because a Closed ticket is never reopened) |
+| Deleted | Not available. Records are preserved, use Cancelled |
+| Service Time / Response Time | Turnaround (Submitted to Resolved) / time to assignment (Submitted to Assigned) |
+| SLA Plan, Collaborators, Tasks, Knowledgebase | Not part of the PDF, not implemented |
 
 ---
 
@@ -1213,3 +1453,5 @@ Every operation validates the caller's role (Section 4A), office scope, the curr
 | D23 | Login copy | Headline "Maintenance Management, from request to closure." and the subtitle in Section 14.15. Seals, photo, pill badge, tile labels, Welcome back, button text, and helper text follow the reference image exactly. |
 | D24 | Sign-in domain | Google sign-in limited to `@upcebu.edu.ph` (configurable), enforced on the trusted layer. Users must be provisioned with a role. Unprovisioned users see "Access not granted". |
 | D25 | Demo sign-in | Demo account list appears only when an explicit demo flag is on, never in production. |
+| D26 | Frozen UI | The existing color theme and the existing login page are frozen. The UI polish pass may add structure, typography, layout, and role visibility but not new brand colors or login changes. |
+| D27 | Design language | The interface follows Section 25.5A (maintenance-system visual language) and 25.5B (responsive matrix) on top of the Canvas and Firebase layout patterns, using the existing color theme. Dribbble inspiration images, if attached, guide mood only. |

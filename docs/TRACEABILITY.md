@@ -15,9 +15,10 @@ merely because a page or a button exists.
 
 The lane ownership and the flow in Appendix B were produced by rendering the
 PDF and reading its vector data: every shape was assigned to a swimlane by
-coordinates and all 105 arrowheads were matched to their target nodes.  The
-five connectors whose arrowheads sit behind an edge label were implemented
-from the label text and the SOP numbering (Appendix B.6).
+coordinates and all 105 arrowheads were matched to their target nodes.  Two
+connectors are drawn without arrowheads and one label has no line at all;
+those places were implemented from the label text and the SOP numbering
+(Appendix B.6).
 
 ## Workflow steps to code
 
@@ -92,7 +93,7 @@ from the label text and the SOP numbering (Appendix B.6).
 | 20 | Audit records every status change and is append only | `engine._audit` | `tests.py` audit trail | verified | none |
 | 21 | Office level permissions are enforced | `engine._office_block`, `app._scoped` | `tests.py` access, `api_check.py` | verified | none |
 | 22 | Ticket list, detail and dashboard have the reference functionality | `tickets.html`, `ticket.html`, `dashboard.html` | `pagetest.js` | verified | the owner's screenshot references could not be opened, so the written requirements were used |
-| 23 | All pages are responsive and accessible | `css/app.css` | `tools/responsive.py` (34 viewports from 320x480 to 7680x2160), `tools/gate_shots.py` | verified | none |
+| 23 | All pages are responsive and accessible | `css/app.css`, `css/console.css` | `tools/responsive.py` (37 viewports from 320x480 to 7680x2160, including 200 percent zoom), `tools/gate_shots.py` | verified | none |
 | 24 | No primary control is nonfunctional | every action is a guarded engine method | `smoke.js`, `pagetest.js` | verified | none |
 | 25 | Tests and the build were executed, with honest results | the test suites below | the results below | verified | the page suite is flaky while another process is editing the same tree |
 | 26 | The UI follows the design system and looks consistent | `docs/DESIGN_SYSTEM.md`, `docs/screenshots/` | `tools/gate_shots.py` | verified | the screenshots are a machine check plus a read of the captures, not a full designer review |
@@ -118,25 +119,25 @@ that was not run is not listed.
 
 | Suite | Command | Result |
 |---|---|---|
-| Backend | `python server/tests.py` | 335 passed, 0 failed |
+| Backend | `python server/tests.py` | 382 passed, 0 failed |
 | Workflow smoke | `node tools/smoke.js` | 60 passed, 0 failed |
-| Page integration | `node tools/pagetest.js` | 461 passed, 0 failed |
+| Page integration | `node tools/pagetest.js` | 555 passed, 0 failed |
 | Role pages | `node tools/rolepages_test.js` | 182 passed, 0 failed |
 | API | `python tools/api_check.py` | 17 passed, 0 failed |
 | Markup and DOM ids | `python tools/validate.py` | PASSED |
-| UI house rules | `python tools/ui_check.py` | PASSED (71 pages) |
-| JavaScript syntax | `python tools/js_syntax_check.py` | PASS (24 files, 188 inline blocks) |
+| UI house rules | `python tools/ui_check.py` | PASSED (73 pages) |
+| JavaScript syntax | `python tools/js_syntax_check.py` | PASS (24 files, 193 inline blocks) |
 | Em dash sweep | `python tools/em_dash_check.py` | PASS (0 in the tree) |
 | Appendix C coverage | `python tools/appendix_c_check.py` | PASS (81 nodes, 106 edges) |
 | Permission parity | `python tools/permission_parity_check.py` | PASS |
 | Permission parity (Node.js) | `node tools/parity_check.js` | 54 passed, 0 failed |
-| Role page generation | `python tools/role_pages.py --check` | PASS (49 files) |
+| Role page generation | `python tools/role_pages.py --check` | PASS (50 files) |
 | Asia/Manila display | `node tools/time_check.js` | PASS under three host timezones |
 | Visual gate | `python tools/gate_shots.py` | PASS (60 captures, no overflow, no clipping); 48 role captures also checked in |
-| Responsive | `python tools/responsive.py` | 0 problems across 2414 checks (71 pages x 34 viewports, 320x480 to 7680x2160); the frozen login scroll is bounded and recorded |
-| HTML markup check | `node tools/html_check.js` | 355 passed, 0 failed across 71 pages |
-| UI structure audit | `node tools/ui_audit.js` | 335 passed, 0 issues |
-| Script load order | `node tools/script_order_check.js` | 67 passed, 0 failed across 71 pages |
+| Responsive | `python tools/responsive.py` | 0 problems across 2701 checks (73 pages x 37 viewports, 320x480 to 7680x2160, including 200 percent zoom); this tree was measured in viewport-bounded passes, and every check passed; the frozen login scroll is bounded and recorded |
+| HTML markup check | `node tools/html_check.js` | 365 passed, 0 failed across 73 pages |
+| UI structure audit | `node tools/ui_audit.js` | 345 passed, 0 issues |
+| Script load order | `node tools/script_order_check.js` | 69 passed, 0 failed across 73 pages |
 | Deep behavior audit | `node tools/deep_audit.js` | 628 passed, 0 issues |
 | Content check | `node tools/content_check.js` | 174 passed, 0 issues |
 

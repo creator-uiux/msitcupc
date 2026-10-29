@@ -154,9 +154,8 @@ ok(r.ok && S.getTicket(id2).confirmation.state === 'accepted', 'Office accepts r
 setRole('coordinator');
 r = F.close(id2, 'confirmation');
 ok(!r.ok, 'the IT Coordinator cannot close by confirmation');
-setRole('requester');
-r = F.close(id2, 'confirmation');
-ok(r.ok && S.getTicket(id2).status === 'closed', 'Status: Closed after confirmation');
+ok(S.getTicket(id2).status === 'closed' && S.getTicket(id2).closure === 'confirmation',
+  'Status: Closed after confirmation');
 setRole('requester');
 r = F.createLinkedTicket(id2, { issue: 'App crash recurs' });
 ok(r.ok && S.getTicket(r.id).linkedTo === id2, 'Issue recurs after closure? Yes -> linked ticket follows Section 1');

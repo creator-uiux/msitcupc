@@ -92,22 +92,18 @@ function confirmable() {
 }
 
 function ticketActions(t) {
-  var h = '', role = Store.db.role, st = t.confirmation.state;
+  var h = '', role = Store.db.role;
   if (t.status === 'resolved') {
-    if (st === 'accepted') {
-      /* The owning office closes its own confirmed ticket.  The IT Coordinator
-         may not answer for the office (Section 4A.2). */
-      if (role === 'requester') h += btn('Close ticket', 'close', 'btn-primary');
-      else h += '<span class="chip">Waiting on the office</span>';
+    if (role === 'requester') {
+      /* Accepting records the confirming person and date and closes the
+         ticket in one step.  The IT Coordinator may not answer for the
+         office (Section 4A.2). */
+      h += btn('Office accepts result and closes', 'accept', 'btn-primary') +
+        btn('Office rejects  --  feedback', 'reject', 'btn-ghost') +
+        btn('Record no response', 'noresp', 'btn-ghost');
     } else {
-      if (role === 'requester') {
-        h += btn('Office accepts result', 'accept', 'btn-primary') +
-          btn('Office rejects  --  feedback', 'reject', 'btn-ghost') +
-          btn('Record no response', 'noresp', 'btn-ghost');
-      } else {
-        h += '<span class="chip">Waiting on the office</span>';
-      }
-      if (role !== 'requester') h += btn('Send follow-up reminder', 'remind', 'btn-ghost');
+      h += '<span class="chip">Waiting on the office</span>';
+      h += btn('Send follow-up reminder', 'remind', 'btn-ghost');
       if (role === 'coordinator') h += btn('Authorized closure', 'autoclose', 'btn-danger-soft');
     }
   } else if (t.status === 'closed') {
@@ -183,7 +179,8 @@ function render() {
       '<h3 class="record-subject">' + UI.esc(t.issue) + '</h3>' +
       '<div class="info mt">' +
       '<div><div class="k">Office</div><div class="v">' + UI.esc(t.office) + '</div></div>' +
-      '<div><div class="k">Technician</div><div class="v">' + UI.esc(t.technician || ' -- ') + '</div></div>' +
+      (Store.db.role === 'requester' ? '' :
+        '<div><div class="k">Technician</div><div class="v">' + UI.esc(t.technician || ' -- ') + '</div></div>') +
       '<div><div class="k">Resolution</div><div class="v">' + UI.esc(t.diagnosis.actions || t.diagnosis.findings || ' -- ') + '</div></div>' +
       '<div><div class="k">Decision</div><div class="v">' + UI.esc(st === 'none' ? 'pending' : st) + '</div></div>' +
       '<div><div class="k">Confirming person</div><div class="v">' + UI.esc(t.confirmation.person || ' -- ') + '</div></div>' +
@@ -203,7 +200,8 @@ function render() {
       '<div class="row"><span class="t-id">' + UI.esc(j.id) + '</span><span class="chip">' + UI.esc(j.office) + '</span>' +
       '<span class="chip">' + UI.esc(j.category) + '</span></div>' +
       '<span class="hint">' + (j.visitDate ? 'visit ' + UI.dateOnly(j.visitDate) : 'visit not set') + '</span></div>' +
-      '<div class="t-sub mt-xs">Schedule ' + UI.esc(j.scheduleId) + ' · ' + UI.esc(j.assets.join(', ')) + ' · technician ' + UI.esc(j.technician) + '</div>';
+      '<div class="t-sub mt-xs">Schedule ' + UI.esc(j.scheduleId) + ' · ' + UI.esc(j.assets.join(', ')) +
+      (Store.db.role === 'requester' ? '' : ' · technician ' + UI.esc(j.technician)) + '</div>';
   }
 
   var openHTML = openJobs.length ? openJobs.map(function (j) {

@@ -51,8 +51,17 @@
       <section class="grid grid-kpi mt" id="gKpi"></section>
 
       <div class="card mt">
+        <div class="card-head">
+          <h3>Office health</h3>
+          <span class="hint" id="gHealthScope">the selected office</span>
+        </div>
+        <div class="health-strip health-in-card" id="gHealth" aria-label="Office health"></div>
+      </div>
+
+      <div class="card mt">
         <div class="tabs" role="tablist" id="gTabs" aria-label="Register sections">
           <button type="button" class="tab" role="tab" id="tab-history" aria-controls="panel-history" aria-selected="true" data-g="history">Service history</button>
+          <button type="button" class="tab" role="tab" id="tab-timeline" aria-controls="panel-timeline" aria-selected="false" data-g="timeline">Service timeline</button>
           <button type="button" class="tab" role="tab" id="tab-assets" aria-controls="panel-assets" aria-selected="false" data-g="assets">Assets</button>
           <button type="button" class="tab" role="tab" id="tab-maintenance" aria-controls="panel-maintenance" aria-selected="false" data-g="maintenance">Maintenance</button>
           <button type="button" class="tab" role="tab" id="tab-audit" aria-controls="panel-audit" aria-selected="false" data-g="audit">Audit trail</button>
@@ -69,6 +78,7 @@
           <div class="empty" id="gEmpty" hidden><img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No service records match these filters.</div>
         </div>
 
+        <div class="tab-panel" id="panel-timeline" role="tabpanel" aria-labelledby="tab-timeline" hidden></div>
         <div class="tab-panel" id="panel-assets" role="tabpanel" aria-labelledby="tab-assets" hidden></div>
         <div class="tab-panel" id="panel-maintenance" role="tabpanel" aria-labelledby="tab-maintenance" hidden></div>
         <div class="tab-panel" id="panel-audit" role="tabpanel" aria-labelledby="tab-audit" hidden></div>
@@ -96,7 +106,7 @@ var G_F = {
 };
 var gPage = 1;
 var G_PER = 18;
-var aPage = 1, mPage = 1, sPage = 1, auPage = 1;
+var aPage = 1, mPage = 1, sPage = 1, auPage = 1, tlPage = 1;
 var G_TAB_PER = 15;
 
 /* A link from the command palette or another screen opens the register
@@ -208,15 +218,100 @@ function render() {
       '<td data-label="Kind"><span class="chip">' + (e.kind === 'preventive' ? 'Preventive' : 'Corrective') + '</span></td>' +
       '<td data-label="Status"><span class="badge ' + st[1] + '">' + UI.esc(st[0]) + '</span></td>' +
       '<td data-label="Owners"><div class="t-title">' + UI.esc(e.owner || ' -- ') + '</div>' +
-      '<div class="t-sub">' + (e.technician ? 'tech ' + UI.esc(e.technician) : 'unassigned') + '</div></td>' +
+      (role() === 'requester' ? '' :
+        '<div class="t-sub">' + (e.technician ? 'tech ' + UI.esc(e.technician) : 'unassigned') + '</div>') + '</td>' +
       '<td data-label="When"><div class="t-title">' + UI.dateOnly(e.at) + '</div><div class="t-sub">' + UI.timeAgo(e.at) + '</div></td></tr>';
   }).join('');
 
   UI.renderPagination(document.getElementById('gPagination'), pg, function (p) { gPage = p; render(); });
 
   renderAssets(scope, rows);
+  renderTimeline(scope);
   renderMaintenance(scope);
   renderAudit(scope);
+  renderHealth(scope);
+}
+
+/* ---------- office health at a glance (Section 25.5A) ---------- */
+function renderHealth(scope) {
+  var db = Store.db;
+  var office = G_F.office || scope || '';
+  var tickets = db.tickets.filter(function (t) { return !office || t.office === office; });
+  var jobs = db.jobs.filter(function (j) { return !office || j.office === office; });
+  var schedules = db.schedules.filter(function (s) { return !office || s.office === office; });
+  var open = tickets.filter(function (t) { return Query.OPEN_STATES.indexOf(t.status) > -1; }).length;
+  var overdue = tickets.filter(function (t) { return Query.isOverdue(t); }).length;
+  var last = null;
+  tickets.forEach(function (t) {
+    if (t.status !== 'closed' && t.status !== 'resolved') return;
+    var at = t.closedAt || t.updatedAt || t.createdAt;
+    if (!last || String(at) > String(last)) last = at;
+  });
+  jobs.forEach(function (j) {
+    if (j.status !== 'closed') return;
+    var at = j.visitDate || j.updatedAt || j.createdAt;
+    if (!last || String(at) > String(last)) last = at;
+  });
+  var next = null;
+  schedules.forEach(function (s) {
+    if (s.active === false || !s.dueDate) return;
+    if (!next || String(s.dueDate) < String(next)) next = s.dueDate;
+  });
+  var recurring = tickets.filter(function (t) { return t.recurring || t.linkedTo; }).length;
+  function card(label, value, foot, tone) {
+    return '<div class="health-card"' + (tone ? ' data-tone="' + tone + '"' : '') + '>' +
+      '<span class="health-top"><b>' + label + '</b></span>' +
+      '<span class="health-big">' + value + '</span>' +
+      '<span class="health-foot">' + foot + '</span></div>';
+  }
+  document.getElementById('gHealthScope').textContent = office || 'All offices in your scope';
+  document.getElementById('gHealth').innerHTML =
+    card('Open tickets', open, 'not yet resolved or closed', open ? 'warn' : '') +
+    card('Overdue', overdue, 'past the target date', overdue ? 'danger' : '') +
+    card('Last service', last ? UI.dateOnly(last) : 'None yet', 'most recent completed work', '') +
+    card('Next maintenance', next ? UI.dateOnly(next) : 'Not scheduled', schedules.length + ' plan(s) on record', next ? 'warn' : '') +
+    card('Recurring issues', recurring, 'linked to an earlier ticket', recurring ? 'warn' : '');
+}
+
+/* ---------- the service timeline of the office (Section 25.5A) ---------- */
+function renderTimeline(scope) {
+  var panel = document.getElementById('panel-timeline');
+  if (!panel) return;
+  var db = Store.db;
+  var office = G_F.office || '';
+  var ids = {};
+  db.tickets.forEach(function (t) {
+    if (scope && t.office !== scope) return;
+    if (office && t.office !== office) return;
+    ids[t.id] = 1;
+  });
+  db.jobs.forEach(function (j) {
+    if (scope && j.office !== scope) return;
+    if (office && j.office !== office) return;
+    ids[j.id] = 1;
+  });
+  var events = (db.audit || []).filter(function (a) { return ids[a.subjectId]; }).slice().reverse();
+  var tp = paginateSafe(events, tlPage, G_TAB_PER);
+  tlPage = tp.page;
+  var ICON = {
+    create: 'inbox', assign: 'user', status: 'check', diag: 'wrench', test: 'flask',
+    confirm: 'checkCircle', cancel: 'x', sched: 'cal', note: 'message', maint: 'toolbox',
+    settings: 'sliders', renewal: 'refresh'
+  };
+  var TONE = { create: 'tone-ok', test: 'tone-ok', confirm: 'tone-ok', cancel: 'tone-warn' };
+  panel.innerHTML =
+    '<div class="card-head"><h3>Service timeline</h3><span class="chip">' + events.length + ' event(s)</span>' +
+    '<span class="hint">oldest to newest reads down</span></div>' +
+    (events.length
+      ? '<ol class="timeline tl-padded">' + tp.items.map(function (a) {
+        return '<li class="' + (TONE[a.kind] || '') + '">' +
+          '<div class="tl-title"><span class="tl-ico">' + UI.icon(ICON[a.kind] || 'activity') + '</span>' +
+          UI.esc(a.text) + '</div>' +
+          '<div class="tl-meta">' + UI.clock(a.at) + ' · ' + UI.esc(a.by) + ' (' + UI.esc(a.role) + ') · ' +
+          '<span class="mono">' + UI.esc(a.subjectId) + '</span></div></li>';
+      }).join('') + '</ol><div id="tlPagination"></div>'
+      : '<div class="empty"> <img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No service events for this scope.</div>');
+  UI.renderPagination(document.getElementById('tlPagination'), tp, function (p) { tlPage = p; renderTimeline(scope); });
 }
 
 /* ---------- the asset history of the office ---------- */
@@ -280,33 +375,37 @@ function renderMaintenance(scope) {
   mPage = mp.page; sPage = sp.page;
   document.getElementById('panel-maintenance').innerHTML =
     '<div class="card-head"><h3>Preventive maintenance</h3><span class="chip">' + jobs.length + ' visit(s)</span></div>' +
-    '<table class="table"><thead><tr><th>Visit</th><th>Schedule</th><th>Office</th><th>Technician</th><th>Status</th><th>Outcome</th><th>Next due</th></tr></thead><tbody>' +
+    '<table class="table"><thead><tr><th>Visit</th><th>Schedule</th><th>Office</th>' +
+    (role() === 'requester' ? '' : '<th>Technician</th>') + '<th>Status</th><th>Outcome</th><th>Next due</th></tr></thead><tbody>' +
     mp.items.map(function (j) {
       var st = UI.STATUS[j.status] || [j.status, 'b-submitted'];
       return '<tr><td class="td-main" data-label="Visit"><a class="t-id" href="maintenance.html?job=' + encodeURIComponent(j.id) + '">' + UI.esc(j.id) + '</a>' +
         '<div class="t-sub">' + UI.esc(j.category) + '</div></td>' +
         '<td data-label="Schedule"><span class="mono">' + UI.esc(j.scheduleId) + '</span></td>' +
         '<td data-label="Office">' + UI.esc(j.office) + '</td>' +
-        '<td data-label="Technician">' + UI.esc(j.technician || ' -- ') + '</td>' +
+        (role() === 'requester' ? '' : '<td data-label="Technician">' + UI.esc(j.technician || ' -- ') + '</td>') +
         '<td data-label="Status"><span class="badge ' + st[1] + '">' + UI.esc(st[0]) + '</span></td>' +
         '<td data-label="Outcome">' + UI.esc(j.outcome === 'success' ? 'Successful' : j.outcome === 'incomplete' ? 'Incomplete' : j.outcome === 'cancelled' ? 'Cancelled' : 'Pending') + '</td>' +
         '<td data-label="Next due">' + (j.nextDue ? UI.dateOnly(j.nextDue) : ' -- ') + '</td></tr>';
     }).join('') + '</tbody></table>' +
     '<div id="mPagination"></div>' +
-    '<div class="card-head mt"><h3>Maintenance plans</h3><span class="chip">' + schedules.length + '</span></div>' +
-    '<table class="table"><thead><tr><th>Schedule</th><th>Office</th><th>Category</th><th>Assets</th><th>Frequency</th><th>Due</th><th>Technician</th></tr></thead><tbody>' +
-    sp.items.map(function (s) {
-      return '<tr><td class="td-main" data-label="Schedule"><span class="t-id">' + UI.esc(s.id) + '</span></td>' +
-        '<td data-label="Office">' + UI.esc(s.office) + '</td>' +
-        '<td data-label="Category">' + UI.esc(s.category) + '</td>' +
-        '<td data-label="Assets">' + UI.esc((s.assets || []).join(', ') || ' -- ') + '</td>' +
-        '<td data-label="Frequency">' + UI.esc(s.frequency) + '</td>' +
-        '<td data-label="Due">' + (s.dueDate ? UI.dateOnly(s.dueDate) : ' -- ') + '</td>' +
-        '<td data-label="Technician">' + UI.esc(s.technician || ' -- ') + '</td></tr>';
-    }).join('') + '</tbody></table>' +
-    '<div id="sPagination"></div>';
+    /* The office reads the visits that concern it; preventive plans and
+       technician schedules stay an IT planning surface. */
+    (role() === 'requester' ? '' :
+      '<div class="card-head mt"><h3>Maintenance plans</h3><span class="chip">' + schedules.length + '</span></div>' +
+      '<table class="table"><thead><tr><th>Schedule</th><th>Office</th><th>Category</th><th>Assets</th><th>Frequency</th><th>Due</th><th>Technician</th></tr></thead><tbody>' +
+      sp.items.map(function (s) {
+        return '<tr><td class="td-main" data-label="Schedule"><span class="t-id">' + UI.esc(s.id) + '</span></td>' +
+          '<td data-label="Office">' + UI.esc(s.office) + '</td>' +
+          '<td data-label="Category">' + UI.esc(s.category) + '</td>' +
+          '<td data-label="Assets">' + UI.esc((s.assets || []).join(', ') || ' -- ') + '</td>' +
+          '<td data-label="Frequency">' + UI.esc(s.frequency) + '</td>' +
+          '<td data-label="Due">' + (s.dueDate ? UI.dateOnly(s.dueDate) : ' -- ') + '</td>' +
+          '<td data-label="Technician">' + UI.esc(s.technician || ' -- ') + '</td></tr>';
+      }).join('') + '</tbody></table>' +
+      '<div id="sPagination"></div>');
   UI.renderPagination(document.getElementById('mPagination'), mp, function (p) { mPage = p; renderMaintenance(scope); });
-  UI.renderPagination(document.getElementById('sPagination'), sp, function (p) { sPage = p; renderMaintenance(scope); });
+  if (role() !== 'requester') UI.renderPagination(document.getElementById('sPagination'), sp, function (p) { sPage = p; renderMaintenance(scope); });
 }
 
 /* ---------- the audit trail of the office ---------- */
@@ -345,7 +444,7 @@ if (UI.roleKey() === 'requester') {
 /* the register tabs */
 document.querySelectorAll('#gTabs .tab').forEach(function (btn) {
   btn.addEventListener('click', function () {
-    ['history', 'assets', 'maintenance', 'audit'].forEach(function (k) {
+    ['history', 'timeline', 'assets', 'maintenance', 'audit'].forEach(function (k) {
       var b = document.getElementById('tab-' + k);
       var p = document.getElementById('panel-' + k);
       var on = k === btn.dataset.g;
@@ -361,19 +460,24 @@ function sync() {
     kind: document.getElementById('gKind').value, status: document.getElementById('gStatus').value,
     from: document.getElementById('gFrom').value, to: document.getElementById('gTo').value
   };
-  gPage = 1; aPage = 1; mPage = 1; sPage = 1; auPage = 1; render();
+  gPage = 1; aPage = 1; mPage = 1; sPage = 1; auPage = 1; tlPage = 1; render();
 }
 document.getElementById('gQ').addEventListener('input', UI.debounce(sync, 200));
 ['gOffice', 'gKind', 'gStatus', 'gFrom', 'gTo'].forEach(function (id) { document.getElementById(id).addEventListener('change', sync); });
 document.getElementById('gReset').addEventListener('click', function () {
   G_F = { q: '', office: '', kind: '', status: '', from: '', to: '' };
   ['gQ', 'gOffice', 'gKind', 'gStatus', 'gFrom', 'gTo'].forEach(function (id) { document.getElementById(id).value = ''; });
-  gPage = 1; aPage = 1; mPage = 1; sPage = 1; auPage = 1; render();
+  gPage = 1; aPage = 1; mPage = 1; sPage = 1; auPage = 1; tlPage = 1; render();
 });
 document.getElementById('gCsv').addEventListener('click', function () {
-  var rows = [['record', 'kind', 'office', 'status', 'category', 'asset', 'owner', 'technician', 'created', 'updated']];
+  var withTech = role() !== 'requester';
+  var rows = [withTech ? ['record', 'kind', 'office', 'status', 'category', 'asset', 'owner', 'technician', 'created', 'updated']
+                       : ['record', 'kind', 'office', 'status', 'category', 'asset', 'owner', 'created', 'updated']];
   filtered().forEach(function (e) {
-    rows.push([e.id, e.kind, e.office, e.status, e.category, e.asset || '', e.owner || '', e.technician || '', e.createdAt, e.at]);
+    var row = [e.id, e.kind, e.office, e.status, e.category, e.asset || '', e.owner || ''];
+    if (withTech) row.push(e.technician || '');
+    row.push(e.createdAt, e.at);
+    rows.push(row);
   });
   UI.downloadCSV('service-register.csv', rows);
 });

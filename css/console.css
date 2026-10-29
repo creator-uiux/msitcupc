@@ -243,13 +243,15 @@ kbd{
 .dash-side{position:sticky;top:72px}
 .dash-side .card-head{background:var(--brand-soft);border-bottom:1px solid var(--line)}
 .dash-side .card-head h3{font-size:13px}
-.dash-side .list li{padding:11px 14px;gap:10px}
-.dash-side .list .ico{width:28px;height:28px;flex:0 0 28px;border-radius:8px}
-.dash-side .list .ico svg{width:15px;height:15px}
-.dash-side .list .body strong{font-size:13px;line-height:1.4}
-.dash-side .list .body > span:not([class]){display:block;font-size:11.5px;line-height:1.45;margin-top:2px}
+.dash-side .list li{padding:8px 13px;gap:9px}
+.dash-side .list .ico{width:26px;height:26px;flex:0 0 26px;border-radius:8px}
+.dash-side .list .ico svg{width:14px;height:14px}
+.dash-side .list .body strong{font-size:12.5px;line-height:1.35}
+.dash-side .list .body > span:not([class]){display:inline;font-size:11px;line-height:1.4;margin-top:1px}
 .dash-side .list .when{font-size:11px;white-space:normal}
-.dash-side .list .body .when{display:block;margin-top:3px;color:var(--muted)}
+.dash-side .list .body .when{display:block;margin-top:2px;color:var(--muted)}
+.dash-side .list .chip-waiting{margin-top:2px;padding:0 7px;font-size:10.5px;line-height:1.65}
+
 html[data-theme="dark"] .dash-side .card-head{background:var(--brand-soft)}
 
 .grid-kpi{grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
@@ -290,7 +292,7 @@ html[data-theme="dark"] .dash-side .card-head{background:var(--brand-soft)}
 
 /* office health strip: compact cards ordered by risk, one line of numbers,
    a completion meter, then the percentage in words */
-.health-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:14px}
+.health-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:14px}
 .health-strip[hidden]{display:none}
 .health-card{
   display:flex;flex-direction:column;gap:6px;min-width:0;
@@ -298,7 +300,9 @@ html[data-theme="dark"] .dash-side .card-head{background:var(--brand-soft)}
   background:var(--surface);color:inherit;text-decoration:none;
   box-shadow:inset 3px 0 0 var(--ok);
 }
-.health-card:hover{border-color:var(--brand);color:inherit;text-decoration:none;background:var(--surface-2)}
+@media (hover:hover){
+  .health-card:hover{border-color:var(--brand);color:inherit;text-decoration:none;background:var(--surface-2)}
+}
 .health-card[data-tone="warn"]{box-shadow:inset 3px 0 0 var(--warn)}
 .health-card[data-tone="danger"]{box-shadow:inset 3px 0 0 var(--danger)}
 .health-top{display:flex;align-items:center;gap:6px;min-width:0}
@@ -315,6 +319,11 @@ html[data-theme="dark"] .dash-side .card-head{background:var(--brand-soft)}
 .health-card[data-tone="warn"] .health-meter>i{background:var(--warn)}
 .health-card[data-tone="danger"] .health-meter>i{background:var(--danger)}
 .health-foot{font-size:10.5px;color:var(--muted)}
+.health-in-card{margin-top:0;padding:0 14px 14px}
+.health-big{font-size:22px;font-weight:600;line-height:1.1;color:var(--ink);font-variant-numeric:tabular-nums}
+.tl-padded{padding:14px}
+.tl-ico{display:inline-flex;vertical-align:-3px;margin-right:6px;color:var(--brand-2)}
+.tl-ico svg{width:14px;height:14px}
 .health-more{align-self:center;padding:6px 2px;font-size:11px;color:var(--muted)}
 
 /* technician load: one stacked bar per person, scaled to the busiest queue */
@@ -588,6 +597,30 @@ body.role-technician .filter-scope{display:none !important}
 .wo-col-empty{margin:2px 2px 6px;font-size:11.5px;color:var(--muted);font-style:italic}
 .wo-col .wo-card{padding:10px 10px 9px;gap:6px}
 .wo-col .wo-title{font-size:12.5px;-webkit-line-clamp:3}
+.wo-cell{display:flex;flex-direction:column;gap:5px;min-width:0}
+.wo-move{font-size:11px}
+.wo-move>summary{
+  list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:4px;
+  min-height:32px;padding:3px 6px;border:1px solid transparent;border-radius:6px;color:var(--brand-2);
+}
+.wo-move>summary::-webkit-details-marker{display:none}
+.wo-move>summary:hover,.wo-move[open]>summary{background:var(--surface-2);border-color:var(--line)}
+.wo-move summary svg{width:12px;height:12px}
+.wo-move-list{
+  display:flex;flex-direction:column;gap:3px;margin-top:4px;padding:4px;
+  border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:var(--shadow-sm);
+}
+.wo-move-list button{
+  min-height:32px;padding:6px 7px;border:0;border-radius:5px;background:none;
+  font:inherit;font-size:11.5px;color:var(--ink);text-align:left;cursor:pointer;
+}
+.wo-move-list button:hover{background:var(--surface-2)}
+.wo-wait{padding:2px 4px;font-size:10.5px;color:var(--muted)}
+.wo-archive{flex-basis:258px}
+.wo-archive>summary{list-style:none;cursor:pointer}
+.wo-archive>summary::-webkit-details-marker{display:none}
+.wo-archive:not([open]) .wo-col-body{display:none}
+.wo-archive[open]>summary{border-bottom:1px solid var(--line)}
 .board-note{padding:9px 14px;border-bottom:1px solid var(--line);background:var(--surface-2);margin:0}
 
 /* ------------------------------------------------------ maintenance planner */
@@ -720,6 +753,9 @@ body.cmdk-open{overflow:hidden}
 }
 
 @media (max-width:1023px){
+  /* Hiding the rail toggle for the current review: the bottom bar plus the
+     More sheet still reaches every destination, so no screen is lost. */
+  #navToggle{display:none}
   .sidebar{
     width:272px;flex-basis:272px;
     position:fixed;left:0;top:0;bottom:0;height:100%;
@@ -801,4 +837,270 @@ body.cmdk-open{overflow:hidden}
 
 @media (prefers-reduced-motion:reduce){
   .side-link,.side-user,.sidebar,.notif,.acct,.tabs .tab{transition:none !important;animation:none !important}
+}
+
+/* ------------------------------------------------- chart detail
+   The activity chart gains a count axis and gridlines, the bar lists print
+   their share as well as their count, and the ring carries its denominator.
+   Everything here is built from the existing tokens. */
+.chart-axis{display:flex;gap:6px;align-items:stretch}
+.chart-y{flex:0 0 28px;height:180px;padding:8px 0 1px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;font-size:10px;line-height:1;font-variant-numeric:tabular-nums;color:var(--muted)}
+.chart-plot{position:relative;flex:1 1 auto;min-width:0}
+.chart-plot .cols{height:180px}
+.chart-grid{position:absolute;inset:8px 0 1px;pointer-events:none}
+.chart-grid i{position:absolute;left:0;right:0;bottom:var(--y);border-top:1px dashed var(--line)}
+.chart-grid i:first-child{border-top-style:solid}
+.chart-x{position:relative;height:16px;margin:4px 0 0 34px;font-size:10px;color:var(--muted);line-height:1}
+.chart-x span{position:absolute;left:var(--x);transform:translateX(-50%);white-space:nowrap}
+.chart-x span:first-child{transform:none}
+.chart-x span:last-child{transform:translateX(-100%)}
+.chart-summary{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
+.chart-stat{display:flex;flex-direction:column;gap:1px;min-width:0}
+.chart-stat b{font-family:var(--sora);font-size:15px;font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums}
+.chart-stat span{font-size:10.5px;line-height:1.35;color:var(--muted)}
+.chart-note{margin:8px 0 0;font-size:11px;color:var(--muted)}
+@media (hover:hover){
+  .col-day:hover{background:rgba(0,0,0,.035);border-radius:3px}
+  html[data-theme="dark"] .col-day:hover{background:rgba(255,255,255,.05)}
+}
+.cols.is-dense{gap:1px}
+.cols.is-dense .col-day{gap:0}
+.legend-line b{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.hbar-num{flex:0 0 32px}
+.hbar-pct{flex:0 0 38px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums;color:var(--muted)}
+/* a narrow card shortens the label instead of pushing the percentage out */
+.hbar-lbl{flex-shrink:1;min-width:0}
+.hbar-track{min-width:24px}
+.gauge-sub{max-width:112px;font-size:10px;line-height:1.35;color:var(--muted);text-align:center}
+.spark-dot{fill:var(--brand);stroke:var(--surface);stroke-width:1.5}
+.kpi.k-warn .spark-dot,.kpi.k-hold .spark-dot{fill:var(--warn)}
+.kpi.k-ok .spark-dot{fill:var(--ok)}
+.hbar-track,.hbar-split{background-image:linear-gradient(to right,rgba(0,0,0,.05) 1px,transparent 1px);background-size:25% 100%}
+html[data-theme="dark"] .hbar-track,html[data-theme="dark"] .hbar-split{background-image:linear-gradient(to right,rgba(255,255,255,.07) 1px,transparent 1px)}
+.hbar-split{flex:1 1 auto;min-width:0;height:10px;border-radius:5px;overflow:hidden;background-color:var(--surface-2);display:flex}
+.hbar-seg{display:block;height:100%}
+.hbar-seg.is-active{background:var(--brand-3)}
+.hbar-seg.is-done{background:var(--line-strong)}
+.legend-line i.is-active{background:var(--brand-3)}
+.legend-line i.is-done{background:var(--line-strong)}
+@media (max-width:599px){
+  .chart-y{flex-basis:24px;font-size:9px}
+  .chart-x{margin-left:30px;font-size:9px}
+  .chart-summary{gap:6px 14px}
+  .chart-stat b{font-size:13px}
+  .hbar-pct{flex-basis:34px;font-size:10px}
+  /* long status and technician names wrap instead of losing letters */
+  .hbar-lbl{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25}
+}
+
+/* ------------------------------------------------- locked form values */
+/* A value the signed-in account owns (the Office Requester's name on the
+   request form) reads as set, not empty: the same surface as a read-only
+   summary, muted ink, and a pointer that says it cannot be typed over. */
+.field input:disabled,.field select:disabled,.field textarea:disabled{
+  background:var(--surface-2);border-color:var(--line);color:var(--text-secondary);
+  -webkit-text-fill-color:var(--text-secondary);
+  opacity:1;cursor:not-allowed;
+}
+
+/* ------------------------------------------------- conversation composer */
+/* The reply box sits outside a .field wrapper, so the shared form-control
+   rules never reached it and it fell back to the bare browser textarea.
+   Give it the same surface, border, ink and focus ring as every other
+   control, and keep the placeholder readable in both themes. */
+#tComposer textarea{
+  width:100%;min-height:88px;resize:vertical;
+  padding:10px 12px;font:inherit;font-size:var(--text-md);line-height:1.5;
+  color:var(--ink);background:var(--surface-2);
+  border:1px solid var(--line-strong);border-radius:var(--radius-sm);
+  caret-color:var(--ink);
+}
+#tComposer textarea::placeholder{color:var(--muted);opacity:1}
+#tComposer textarea:hover{border-color:var(--brand-3)}
+#tComposer textarea:focus{
+  border-color:var(--brand-3);box-shadow:0 0 0 3px var(--ring);outline:none;
+}
+
+/* ------------------------------------------------- table density */
+/* Comfortable is the default.  Compact keeps every field on screen but
+   tightens the rows so a long register fits more work on one view. */
+.density-picker{border-top:0;padding-top:4px;margin-top:-4px}
+.pref-label{font-size:11.5px;color:var(--muted);font-weight:var(--w-medium);margin:12px 0 6px}
+html[data-density="compact"] .table{font-size:13px}
+html[data-density="compact"] .table th{padding:7px 12px}
+html[data-density="compact"] .table td{padding:6px 12px}
+html[data-density="compact"] .table .t-sub{font-size:10.5px;line-height:1.35}
+html[data-density="compact"] .list li{padding-top:8px;padding-bottom:8px}
+
+/* ------------------------------------------------- one-tap contact */
+/* A phone number should dial and an address should open the mail client,
+   on a phone and on a desktop alike. */
+.contact-links{display:inline-flex;gap:6px;margin-left:8px;vertical-align:middle;flex-wrap:wrap}
+.contact-link{
+  display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:4px 10px;
+  border:1px solid var(--line-strong);border-radius:99px;background:var(--surface);
+  color:var(--brand-2);font-size:11.5px;font-weight:600;text-decoration:none;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
+}
+.contact-link svg{width:13px;height:13px;flex:0 0 13px}
+@media (hover:hover){
+  .contact-link:hover{border-color:var(--brand-3);background:var(--surface-2);color:var(--brand-2)}
+}
+.contact-link:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+@media (pointer:coarse){
+  .contact-link{min-height:40px;padding:6px 14px;font-size:12.5px}
+  .contact-links{margin-left:0}
+}
+
+/* a reading chip that needs attention without borrowing a status colour */
+.chip-warn{background:var(--warning-bg);border-color:var(--warning);color:var(--warning)}
+
+/* ------------------------------------------------- checklist cards */
+/* One card per task so the technician records the result, the finding and
+   the evidence without opening a dialog.  The footer stays in reach. */
+.job-card{padding-bottom:2px}
+.chk-progress{height:6px;margin:10px 0 5px;border:1px solid var(--line);border-radius:99px;background:var(--surface-2);overflow:hidden}
+.chk-progress span{display:block;height:100%;background:var(--brand);border-radius:99px;transition:width .3s}
+.chk-progress-text{margin-bottom:10px;font-size:12px;color:var(--muted)}
+.chk-list{display:flex;flex-direction:column;gap:8px}
+.chk-card{padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface)}
+.chk-card.unsaved{border-color:var(--brand-3);box-shadow:0 0 0 2px var(--ring)}
+.chk-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.chk-head b{font-size:13px;line-height:1.35}
+.chk-state{flex:0 0 auto;font-size:11px;color:var(--muted);white-space:nowrap}
+.chk-card.done .chk-state{color:var(--ok);font-weight:600}
+.chk-state.unsaved{color:var(--brand-3)}
+.chk-seg{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 6px}
+.chk-seg-btn{
+  min-height:34px;padding:4px 11px;border:1px solid var(--line-strong);border-radius:99px;
+  background:var(--surface);color:var(--muted);font:inherit;font-size:12px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+@media (hover:hover){
+  .chk-seg-btn:hover{border-color:var(--brand-3);color:var(--ink)}
+}
+.chk-seg-btn.on{background:var(--brand-soft);border-color:var(--brand);color:var(--brand-3);font-weight:600}
+.chk-seg-btn.on[data-res="Failed"]{background:var(--danger-bg);border-color:var(--danger);color:var(--danger)}
+.chk-seg-btn.on[data-res="Attention needed"]{background:var(--warning-bg);border-color:var(--warning);color:var(--warning)}
+.chk-finding{display:flex;flex-direction:column;gap:4px;margin:4px 0 8px;font-size:11px;color:var(--muted)}
+.chk-finding input{
+  width:100%;min-height:36px;padding:7px 10px;font:inherit;font-size:13px;
+  color:var(--ink);background:var(--surface-2);
+  border:1px solid var(--line-strong);border-radius:var(--radius-sm);
+}
+.chk-finding input:focus{border-color:var(--brand-3);box-shadow:0 0 0 3px var(--ring);outline:none}
+.chk-ev{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chk-ev-list{display:flex;gap:4px;flex-wrap:wrap}
+.chk-ev-list .chip{padding:2px 8px;font-size:11px}
+.chk-foot{
+  position:sticky;bottom:0;z-index:1;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  margin-top:10px;padding:9px 0 3px;
+  background:var(--surface);border-top:1px solid var(--line);
+}
+.chk-foot-progress{margin-right:auto;font-size:12px;font-weight:600;color:var(--muted)}
+@media (pointer:coarse){
+  .chk-seg-btn{min-height:42px;padding:6px 14px;font-size:13px}
+  .chk-foot .btn{min-height:42px}
+}
+
+/* ------------------------------------------------- responsive techniques */
+/* dvh follows the visible viewport on mobile browsers, so the sidebar, the
+   trays and the dialogs stop sliding under the collapsing address bar. The
+   100vh rules in app.css remain as the fallback for older engines. */
+.app{min-height:100dvh}
+.sidebar{height:100dvh}
+.notif,.acct{max-height:calc(100dvh - 78px)}
+.cmdk-panel{max-height:min(70dvh,620px)}
+.modal-host .modal-card{max-height:88dvh}
+
+/* The checklist card decides its own layout from its width, not the window:
+   the same card sits in one column on a phone and in a two column grid on a
+   desktop, so its footer has to fold the same way in both. */
+.job-card{container:job / inline-size}
+@container job (max-width:390px){
+  .chk-head{flex-direction:column;gap:2px}
+  .chk-foot-progress{flex:1 1 100%;margin-right:0}
+  .chk-foot .btn{flex:1 1 calc(50% - 4px);justify-content:center}
+}
+
+/* The checklist is the technician's main work, so it takes the full width and
+   fills two columns instead of stacking in a narrow rail. */
+.job-grid{columns:2;column-gap:14px;padding:0 18px 16px}
+.job-grid > .job-card{
+  break-inside:avoid;margin:0 0 14px;padding:14px 16px 6px;
+  border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);
+}
+.job-grid .chk-foot{position:static;gap:6px;margin-top:8px}
+.job-grid > .empty{padding:18px 0}
+@media (max-width:1023px){
+  .job-grid{columns:1}
+}
+
+/* At a readable card width one checklist item fits on three short lines:
+   the task, the four results, then the finding with its evidence beside it. */
+@container job (min-width:430px){
+  .chk-card{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-areas:"head head" "seg seg" "finding ev";
+    gap:5px 10px;padding:9px 11px;
+  }
+  .chk-head{grid-area:head}
+  .chk-seg{grid-area:seg;margin:0}
+  .chk-finding{grid-area:finding;flex-direction:row;align-items:center;gap:8px;margin:0;min-width:0}
+  .chk-finding span{flex:0 0 auto}
+  .chk-finding input{flex:1 1 auto;min-width:0}
+  .chk-ev{grid-area:ev;justify-self:end;margin:0}
+  .chk-foot .btn{padding:4px 9px}
+}
+.health-in-card{container:health / inline-size}
+@container health (max-width:560px){
+  .health-card{padding:8px 10px}
+  .health-big{font-size:18px}
+}
+
+/* A touch pointer gets a 40px target for every control it can press; the
+   reading surfaces keep their comfortable density. */
+@media (pointer:coarse){
+  .btn{min-height:40px}
+  .tabs .tab,.seg button{min-height:40px}
+  .side-link{min-height:42px}
+  .chk-finding input{min-height:42px}
+}
+
+/* Maintenance detail: the record and the checklist sit side by side on the
+   full page width, so the selected job no longer stretches a narrow rail
+   beside a short jobs table. */
+.jd-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);
+  gap:18px 24px;align-items:start;
+}
+.jd-grid > .stack{min-width:0}
+.jd-grid .info > *{flex:1 1 150px;min-width:130px}
+.jd-grid .checkline{padding:8px 12px}
+.jd-grid > .stack > .card{margin-top:14px}
+@media (max-width:1023px){
+  .jd-grid{grid-template-columns:minmax(0,1fr)}
+}
+
+/* Settings: the four reference groups pair up in the wide card, and the
+   policy card spans the page so its three sections sit side by side instead
+   of stacking into a 1,387px column. */
+.ref-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 26px;align-items:start}
+.policy-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:0 26px;align-items:start}
+.policy-col{min-width:0}
+.policy-cols .matrix-row select{min-height:38px;padding:7px 10px}
+@media (max-width:1279px){
+  .policy-cols{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:767px){
+  .ref-cols{grid-template-columns:minmax(0,1fr)}
+}
+
+/* Reports: the two rule notes sit at the page width as footnotes. */
+.notes-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px}
+@media (max-width:899px){
+  .notes-2{grid-template-columns:minmax(0,1fr)}
 }

@@ -27,6 +27,36 @@
         };
         break;
 
+      case 'supplyinfo':
+        U.openModal('Information supplied  --  return this ticket to review',
+          U.field('What was supplied', U.textarea('note', 'e.g. Serial number and exact error text received by phone.', '', 3, true)),
+          '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Return to Submitted</button>');
+        document.getElementById('mGo').onclick = function () {
+          var r = F.submitInfo(id, { note: U.modalValue('note') }); U.closeModal(); after(r, cb);
+        };
+        break;
+
+      case 'reviewassign':
+        U.openModal('Review complete  --  assess, assign and notify',
+          '<div class="grid grid-form">' +
+          U.field('Impact', U.select('impact', ['Low', 'Medium', 'High'], t.impact || 'Medium', true)) +
+          U.field('Urgency', U.select('urgency', ['Low', 'Medium', 'High'], t.urgency || 'Medium', true)) +
+          U.field('Priority', U.select('priority', [['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['critical', 'Critical']], t.priority || 'medium', true)) +
+          U.field('Target completion date', U.dateInput('target', (t.target || '').slice(0, 10), { required: true })) +
+          U.field('Technician', U.select('tech', [['J. Tan', 'J. Tan  --  hardware / network'], ['M. Uy', 'M. Uy  --  printers / UPS'], ['K. Villanueva', 'K. Villanueva  --  systems']], t.technician || 'J. Tan', true)) +
+          '</div>',
+          '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Save and assign</button>');
+        document.getElementById('mGo').onclick = function () {
+          var a = F.assess(id, {
+            impact: U.modalValue('impact'), urgency: U.modalValue('urgency'),
+            priority: U.modalValue('priority'), target: U.modalValue('target')
+          });
+          if (!a.ok) { U.closeModal(); after(a, cb); return; }
+          var r = F.assign(id, U.modalValue('tech'));
+          U.closeModal(); after(r, cb);
+        };
+        break;
+
       case 'assess':
         U.openModal('Assess impact and urgency  --  set priority and target date',
           '<div class="grid grid-form">' +
@@ -52,6 +82,16 @@
           var r = F.assign(id, tech);
           if (r.ok && note) F.coordinate(id, { date: (t.target || S.NOW()).slice(0, 10), tech: tech, notes: note });
           U.closeModal(); after(r, cb);
+        };
+        break;
+
+      case 'reassign':
+        U.openModal('Reassign technician  --  ' + id,
+          U.field('Technician', U.select('tech', [['J. Tan', 'J. Tan  --  hardware / network'], ['M. Uy', 'M. Uy  --  printers / UPS'], ['K. Villanueva', 'K. Villanueva  --  systems']], t.technician || 'J. Tan', true)) +
+          '<div class="note mt"><span>' + UI.icon('eye') + '</span><div>The status does not change. The previous and the new technician, and the office, are notified.</div></div>',
+          '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Reassign &amp; notify</button>');
+        document.getElementById('mGo').onclick = function () {
+          var r = F.reassign(id, U.modalValue('tech')); U.closeModal(); after(r, cb);
         };
         break;
 
@@ -188,7 +228,7 @@
         break;
 
       /* ---- Section 3 confirmation / closure ---- */
-      case 'accept': after(F.officeDecision(id, 'accepted', { person: t.requester, feedback: '' }), cb); break;
+      case 'accept': after(F.officeDecision(id, 'accepted', { person: U.viewerName() || t.requester, feedback: '' }), cb); break;
 
       case 'reject':
         U.openModal('Office rejects the result  --  record feedback',

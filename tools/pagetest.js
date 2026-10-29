@@ -67,7 +67,7 @@ function startServer() {
       (function ping() {
         http.get(BASE + 'index.html', function (r) { r.resume(); resolve(child); })
           .on('error', function () {
-            if (++tries > 40) reject(new Error('server never came up'));
+            if (++tries > 120) reject(new Error('server never came up'));
             else setTimeout(ping, 250);
           });
       })();
@@ -122,7 +122,7 @@ function openOnce(url) {
       }
       if (dom.window.document.readyState === 'complete') setTimeout(finish, 60);
       else dom.window.addEventListener('load', function () { setTimeout(finish, 60); });
-      setTimeout(finish, 6000);
+      setTimeout(finish, 20000);
     });
   });
 }
@@ -228,22 +228,71 @@ tests.push(async function request() {
   $('#reqForm').dispatchEvent(new p.w.Event('submit', { bubbles: true, cancelable: true }));
   ok(p.w.Store.db.tickets.length === n0, 'empty submission rejected (required fields)');
 
-  /* real submission */
+  /* priority is an IT assessment field: the office form hides it */
+  ok($('#fPriority') !== null, 'the request form keeps the priority field for IT staff');
+  ok($('#fPriorityField').hidden === true, 'the office requester never sees the priority field');
+  ok($('#fDateReported').value === p.w.Time.todayPlus(0), 'date reported defaults to today');
+
+  /* the office list comes from the register, not a hardcoded subset */
+  ok($$('#fOffice option').length === 9, 'every active office plus the prompt is offered (' +
+    $$('#fOffice option').length + ')');
+  ok($$('#fOffice option').some(function (o) { return o.value === 'Office of the Director'; }),
+    'the office dropdown includes the Office of the Director');
+
+  /* the office requester files under their own name but may pick another office */
+  ok($('#fReq').disabled === true, 'requester files under their own account');
+  ok($('#fReq').value === 'A. Delos Reyes', 'locked requester field shows the signed-in name');
+  ok($('#fOffice').disabled === false && $('#fOffice').value === 'Records Office',
+    'requester office starts on their own office and stays selectable');
+  ok(/Choose another active office/.test($('#fOfficeHelp').textContent),
+    'office field explains that another active office can be chosen');
+  $('#btnReset').click();
+  ok($('#fReq').disabled === true, 'Clear does not unlock the requester field');
+  ok($('#fReq').value === 'A. Delos Reyes', 'Clear restores the signed-in name');
+  ok($('#fOffice').disabled === false && $('#fOffice').value === 'Records Office',
+    'Clear returns the office choice to the requester default');
+
+  /* real submission, for an office other than the requester's own */
   var f = $('#reqForm');
-  fld(f, 'office').value = 'Registrar';
-  fld(f, 'requester').value = 'P. Ocampo';
+  fld(f, 'office').value = 'Library';
   fld(f, 'category').value = 'Printer and Peripheral';
   fld(f, 'issue').value = 'Toner smears on the right margin.';
   fld(f, 'asset').value = 'PRN-REG-02';
+  fld(f, 'priority').value = 'high';
+  fld(f, 'dateReported').value = '2026-09-30';
+  fld(f, 'idempotencyKey').value = 'qa-request-dup-1';
   $('#btnSubmit').disabled = false;
   f.dispatchEvent(new p.w.Event('submit', { bubbles: true, cancelable: true }));
   ok(p.w.Store.db.tickets.length === n0 + 1, 'valid submission creates a ticket');
   var nt = p.w.Store.db.tickets[0];
-  ok(nt.status === 'submitted' && nt.office === 'Registrar' && nt.asset === 'PRN-REG-02', 'intake captured office/asset/status');
+  ok(nt.status === 'submitted' && nt.office === 'Library' && nt.asset === 'PRN-REG-02', 'intake captured the chosen office/asset/status');
+  ok(nt.priority === 'medium', 'requester intake starts at Medium (priority is set at assessment)');
+  ok(nt.dateReported === '2026-09-30', 'the date reported field reaches the ticket');
+  ok(nt.idempotencyKey === 'qa-request-dup-1', 'the duplicate protection key reaches the ticket');
+  ok(nt.requester === 'A. Delos Reyes', 'the disabled requester field still files under the signed-in account');
   ok($('#successBox').hidden === false, 'success panel shown with new id');
   ok($('#sucId').textContent === nt.id, 'success panel shows the real ticket id');
+  ok(/IT Coordinator will review/.test($('#sucNext').textContent), 'success panel explains the review step');
   ok($('#myList').children.length > 0, 'office ticket list refreshed');
+
+  /* a repeated submit with the same key is harmless */
+  var n1 = p.w.Store.db.tickets.length;
+  $('#btnSubmit').disabled = false;
+  f.dispatchEvent(new p.w.Event('submit', { bubbles: true, cancelable: true }));
+  ok(p.w.Store.db.tickets.length === n1, 'the duplicate protection key prevents a second ticket');
   ok(p.errors.length === 0, 'no errors after submission');
+  close(p);
+});
+
+tests.push(async function requestCoordinatorIntake() {
+  var p = await open(BASE + 'request.html');
+  asRole(p, 'coordinator');
+  ok($('#fReq').disabled === false, 'coordinator types the name of the person reporting the issue');
+  ok(/Name of the person/.test($('#fReqHelp').textContent), 'coordinator field explains what to enter');
+  ok($('#fOffice').disabled === false, 'coordinator can choose any office');
+  ok($('#fPriorityField').hidden === false, 'coordinator sees the priority field at intake');
+  ok(/Any active office/.test($('#fOfficeHelp').textContent), 'coordinator office field explains its scope');
+  ok(p.errors.length === 0, 'no errors on the coordinator intake');
   close(p);
 });
 
@@ -252,6 +301,10 @@ tests.push(async function requestRespond() {
   ok(p.errors.length === 0, 'respond mode loads with no errors' + (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));
   ok($('#respondNote').hidden === false, 'needs-information banner shown');
   ok(/Supply missing information/.test($('#formTitle').textContent), 'form retitled to reply mode');
+  ok($('#fReq').disabled === true && $('#fReq').value === 'R. Villanueva', 'reply keeps the requester carried from the original ticket');
+  ok($('#fPriority').disabled === true && $('#fPriority').value === 'high', 'reply carries the original priority and cannot change it');
+  p.w.applyRequesterLock();
+  ok($('#fReq').disabled === true && $('#fReq').value === 'R. Villanueva', 'the lock never reopens the reply fields');
   var f = $('#reqForm');
   fld(f, 'issue').value = 'Payroll module fails with error 0x80070057 on machine ACC-3.';
   $('#btnSubmit').disabled = false;
@@ -289,6 +342,37 @@ tests.push(async function ticketDetail() {
   close(p);
 });
 
+tests.push(async function ticketDetailRequester() {
+  var p = await open(BASE + 'ticket.html?id=IT-2026-000142');
+  asRole(p, 'requester');
+  var head = $('#tHead').textContent;
+  ok(!/Priority/.test(head), 'the office requester sees no priority on the record');
+  ok(!/Impact \/ urgency/.test(head), 'the office requester sees no impact or urgency');
+  ok(!/Technician/.test(head), 'the office requester sees no technician field');
+  ok(head.indexOf('J. Tan') === -1, 'the assigned technician name is hidden from the office');
+  ok(p.errors.length === 0, 'no errors on the requester record view');
+  close(p);
+});
+
+tests.push(async function reviewReassign() {
+  var p = await open(BASE + 'review.html');
+  p.w.UI.signIn('coordinator');
+  p.w.UI.remount();
+  var row = $$('#rvBody tr[data-id="IT-2026-000130"]')[0];
+  if (row) row.click();
+  var button = $$('#rvPanel [data-act="reassign"]')[0];
+  ok(button !== undefined, 'the coordinator is offered a reassign control on an assigned ticket');
+  if (button) {
+    button.click();
+    ok($('.modal-host') !== null, 'the reassign modal opens');
+    $('.modal-host [name="tech"]').value = 'M. Uy';
+    $('#mGo').click();
+    ok(p.w.Store.getTicket('IT-2026-000130').technician === 'M. Uy', 'reassignment reaches the ticket');
+  }
+  ok(p.errors.length === 0, 'no errors after reassignment');
+  close(p);
+});
+
 tests.push(async function confirmClose() {
   var p = await open(BASE + 'confirm.html');
   ok(p.errors.length === 0, 'confirmation page loads with no errors' + (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));
@@ -301,19 +385,16 @@ tests.push(async function confirmClose() {
 
   asRole(p, 'requester');
   $$('#cfPanel [data-act="accept"]')[0].click();
-  ok(p.w.Store.getTicket('IT-2026-000141').confirmation.state === 'accepted', 'office acceptance recorded');
+  var cf = p.w.Store.getTicket('IT-2026-000141');
+  ok(cf.confirmation.state === 'accepted', 'office acceptance recorded');
+  ok(cf.status === 'closed', 'acceptance closes the ticket in one step');
+  ok(cf.confirmation.person === 'A. Delos Reyes' && !!cf.confirmation.date,
+    'acceptance records the confirming person and date');
 
   asRole(p, 'coordinator');
   var cb = $$('#cfPanel [data-act="close"]')[0];
   ok(cb === undefined, 'the coordinator is not offered a confirmation closure');
   ok($$('#cfPanel [data-act="accept"]').length === 0, 'the coordinator is not offered the office decision');
-  ok(/waiting on the office/i.test($('#cfPanel').textContent), 'the coordinator is told the office must close the ticket');
-
-  asRole(p, 'requester');
-  cb = $$('#cfPanel [data-act="close"]')[0];
-  ok(cb !== null, 'Close button appears after confirmation for the office');
-  cb.click();
-  ok(p.w.Store.getTicket('IT-2026-000141').status === 'closed', 'Status: Closed after confirmation');
 
   /* recurrence */
   var n0 = p.w.Store.db.tickets.length;
@@ -445,27 +526,34 @@ tests.push(async function technicianPage() {
     ok(d2.parts === 'Pickup roller kit', 'repair parts recorded');
   }
 
-  /* checklist recording on a real job */
-  var rec = $('#wJobs [data-item]');
-  ok(rec !== null, 'maintenance checklist Record button present');
-  if (rec) {
-    var jobId = rec.dataset.job, idx = parseInt(rec.dataset.item, 10);
-    rec.click();
-    var modal = $('.modal-host');
-    ok(modal !== null, 'checklist item modal opens');
-    modal.querySelector('[name="result"]').value = 'Passed';
-    modal.querySelector('[name="finding"]').value = 'Dust cleared.';
-    $('#mGo').click();
+  /* checklist recording in place, with the dialog as a fallback */
+  var row = null;
+  $$('#wJobs .chk-card').some(function (r) {
+    if (r.querySelector('[data-res]:not([disabled])')) { row = r; return true; }
+    return false;
+  });
+  ok(row !== null, 'maintenance checklist cards offer a result segment');
+  if (row) {
+    var card = row.closest('[data-jobcard]');
+    var jobId = card.dataset.jobcard, idx = parseInt(row.dataset.chk, 10);
+    row.querySelector('[data-res="Passed"]').click();
+    row.querySelector('[data-finding]').value = 'Dust cleared.';
+    card.querySelector('[data-save-job]').click();
     var it = p.w.Store.getJob(jobId).items[idx];
     ok(it.done === true && it.result === 'Passed', 'checklist item recorded with result/finding');
+    ok(it.finding === 'Dust cleared.', 'the finding is saved from the card');
+    ok(card.querySelector('.chk-foot') !== null, 'the checklist keeps a sticky save footer');
+    ok(card.querySelector('[data-detail]') !== null, 'the dialog stays available as a fallback');
   }
 
   /* outcome guard: success on incomplete job must fail */
   var job = null;
-  p.w.Store.db.jobs.forEach(function (j) { if (!job && j.status !== 'closed' && j.items.some(function (i) { return !i.done; })) job = j; });
+  p.w.Store.db.jobs.forEach(function (j) {
+    if (!job && j.status === 'in_progress' && j.items.some(function (i) { return !i.done; })) job = j;
+  });
   if (job) {
     var statusBefore = job.status;
-    var outBtn = $('#wJobs [data-outcome="success"][data-job="' + job.id + '"]');
+    var outBtn = $('#wJobs [data-jobcard="' + job.id + '"] [data-outcome="success"]');
     if (outBtn) {
       outBtn.click();
       $('#mGo').click();
@@ -680,25 +768,20 @@ tests.push(async function login() {
   ok(/UPMail/.test($('.lp-hint').textContent), 'the helper line names UPMail');
   ok(/@upcebu\.edu\.ph/.test($('.lp-domain').textContent),
      'the domain restriction is stated on the page');
-  /* demo list is off unless the deployment turns the flag on */
-  ok($('#demoBlock').hidden === true, 'the demo list is hidden while the demo flag is off');
-  ok($$('#demoAccounts [data-acct]').length === 0, 'no demo accounts are rendered while the flag is off');
+  /* the demo list is part of the page on every host, with no flag injected */
+  ok($('#demoBlock').hidden === false, 'the demo list is on the sign-in page by default');
+  var accts = $$('#demoAccounts [data-acct]');
+  ok(accts.length === 4, 'one demo account per role is listed (' + accts.length + ')');
   var btn = $('#googleBtn');
   btn.click();
   ok($('#loginError').hidden === false, 'sign-in without configured OIDC explains the problem');
-  ok($('#demoBlock').hidden === true, 'the demo list stays hidden without the flag');
+  ok($('#demoBlock').hidden === false, 'the demo list stays visible after the UPMail click');
   /* theme switch works on the sign-in screen */
   var themes = $$('#themeSwitch [data-theme-choice]');
   ok(themes.length === 3, 'the sign-in page offers light, system and dark themes');
   themes[2].click();
   ok(p.w.document.documentElement.getAttribute('data-theme') === 'dark',
      'the dark choice applies immediately');
-  /* with the explicit flag on, the demo list appears after the UPMail click */
-  p.w.ITC_DEMO_MODE = true;
-  btn.click();
-  ok($('#demoBlock').hidden === false, 'the demo list appears when the demo flag is on');
-  var accts = $$('#demoAccounts [data-acct]');
-  ok(accts.length === 4, 'one demo account per role is listed (' + accts.length + ')');
   accts[2].click();  /* the IT Coordinator account */
   ok(p.w.Store.db.auth !== null && typeof p.w.Store.db.auth === 'object', 'demo sign-in stores the account');
   ok(p.w.Store.db.auth.role === 'coordinator', 'the demo account maps to its role');
@@ -775,7 +858,10 @@ tests.push(async function roleNav() {
   var labels = nav().join('|');
   ok(nav().length < n0, 'requester sees fewer nav items than the coordinator');
   ok(labels.indexOf('My Maintenance Jobs') === -1, 'requester cannot see the technician workspace');
-  ok(labels.indexOf('Maintenance') === -1, 'requester cannot see maintenance');
+  var reqHrefs = $$('.side-link[href]').map(function (a) { return a.getAttribute('href'); });
+  ok(reqHrefs.every(function (h) { return String(h).indexOf('maintenance.html') === -1; }),
+    'requester cannot see the maintenance workspace');
+  ok(labels.indexOf('Maintenance Visits') > -1, 'requester sees the read-only maintenance visits');
   asRole(p, 'management');
   var m = nav().join('|');
   ok(m.indexOf('New Request') === -1, 'management cannot submit requests');
@@ -1176,9 +1262,13 @@ tests.push(async function workOrderCards() {
     ok($('#tkBoard').hidden === false && $('#tkCards').hidden === true && $('#tkTable').hidden === true,
       'the board replaces the table and the cards');
     var cols = $$('#tkBoard .wo-col');
-    ok(cols.length === 8, 'the board has one column per workflow state (' + cols.length + ')');
+    ok(cols.length === 7, 'the board has six workflow columns plus one archive lane (' + cols.length + ')');
     var names = cols.map(function (c) { return c.querySelector('.wo-col-name').textContent; });
-    ok(names[0] === 'Submitted' && names[7] === 'Cancelled', 'the columns run in workflow order');
+    ok(names[0] === 'Submitted' && names[5] === 'Resolved', 'the open columns run in workflow order');
+    ok(/Archive/.test(names[6]) && /Closed/.test(names[6]) && /Cancelled/.test(names[6]),
+      'the last lane archives Closed and Cancelled');
+    ok(cols[6].tagName === 'DETAILS' && cols[6].hasAttribute('open') === false,
+      'the archive lane starts collapsed');
     ok(cols.every(function (c) { return /^\d+$/.test(c.querySelector('.wo-col-count').textContent); }),
       'each column header carries its count');
     var placed = $$('#tkBoard .wo-card');
@@ -1188,6 +1278,17 @@ tests.push(async function workOrderCards() {
     placed.forEach(function (c) { shown[c.getAttribute('href')] = 1; });
     ok(counts.items.every(function (t) { return shown['ticket.html?id=' + encodeURIComponent(t.id)]; }),
       'every filtered ticket reaches its column');
+    var moves = $$('#tkBoard [data-move]');
+    ok(moves.length > 0, 'open cards expose the coordinator moves (' + moves.length + ')');
+    ok(moves.every(function (b) { return b.getAttribute('data-move') && b.getAttribute('data-id'); }),
+      'each move names its target status and ticket');
+    ok($$('#tkBoard .wo-archive [data-move]').length === 0,
+      'the archive never offers a move out of a terminal state');
+    var submitted = p.w.Store.db.tickets.filter(function (t) { return t.status === 'submitted'; })
+      .map(function (t) { return t.id; });
+    ok(moves.some(function (b) {
+      return b.getAttribute('data-move') === 'assigned' && submitted.indexOf(b.getAttribute('data-id')) > -1;
+    }), 'a Submitted card offers Assigned through the guarded action');
     ok($('#tkPagination').innerHTML === '', 'the board does not show a pager');
     ok($('#tkBulk').hidden === true, 'bulk selection stays out of the board');
     $$('#tkView [data-view="list"]')[0].click();
@@ -1304,6 +1405,156 @@ tests.push(async function urlFilters() {
   ok(orows.every(function (tr) { return tr.textContent.indexOf('Records') > -1; }),
     'the directory lists only the matching office');
   close(o);
+});
+
+/* Section 25.5A: the register opens with an office health strip and a
+   readable service timeline built from the append-only audit trail. */
+tests.push(async function registerHealthAndTimeline() {
+  var p = await open(BASE + 'register.html?office=Accounting');
+  asRole(p, 'coordinator');
+  ok(p.errors.length === 0, 'the register loads for the health strip' +
+    (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));
+  var cards = $$('#gHealth .health-card');
+  ok(cards.length === 5, 'the health strip carries five measures (' + cards.length + ')');
+  ok($('#gHealthScope').textContent.indexOf('Accounting') > -1,
+    'the health strip names the office in scope');
+  var labels = cards.map(function (c) { return c.textContent; }).join(' ');
+  ['Open tickets', 'Overdue', 'Last service', 'Next maintenance', 'Recurring issues'].forEach(function (l) {
+    ok(labels.indexOf(l) > -1, 'the health strip shows ' + l);
+  });
+  var openCount = p.w.Store.db.tickets.filter(function (t) {
+    return t.office === 'Accounting' && p.w.Query.OPEN_STATES.indexOf(t.status) > -1;
+  }).length;
+  ok(cards[0].textContent.indexOf(String(openCount)) > -1,
+    'open tickets count only the office in scope (' + openCount + ')');
+
+  var tab = $('#tab-timeline');
+  ok(tab !== null, 'the register offers a service timeline tab');
+  ok($('#panel-timeline') !== null && $('#panel-timeline').hidden === true,
+    'the timeline starts hidden behind its tab');
+  if (tab) {
+    tab.click();
+    ok($('#panel-timeline').hidden === false, 'opening the tab shows the timeline');
+    var events = $$('#panel-timeline .timeline li');
+    ok(events.length > 0, 'the timeline lists service events (' + events.length + ')');
+    ok(events.every(function (li) { return li.querySelector('.mono') !== null; }),
+      'every timeline event names the record it belongs to');
+    var accounting = {};
+    p.w.Store.db.tickets.forEach(function (t) { if (t.office === 'Accounting') accounting[t.id] = 1; });
+    p.w.Store.db.jobs.forEach(function (j) { if (j.office === 'Accounting') accounting[j.id] = 1; });
+    ok(events.every(function (li) { return accounting[li.querySelector('.mono').textContent] === 1; }),
+      'the timeline follows the office filter');
+  }
+  ok(p.errors.length === 0, 'no errors from the health strip or timeline');
+  close(p);
+});
+
+/* Section 25.5B: row density belongs to the person and never hides data. */
+tests.push(async function tableDensity() {
+  var p = await open(BASE + 'register.html');
+  asRole(p, 'coordinator');
+  ok(p.errors.length === 0, 'the register loads for the density test');
+  var compact = p.d.querySelector('[data-density-set="compact"]');
+  ok(compact !== null, 'the account tray offers a compact row density');
+  if (compact) {
+    compact.click();
+    ok(p.d.documentElement.getAttribute('data-density') === 'compact',
+      'choosing compact sets the density on the page');
+    ok(p.w.localStorage.getItem('itc_density') === 'compact', 'the density choice is remembered');
+    var roomy = p.d.querySelector('[data-density-set="comfortable"]');
+    ok(roomy !== null, 'the comfortable density is offered as well');
+    if (roomy) {
+      roomy.click();
+      ok(p.d.documentElement.getAttribute('data-density') === 'comfortable',
+        'choosing comfortable restores the roomy rows');
+    }
+  }
+  var pd = await open(BASE + 'profile.html');
+  asRole(pd, 'coordinator');
+  ok(pd.d.querySelector('#densitySeg') !== null, 'the profile page repeats the density preference');
+  ok(pd.d.querySelectorAll('#densitySeg [data-dn]').length === 2, 'the profile density offers both choices');
+  close(pd);
+  ok(p.errors.length === 0, 'no errors from the density switch');
+  close(p);
+});
+
+/* Section 25.5B: a phone number dials and an address opens mail. */
+tests.push(async function oneTapContact() {
+  var p = await open(BASE + 'ticket.html?id=IT-2026-000125');
+  asRole(p, 'coordinator');
+  ok(p.errors.length === 0, 'the ticket record loads for the contact test');
+  var mail = $$('#tHead a[href^="mailto:"]');
+  var tel = $$('#tHead a[href^="tel:"]');
+  ok(mail.length > 0, 'the record offers one-tap email for the people involved');
+  ok(tel.length > 0, 'the record offers one-tap calling for the people involved');
+  ok(tel.every(function (a) { return /^tel:\+?[\d]+$/.test(a.getAttribute('href')); }),
+    'the call link carries a dialable number');
+  var users = await open(BASE + 'users.html');
+  asRole(users, 'management');
+  ok(users.errors.length === 0, 'the directory loads for the contact test');
+  ok($$('#uBody a[href^="mailto:"]').length > 0, 'the directory makes an email one tap away');
+  close(users);
+  close(p);
+});
+
+/* A request in progress survives a reload, and discarding removes it. */
+tests.push(async function requestDraft() {
+  var p = await open(BASE + 'request.html');
+  asRole(p, 'requester');
+  ok(p.errors.length === 0, 'the request form loads for the draft test');
+  var issue = $('#fIssue');
+  ok(issue !== null, 'the issue field is present');
+  if (issue) {
+    issue.value = 'Printer on the second floor keeps jamming on legal size paper.';
+    p.w.saveDraft();
+    ok(p.w.localStorage.getItem('itc_draft_request') !== null, 'typing keeps a draft on this device');
+    ok($('#draftNote').hidden === false, 'the draft notice appears');
+    issue.value = '';
+    p.w.restoreDraft();
+    ok(issue.value.indexOf('second floor') > -1, 'the draft returns when the form is restored');
+    p.w.clearDraft();
+    ok(p.w.localStorage.getItem('itc_draft_request') === null, 'discarding removes the saved draft');
+    ok($('#draftNote').hidden === true, 'the draft notice disappears when discarded');
+  }
+  ok(p.errors.length === 0, 'no errors from the draft keeper');
+  close(p);
+});
+
+/* The requester sees the preventive visits for their own office, read-only. */
+tests.push(async function maintenanceVisits() {
+  var p = await open(BASE + 'visits.html');
+  asRole(p, 'requester');
+  ok(p.errors.length === 0, 'the visits page loads for an office requester' +
+    (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));
+  var office = p.w.UI.auth().office;
+  ok($('#vScope').textContent.indexOf(office) > -1, 'the page names the office in scope');
+  var rows = $$('#vBody tr');
+  ok(rows.length > 0, 'the office sees its visits (' + rows.length + ')');
+  var ids = {};
+  p.w.Store.db.jobs.forEach(function (j) { if (j.office === office) ids[j.id] = 1; });
+  ok(rows.every(function (tr) {
+    var id = tr.querySelector('.t-id');
+    return id !== null && ids[id.textContent] === 1;
+  }), 'the visits stay inside the requester office');
+  ok($$('#vBody button').length === 0, 'the visit record is read-only');
+  ok($('#vtab-plans') === null, 'the office sees no preventive plans (schedules are staff work)');
+  ok(p.errors.length === 0, 'no errors from the read-only visits page');
+  close(p);
+});
+
+/* The technician opens on today's visits and the due queue. */
+tests.push(async function technicianToday() {
+  var p = await open(BASE + 'technician.html');
+  asRole(p, 'technician');
+  ok(p.errors.length === 0, 'the workbench loads for the today view');
+  var cards = $$('#wToday .card');
+  ok(cards.length === 2, 'the workbench opens with two today cards (' + cards.length + ')');
+  var text = cards.map(function (c) { return c.textContent; }).join(' ');
+  ok(text.indexOf('Visits today') > -1, 'the first card is today\'s visits');
+  ok(text.indexOf('Due or overdue') > -1, 'the second card is the due queue');
+  ok($$('#wBody tr').length >= 3, 'the full queue stays below the today cards');
+  ok(p.errors.length === 0, 'no errors from the today view');
+  close(p);
 });
 
 /* The pop-up switch: the live notices can be paused, but the feedback that

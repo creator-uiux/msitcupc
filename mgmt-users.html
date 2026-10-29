@@ -150,7 +150,7 @@ function render() {
       '<div><div class="t-title">' + UI.esc(p.name) + '</div><div class="t-sub mono">' + UI.esc(p.username || p.id || ' -- ') + '</div></div></div></td>' +
       '<td data-label="Role"><span class="chip">' + UI.esc((UI.ROLES[p.role] || {}).title || p.role) + '</span></td>' +
       '<td data-label="Office"><div class="t-title">' + UI.esc(p.office || ' -- ') + '</div></td>' +
-      '<td data-label="Contact"><div class="t-title">' + UI.esc(p.email || ' -- ') + '</div><div class="t-sub">' + UI.esc(p.phone || '') + '</div></td>' +
+      '<td data-label="Contact"><div class="t-title">' + (p.email ? UI.mailLink(p.email) : ' -- ') + '</div><div class="t-sub">' + (p.phone ? UI.telLink(p.phone) : '') + '</div></td>' +
       '<td data-label="State"><span class="badge ' + (off ? 'b-cancelled' : 'b-resolved') + '">' + (off ? 'Inactive' : 'Active') + '</span></td>' +
       '<td data-label="Actions"><div class="chip-row">' +
       '<button class="btn btn-ghost btn-sm" data-uedit="' + UI.attr(p.id != null ? p.id : p.username) + '">Edit</button>' +
@@ -209,12 +209,10 @@ function editUser(key) { userModal(findPerson(key) || {}); }
 
 /* Live mode: GET /api/users is the authoritative, office/role-filtered listing. */
 function refreshServer() {
-  if (!window.ApiMode || !window.Api) return;
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', 'api/users', false);
-  try { xhr.send(null); } catch (e) { return; }
-  if (xhr.status === 200) {
-    try { SERVER_USERS = JSON.parse(xhr.responseText).users || null; } catch (e) { SERVER_USERS = null; }
+  if (!window.ApiMode || !window.Api || !window.Api.users) return;
+  var res = window.Api.users();
+  if (res.status === 200 && res.data) {
+    SERVER_USERS = res.data.users || null;
     render();
   }
 }

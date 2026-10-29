@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OR - Visits - ITC Maintenance System</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/green.css">
+<link rel="stylesheet" href="css/kit.css">
+<link rel="stylesheet" href="css/console.css">
+<script src="js/theme.js"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- Theme before first paint (?theme=dark|light, else the saved choice), so an
+     import or a direct link never flashes the wrong palette.
+     Defaults to light (no auto-OS-dark). -->
+<script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1E3A5F">
+<script>(function(){var P="or",R="requester",F="visits.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="chromeSide"></aside>
+  <div class="main">
+    <header class="appbar" id="chromeAppbar"></header>
+    <header class="topbar" id="chromeTopbar"></header>
+
+    <main class="content">
+      <div class="sec-title">
+        <h2>Maintenance visits</h2>
+        <span class="hint" id="vScope">Preventive visits for your office, read-only</span>
+      </div>
+
+      <div class="note">
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="2.6"/></svg></span>
+        <div><b>Read-only view.</b> Your IT team records each visit, its checklist and its outcome. Ask IT if a visit needs to be moved.</div>
+      </div>
+
+      <section class="grid grid-kpi mt" id="vKpi"></section>
+
+      <section class="card mt">
+        <div class="filters">
+          <div class="field"><label for="vQ">Search</label>
+            <input type="search" id="vQ" placeholder="Visit, schedule, category or asset…"></div>
+          <div class="field"><label for="vState">Show</label>
+            <select id="vState">
+              <option value="">All visits</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="done">Completed</option>
+            </select></div>
+          <div class="field filter-action"><button class="btn btn-ghost" id="vReset">Reset</button></div>
+        </div>
+      </section>
+
+      <div class="card mt">
+
+        <div class="tab-panel" id="vpanel-visits">
+          <div class="card-head"><h3>Visit record</h3><span class="chip" id="vCount"> -- </span>
+            <span class="hint">newest visit first</span></div>
+          <table class="table">
+            <thead><tr><th>Visit</th><th>Category and assets</th><th>Visit date</th><th>Status</th><th>Checklist</th><th>Outcome</th></tr></thead>
+            <tbody id="vBody"></tbody>
+          </table>
+          <div id="vPagination"></div>
+          <div class="empty" id="vEmpty" hidden><img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No maintenance visit matches this view.</div>
+        </div>
+
+      </div>
+    </main>
+
+    <nav class="bottomnav" id="chromeBottom"></nav>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/api.js"></script>
+<script src="js/permissions.js"></script>
+<script src="js/time.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/live.js"></script>
+<script>
+UI.mountChrome({ title: 'Maintenance Visits', sub: 'Preventive visits for your office, read-only' });
+
+var V_PER = 12;
+var vPage = 1;
+var vFilter = { q: '', state: '' };
+
+/* The office follows the signed-in account, so switching the demo role
+   re-scopes the page instead of pinning whoever loaded it first. */
+function scopeOffice() {
+  var a = Store.db.auth;
+  if (a && a.office) return a.office;
+  return window.ROLES[Store.db.role].office;
+}
+function jobs() {
+  var office = scopeOffice();
+  return Store.db.jobs.filter(function (j) { return j.office === office; });
+}
+function today() {
+  return (window.Time && Time.todayPlus) ? Time.todayPlus(0) : new Date().toISOString().slice(0, 10);
+}
+function isDone(j) { return j.status === 'closed' || j.status === 'cancelled'; }
+
+function render() {
+  document.getElementById('vScope').textContent = scopeOffice() + ' · read-only';
+  var all = jobs();
+  var upcoming = all.filter(function (j) { return !isDone(j); });
+  var done = all.filter(isDone);
+  var pendingConfirm = all.filter(function (j) {
+    return j.status === 'resolved' || (j.confirmation && j.confirmation.state === 'pending');
+  });
+
+  document.getElementById('vKpi').innerHTML =
+    kpi('Upcoming visits', upcoming.length, 'still to be carried out', 'k-brand', UI.icon('cal')) +
+    kpi('Awaiting confirmation', pendingConfirm.length, 'office acceptance on record?', 'k-warn', UI.icon('checkCircle')) +
+    kpi('Completed visits', done.length, 'closed or cancelled', 'k-ok', UI.icon('toolbox'));
+  function kpi(l, v, d, c, dot) {
+    return '<div class="card kpi ' + c + '"><div class="dot">' + dot + '</div><div class="label">' + l +
+      '</div><div class="value">' + v + '</div><div class="delta">' + d + '</div></div>';
+  }
+
+  var rows = all.filter(function (j) {
+    if (vFilter.state === 'upcoming' && isDone(j)) return false;
+    if (vFilter.state === 'done' && !isDone(j)) return false;
+    if (vFilter.q) {
+      var hay = [j.id, j.category, (j.assets || []).join(' ')].join(' ').toLowerCase();
+      if (hay.indexOf(vFilter.q.toLowerCase()) === -1) return false;
+    }
+    return true;
+  }).sort(function (a, b) {
+    return String(b.visitDate || b.createdAt || '').localeCompare(String(a.visitDate || a.createdAt || ''));
+  });
+
+  document.getElementById('vCount').textContent = rows.length + ' of ' + all.length;
+  document.getElementById('vEmpty').hidden = rows.length > 0;
+  var pg = paginateSafe(rows, vPage, V_PER);
+  vPage = pg.page;
+  document.getElementById('vBody').innerHTML = pg.items.map(function (j, i) {
+    var st = UI.STATUS[j.status] || [j.status, 'b-submitted'];
+    var total = (j.items || []).length;
+    var doneItems = (j.items || []).filter(function (it) { return it.done; }).length;
+    var outcome = j.outcome === 'success' ? 'Successful'
+      : j.outcome === 'incomplete' ? 'Incomplete'
+        : j.outcome === 'cancelled' ? 'Cancelled' : 'Pending';
+    return '<tr style="--row-index:' + i + '">' +
+      '<td class="td-main" data-label="Visit"><div class="t-id">' + UI.esc(j.id) + '</div>' +
+      '<div class="t-sub mono">' + UI.esc(j.scheduleId) + '</div></td>' +
+      '<td data-label="Category and assets"><div class="t-title">' + UI.esc(j.category) + '</div>' +
+      '<div class="t-sub">' + UI.esc((j.assets || []).join(', ') || ' -- ') + '</div></td>' +
+      '<td data-label="Visit date"><div class="t-title">' + (j.visitDate ? UI.dateOnly(j.visitDate) : ' -- ') + '</div>' +
+      '<div class="t-sub">' + (j.visitDate ? UI.timeAgo(j.visitDate) : 'not scheduled') + '</div></td>' +
+      '<td data-label="Status"><span class="badge ' + st[1] + '">' + UI.esc(st[0]) + '</span></td>' +
+      '<td data-label="Checklist">' + (total ? doneItems + '/' + total : ' -- ') + '</td>' +
+      '<td data-label="Outcome">' + UI.esc(outcome) + '</td></tr>';
+  }).join('');
+  UI.renderPagination(document.getElementById('vPagination'), pg, function (p) { vPage = p; render(); });
+
+}
+
+function paginateSafe(items, page, per) {
+  var pages = Math.max(1, Math.ceil(items.length / per));
+  var state = UI.paginate(items, Math.min(Math.max(1, page), pages), per);
+  state.pages = pages;
+  return state;
+}
+
+function sync() {
+  vFilter.q = document.getElementById('vQ').value;
+  vFilter.state = document.getElementById('vState').value;
+  vPage = 1;
+  render();
+}
+document.getElementById('vQ').addEventListener('input', UI.debounce(sync, 200));
+document.getElementById('vState').addEventListener('change', sync);
+document.getElementById('vReset').addEventListener('click', function () {
+  document.getElementById('vQ').value = '';
+  document.getElementById('vState').value = '';
+  sync();
+});
+
+Store.subscribe(render);
+render();
+Live.start();
+</script>
+<script src="js/pwa.js"></script>
+</body>
+</html>

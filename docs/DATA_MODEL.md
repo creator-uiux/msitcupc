@@ -61,7 +61,7 @@ against.
 | Field | Notes |
 |---|---|
 | `id` | `IT-YYYY-NNNNNN`, unique and never reused |
-| `office` | The owning office. An office requester may only reach their own office |
+| `office` | The owning office. A requester files under their own name but may choose any active office, and can follow the requests they raised |
 | `requester` | The person who raised the request |
 | `source` | Online Portal, Telephone, Email, Walk-in or On-site |
 | `category` | One of the configured categories |
@@ -71,7 +71,7 @@ against.
 | `attachments` | The evidence file names |
 | `status` | One of the eight labels: Submitted, Needs Information, Assigned, In Progress, On Hold, Resolved, Closed, Cancelled |
 | `impact`, `urgency` | Low, Medium or High, recorded separately |
-| `priority` | Low, Medium, High or Critical, derived from the matrix |
+| `priority` | Low, Medium or High at intake, confirmed or replaced by the coordinator's impact and urgency assessment; the matrix can raise it to Critical |
 | `target` | The target completion date |
 | `technician` | The assigned technician |
 | `reviewed` | True once the coordinator has assessed the request |
@@ -276,7 +276,8 @@ second copy, so it can never drift from the records it summarises:
 | A corrective ticket | the ticket, linked back to its job |
 
 The register screen applies the same office scope as the rest of the
-system, so an office requester sees their own office only.
+system, so an office requester sees their own office and the requests they
+raised, including those naming another active office.
 
 ## Data integrity rules
 
@@ -291,5 +292,5 @@ system, so an office requester sees their own office only.
 - A job occurrence is unique per `(scheduleId, occurrence)`, so a schedule
   check that runs twice reuses the existing job.
 - History, comments, tests and audit events are append only.
-- A requester may only reach the records of their own office, and a
-  technician only the records assigned to them.
+- A requester may reach the records of their own office and the requests
+  they raised, and a technician only the records assigned to them.

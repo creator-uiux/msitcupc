@@ -48,12 +48,12 @@
             <div class="field"><label for="fOffice">Office</label>
               <select name="office" id="fOffice" required>
                 <option value=""> --  Select Office  -- </option>
-                <option>Records Office</option><option>Accounting</option><option>Registrar</option>
-                <option>HR</option><option>Library</option><option>SDG</option>
               </select>
+              <div class="help" id="fOfficeHelp"></div>
             </div>
             <div class="field"><label for="fReq">Requester</label>
               <input type="text" name="requester" id="fReq" value="A. Delos Reyes" placeholder="Full name" required>
+              <div class="help" id="fReqHelp"></div>
             </div>
             <div class="field"><label for="fCategory">Category</label>
               <select name="category" id="fCategory" required>
@@ -62,7 +62,16 @@
                 <option>Account Assistance</option><option>Printer and Peripheral</option><option>Installation and Configuration</option><option>Other</option>
               </select>
             </div>
-            <div class="field span-2"><label for="fSource">Request source</label>
+            <div class="field" id="fPriorityField"><label for="fPriority">Priority</label>
+              <select name="priority" id="fPriority">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+                <option value="critical" hidden>Critical</option>
+              </select>
+              <div class="help" id="fPriorityHelp">Your office's view of urgency. The IT Coordinator confirms it during assessment.</div>
+            </div>
+            <div class="field"><label for="fSource">Request source</label>
               <select name="source" id="fSource">
                 <option value="telephone">Telephone</option>
                 <option value="email">Email</option>
@@ -85,6 +94,11 @@
             <div class="field span-2"><label for="fFiles">Relevant files / chat notes</label>
               <input type="file" name="files" multiple id="fFiles" accept="image/jpeg,image/png,image/webp,application/pdf,text/plain,text/csv,.docx,.xlsx" capture="environment">
               <div class="help">A photo of the fault or a copy of the message. Captured with the ticket and visible to the IT team.</div>
+            </div>
+            <div class="note span-2" id="draftNote" hidden>
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+              <div><b>Draft kept on this device.</b> Your answers return if the page reloads.
+                <button type="button" class="btn btn-ghost btn-sm" id="draftClear">Discard draft</button></div>
             </div>
             <div class="row row-between span-2">
               <span class="hint">Status on submit: <span class="badge b-submitted">Submitted</span></span>
@@ -113,7 +127,7 @@
             <ul class="list">
               <li><span class="ico"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></svg></span><div class="body"><strong>Record service request → Status: Submitted</strong><span>The system captures ticket, office, requester, category, issue, date, asset, attachments, source.</span></div></li>
               <li><span class="ico warn"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20.5 20.5-4.2-4.2"/></svg></span><div class="body"><strong>Review request → Details complete?</strong><span>If anything is missing you get <b>Needs Information</b> and reply on this same page.</span></div></li>
-              <li><span class="ico"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m16 16 3-8 3 8a3 3 0 0 1-6 0Z"/><path d="m2 16 3-8 3 8a3 3 0 0 1-6 0Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></span><div class="body"><strong>Assess impact &amp; urgency → priority + target date</strong><span>Coordinator sets priority and target completion date.</span></div></li>
+              <li><span class="ico"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m16 16 3-8 3 8a3 3 0 0 1-6 0Z"/><path d="m2 16 3-8 3 8a3 3 0 0 1-6 0Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></span><div class="body"><strong>Assess impact &amp; urgency → priority + target date</strong><span>Coordinator confirms the priority and sets the target completion date.</span></div></li>
               <li><span class="ico ok"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9Z"/></svg></span><div class="body"><strong>Assign technician → notify you both</strong><span>Status: Assigned  --  technician and requester are notified in real time.</span></div></li>
             </ul>
           </div>
@@ -137,6 +151,20 @@
 <script src="js/ui.js"></script>
 <script src="js/live.js"></script>
 <script>
+/* The office list comes from the register, so every active office is offered
+   and a renamed office never drifts from the directory. */
+function fillOffices() {
+  var sel = document.getElementById('fOffice');
+  var current = sel.value;
+  var names = (Store.db.offices || []).filter(function (o) { return o.active !== false; })
+    .map(function (o) { return o.name; });
+  if (!names.length) return;
+  sel.innerHTML = '<option value=""> --  Select Office  -- </option>' +
+    names.map(function (n) { return '<option>' + UI.esc(n) + '</option>'; }).join('');
+  if (names.indexOf(current) > -1) sel.value = current;
+}
+fillOffices();
+
 /* Initialize required selects with default values for validation */
 function initFormValidation() {
   var form = document.getElementById('reqForm');
@@ -153,12 +181,110 @@ function initFormValidation() {
 }
 initFormValidation();
 
+function setDateDefault() {
+  var el = document.getElementById('fDateReported');
+  if (el && !el.value && window.Time) el.value = Time.todayPlus(0);
+}
+setDateDefault();
+
 UI.mountChrome({ title: 'New Service Request', sub: 'Office Requester lane · intake, missing information, follow-ups' });
 
 var respondId = UI.qs('respond') || '';
 var form = document.getElementById('reqForm');
 UI.bindFormValidation(form);   /* live blur/input feedback + submit gate */
 function F(name) { return form.elements.namedItem(name); }
+
+/* ---------- draft kept while typing ----------
+   A request can be interrupted, and losing a finished description is the
+   fastest way to make someone give up.  The answers are kept per browser
+   and restored on the next visit; submitting or discarding clears them. */
+var DRAFT_KEY = 'itc_draft_request';
+var DRAFT_FIELDS = ['office', 'category', 'priority', 'source', 'issue', 'asset'];
+function draftNote(show) {
+  var n = document.getElementById('draftNote');
+  if (n) n.hidden = !show;
+}
+function draftSnapshot() {
+  var v = {};
+  DRAFT_FIELDS.forEach(function (k) {
+    var el = F(k);
+    if (el) v[k] = el.value;
+  });
+  return v;
+}
+function saveDraft() {
+  if (respondId) return;
+  try {
+    var v = draftSnapshot();
+    var empty = DRAFT_FIELDS.every(function (k) { return !String(v[k] || '').trim(); });
+    if (empty) { localStorage.removeItem(DRAFT_KEY); draftNote(false); return; }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(v));
+    draftNote(true);
+  } catch (e) { /* private mode, storage full */ }
+}
+function restoreDraft() {
+  if (respondId) return;
+  try {
+    var raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+    var v = JSON.parse(raw) || {};
+    DRAFT_FIELDS.forEach(function (k) {
+      var el = F(k);
+      if (!el || v[k] == null) return;
+      if (el.tagName === 'SELECT') {
+        var has = Array.prototype.some.call(el.options, function (o) { return o.value === v[k]; });
+        if (has) el.value = v[k];
+      } else {
+        el.value = v[k];
+      }
+    });
+    draftNote(true);
+  } catch (e) { /* ignore a corrupt draft */ }
+}
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* ignore */ }
+  draftNote(false);
+}
+form.addEventListener('input', UI.debounce(saveDraft, 300));
+form.addEventListener('change', saveDraft);
+var draftClearBtn = document.getElementById('draftClear');
+if (draftClearBtn) draftClearBtn.addEventListener('click', function () {
+  clearDraft();
+  UI.toast('Draft discarded.', 'ok');
+});
+
+/* An office requester files under their own name, so the Requester field
+   shows the signed-in account and cannot be typed over.  The office starts
+   on their own but stays open, because a requester may raise a request for
+   another active office.  A coordinator records phone and walk-in requests
+   on behalf of an office, so both fields stay editable there. */
+var lockedFor = null;
+function applyRequesterLock() {
+  lockedFor = Store.db.role;
+  /* Priority is an IT assessment field: the office never sees it. */
+  var prioField = document.getElementById('fPriorityField');
+  if (prioField) prioField.hidden = Store.db.role === 'requester';
+  /* Reply mode owns these fields (see setMode): never reopen them. */
+  if (!document.getElementById('respondNote').hidden) return;
+  var el = document.getElementById('fReq');
+  var help = document.getElementById('fReqHelp');
+  var office = document.getElementById('fOffice');
+  var officeHelp = document.getElementById('fOfficeHelp');
+  if (Store.db.role !== 'requester') {
+    el.disabled = false;
+    office.disabled = false;
+    help.textContent = 'Name of the person reporting the issue.';
+    officeHelp.textContent = 'Any active office in the register.';
+    return;
+  }
+  var me = UI.auth();
+  el.value = (me && me.name) || window.ROLES.requester.name;
+  el.disabled = true;
+  help.textContent = 'Fixed to your signed-in account.';
+  office.disabled = false;
+  office.value = (me && me.office) || window.ROLES.requester.office;
+  officeHelp.textContent = 'Your office is selected by default. Choose another active office when the request belongs there.';
+}
 
 function setMode() {
   var note = document.getElementById('respondNote');
@@ -171,9 +297,14 @@ function setMode() {
     F('office').value = t.office; F('requester').value = t.requester;
     F('category').value = t.category; F('issue').value = t.issue;
     F('asset').value = t.asset || '';
+    F('priority').value = t.priority || 'medium';
     document.getElementById('btnSubmit').textContent = 'Submit information (same ticket)';
     document.getElementById('fReq').disabled = true;
     document.getElementById('fOffice').disabled = true;
+    document.getElementById('fPriority').disabled = true;
+    document.getElementById('fReqHelp').textContent = 'Carried over from the original ticket.';
+    document.getElementById('fOfficeHelp').textContent = 'Carried over from the original ticket.';
+    document.getElementById('fPriorityHelp').textContent = 'Carried over from the original ticket.';
   } else {
     note.hidden = true;
     if (respondId && t) document.getElementById('formHint').innerHTML = 'Ticket <span class="mono">' + UI.esc(t.id) + '</span> is <b>' + UI.STATUS[t.status][0] + '</b>  --  no information is outstanding.';
@@ -230,30 +361,45 @@ form.addEventListener('submit', function (e) {
 
   var d = {
     office: F('office').value, requester: F('requester').value, category: F('category').value,
-    source: F('source').value, issue: F('issue').value.trim(), asset: F('asset').value.trim(),
+    priority: F('priority').value, source: F('source').value,
+    issue: F('issue').value.trim(), asset: F('asset').value.trim(),
+    dateReported: F('dateReported').value, idempotencyKey: F('idempotencyKey').value.trim(),
     attachments: files
   };
   var res = Flow.createTicket(d);
   UI.toast(res.msg, res.ok ? 'ok' : 'err');
   if (res.ok) {
+    clearDraft();
     document.getElementById('successBox').hidden = false;
     document.getElementById('sucId').textContent = res.id;
-    document.getElementById('sucNext').innerHTML = 'The IT Coordinator will review it  --  you will be notified here the moment it is assessed, assigned, or if details are missing.';
+    document.getElementById('sucNext').innerHTML =
+      'The IT Coordinator will review it  --  you will be notified here the moment it is assessed, assigned, or if details are missing.';
     document.getElementById('sucOpen').href = 'ticket.html?id=' + encodeURIComponent(res.id);
     document.getElementById('btnSubmit').disabled = true;
     UI.renderBell(); renderSide();
   }
 });
 
-document.getElementById('btnReset').addEventListener('click', function () { form.reset(); });
+document.getElementById('btnReset').addEventListener('click', function () {
+  form.reset(); clearDraft(); applyRequesterLock(); setDateDefault();
+});
 document.getElementById('sucAgain').addEventListener('click', function () {
-  form.reset(); F('requester').value = window.ROLES[Store.db.role].name;
+  form.reset();
+  clearDraft();
+  setDateDefault();
+  if (Store.db.role === 'requester') applyRequesterLock();
+  else F('requester').value = window.ROLES[Store.db.role].name;
   document.getElementById('successBox').hidden = true;
   document.getElementById('btnSubmit').disabled = false;
   F('issue').focus();
 });
 
-Store.subscribe(function () { renderSide(); });
+Store.subscribe(function () {
+  if (lockedFor !== Store.db.role) applyRequesterLock();
+  renderSide();
+});
+applyRequesterLock();
+restoreDraft();
 setMode(); renderSide(); Live.start();
 </script>
 <script src="js/pwa.js"></script>

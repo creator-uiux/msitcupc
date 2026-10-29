@@ -54,7 +54,7 @@
           <div class="filters">
             <div class="field filter-office"><label for="fOffice">Office</label><select id="fOffice"><option value="">All offices</option></select></div>
             <div class="field"><label for="fStatus">Status</label><select id="fStatus"><option value="">All statuses</option></select></div>
-            <div class="field"><label for="fPriority">Priority</label><select id="fPriority"><option value="">All priorities</option></select></div>
+            <div class="field lead-only"><label for="fPriority">Priority</label><select id="fPriority"><option value="">All priorities</option></select></div>
             <div class="field"><label for="fCategory">Category</label><select id="fCategory"><option value="">All categories</option></select></div>
             <div class="field filter-tech"><label for="fTech">Technician</label><select id="fTech"><option value="">All technicians</option></select></div>
             <div class="field"><label for="fSource">Source</label><select id="fSource"><option value="">All sources</option></select></div>
@@ -104,8 +104,8 @@
           <thead>
             <tr>
               <th class="col-check"><input type="checkbox" id="tkAll" aria-label="Select all"></th>
-              <th>Ticket</th><th>Office / requester</th><th>Status</th><th>Priority</th>
-              <th>Target</th><th>Technician</th><th>Updated</th>
+              <th>Ticket</th><th>Office / requester</th><th>Status</th><th class="lead-only">Priority</th>
+              <th>Target</th><th class="staff-only">Technician</th><th>Updated</th>
             </tr>
           </thead>
           <tbody id="tkBody"></tbody>
@@ -152,6 +152,13 @@ try {
   else if (window.innerWidth < 600) view = 'cards';
 } catch (e) {
   if (window.innerWidth < 600) view = 'cards';
+}
+
+/* Priority is an IT assessment: the office and technicians cannot filter or
+   sort by a field they are not shown. */
+if (UI.roleKey() === 'requester' || UI.roleKey() === 'technician') {
+  var prioSort = document.querySelector('#fSort option[value="priority"]');
+  if (prioSort) prioSort.remove();
 }
 
 function isLive() { return !!(window.ApiMode && window.Api && window.Api.tickets); }
@@ -235,9 +242,9 @@ function rowHTML(t, i) {
     (t.linkedTo ? ' · linked ' + UI.esc(t.linkedTo) : '') + '</div></td>' +
     '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div><div class="t-sub">' + UI.esc(t.requester) + '</div></td>' +
     '<td data-label="Status">' + UI.badge(t.status) + (overdue ? ' <span class="badge b-needs-info">overdue</span>' : '') + UI.waitingOn(t.status) + '</td>' +
-    '<td data-label="Priority">' + UI.prio(t.priority) + '</td>' +
+    '<td class="lead-only" data-label="Priority">' + UI.prio(t.priority) + '</td>' +
     '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : (overdue ? 'past SLA' : ' -- ')) + '</td>' +
-    '<td data-label="Technician"><div class="t-title">' + UI.esc(t.technician || ' -- ') + '</div></td>' +
+    '<td class="staff-only" data-label="Technician"><div class="t-title">' + UI.esc(t.technician || ' -- ') + '</div></td>' +
     '<td data-label="Updated">' + UI.timeAgo(t.updatedAt || t.createdAt) + '</td></tr>';
 }
 
@@ -252,7 +259,7 @@ function render() {
 
   document.getElementById('tkTotal').textContent = last.total + ' of ' + Store.db.tickets.length;
   document.getElementById('tkScopeNote').textContent = UI.roleKey() === 'requester'
-    ? 'office tenancy applied  --  you only see records your office owns'
+    ? 'office tenancy applied  --  you see your office records and the requests you raised'
     : 'the register you are authorized to view';
   document.getElementById('tkEmpty').hidden = last.total > 0;
 
@@ -283,26 +290,68 @@ function render() {
   renderBulk();
 }
 
-/* The board groups the same filtered records into the eight workflow columns.
-   It loads up to the query cap in one pass, and the header count is the true
+/* The board groups the same filtered records into the six open workflow
+   columns, with Closed and Cancelled kept in one collapsed archive lane. It
+   loads up to the query cap in one pass, and each header count is the true
    total for that status, so a capped board still tells the whole story. */
+var BOARD_STATES = ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved'];
+var ARCHIVE_STATES = ['closed', 'cancelled'];
+
+/* Which guarded action records a move to the target state. The action opens
+   the form that the workflow requires (for example a dependency reason for
+   On Hold), so a board move can never skip a required field. */
+function moveAction(t, next) {
+  if (next === 'needs_info') return 'needsinfo';
+  if (next === 'assigned') return t.reviewed ? 'assign' : 'reviewassign';
+  if (next === 'submitted') return 'supplyinfo';
+  if (next === 'in_progress') return t.status === 'on_hold' ? 'resolve' : t.status === 'resolved' ? 'reject' : 'start';
+  if (next === 'on_hold') return 'hold';
+  if (next === 'resolved') return 'pass';
+  if (next === 'closed') return Store.db.role === 'requester' ? 'accept' : 'autoclose';
+  if (next === 'cancelled') return t.status === 'on_hold' ? 'cannot' : 'cancel';
+  return '';
+}
+
+function moveMenu(t) {
+  if (!window.Flow || !Flow.canTransition) return '';
+  var targets = Query.ALL_STATES.filter(function (s) { return Flow.canTransition(t.status, s); });
+  if (!targets.length) return '<div class="wo-wait">Waiting on ' + UI.esc(UI.nextOwner(t.status).label) + '</div>';
+  return '<details class="wo-move"><summary>' + UI.icon('arrowRight') + 'Move</summary>' +
+    '<div class="wo-move-list">' + targets.map(function (s) {
+      return '<button type="button" role="menuitem" data-move="' + UI.attr(s) + '" data-id="' + UI.attr(t.id) + '">' +
+        UI.esc(UI.STATUS[s][0]) + '</button>';
+    }).join('') + '</div></details>';
+}
+
+function boardCard(t) {
+  return '<div class="wo-cell">' +
+    UI.workCard(t, { href: 'ticket.html?id=' + encodeURIComponent(t.id) }) + moveMenu(t) + '</div>';
+}
+
 function renderBoard() {
   var counts = (last && last.counts) || {};
   var buckets = {};
   (last ? last.items : []).forEach(function (t) {
     (buckets[t.status] || (buckets[t.status] = [])).push(t);
   });
-  var cols = Query.ALL_STATES.map(function (s) {
+  var cols = BOARD_STATES.map(function (s) {
     var rows = buckets[s] || [];
-    var shown = rows.map(function (t) {
-      return UI.workCard(t, { href: 'ticket.html?id=' + encodeURIComponent(t.id) });
-    }).join('');
     return '<section class="wo-col" data-board-status="' + UI.attr(s) + '" aria-label="' +
       UI.attr(UI.STATUS[s][0]) + '">' +
       '<header class="wo-col-head"><span class="wo-col-name">' + UI.esc(UI.STATUS[s][0]) + '</span>' +
       '<span class="wo-col-count">' + (counts[s] || 0) + '</span></header>' +
-      '<div class="wo-col-body">' + (shown || '<p class="wo-col-empty">No tickets</p>') + '</div></section>';
+      '<div class="wo-col-body">' + (rows.length ? rows.map(boardCard).join('') : '<p class="wo-col-empty">No tickets</p>') + '</div></section>';
   });
+
+  var archived = (buckets.closed || []).concat(buckets.cancelled || []);
+  var archiveCount = (counts.closed || 0) + (counts.cancelled || 0);
+  var open = chip === 'closed' || chip === 'cancelled' || ARCHIVE_STATES.indexOf(F.status) > -1;
+  cols.push('<details class="wo-col wo-archive"' + (open ? ' open' : '') + ' data-board-status="archive">' +
+    '<summary class="wo-col-head"><span class="wo-col-name">Archive  --  Closed and Cancelled</span>' +
+    '<span class="wo-col-count">' + archiveCount + '</span></summary>' +
+    '<div class="wo-col-body">' + (archived.length ? archived.map(boardCard).join('') : '<p class="wo-col-empty">No closed or cancelled tickets</p>') +
+    '</div></details>');
+
   document.getElementById('tkBoard').innerHTML = cols.join('');
 
   var note = document.getElementById('tkBoardNote');
@@ -312,6 +361,21 @@ function renderBoard() {
     ? 'Showing the first ' + last.items.length + ' of ' + last.total + ' matching tickets. Narrow the filters to reach the rest.'
     : '';
 }
+
+/* A move is recorded through the same guarded action the ticket screen uses.
+   The backend rejects the same move when called directly; here a refusal is
+   shown as a toast and the card stays where it was. */
+document.getElementById('tkBoard').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-move]');
+  if (!b) return;
+  e.preventDefault();
+  var t = Store.getTicket(b.dataset.id);
+  if (!t) return;
+  var a = moveAction(t, b.dataset.move);
+  if (!a) { UI.toast('That move is not available from ' + UI.STATUS[t.status][0] + '.', 'err'); return; }
+  if (window.Actions && Actions.act) Actions.act(a, t.id, function () { render(); });
+});
+
 
 function applyView() {
   var table = view === 'list';
@@ -360,13 +424,25 @@ document.getElementById('tkAll').addEventListener('change', function (e) {
 document.getElementById('tkClearSel').addEventListener('click', function () { selected = {}; render(); });
 document.getElementById('tkExport').addEventListener('click', function () {
   if (!last) return;
-  var withCost = UI.roleKey() !== 'requester';
-  var rows = [withCost ? ['Ticket', 'Office', 'Requester', 'Status', 'Priority', 'Category', 'Target', 'Technician', 'Created', 'Turnaround (h)', 'Cost']
-                       : ['Ticket', 'Office', 'Requester', 'Status', 'Priority', 'Category', 'Target', 'Technician', 'Created', 'Turnaround (h)']];
+  var role = UI.roleKey();
+  var withCost = role !== 'requester';
+  /* The export mirrors the visible columns: the office never gets priority or
+     the assigned technician, and a technician never gets priority. */
+  var withPrio = role !== 'requester' && role !== 'technician';
+  var withTech = role !== 'requester';
+  var head = ['Ticket', 'Office', 'Requester', 'Status'];
+  if (withPrio) head.push('Priority');
+  head = head.concat(['Category', 'Target']);
+  if (withTech) head.push('Technician');
+  head = head.concat(['Created', 'Turnaround (h)']);
+  if (withCost) head.push('Cost');
+  var rows = [head];
   last.items.forEach(function (t) {
-    var row = [t.id, t.office, t.requester, UI.STATUS[t.status] ? UI.STATUS[t.status][0] : t.status,
-      t.priority, t.category, t.target ? UI.dateOnly(t.target) : '', t.technician || '',
-      UI.dateOnly(t.createdAt), t.turnaroundHours == null ? '' : t.turnaroundHours];
+    var row = [t.id, t.office, t.requester, UI.STATUS[t.status] ? UI.STATUS[t.status][0] : t.status];
+    if (withPrio) row.push(t.priority);
+    row = row.concat([t.category, t.target ? UI.dateOnly(t.target) : '']);
+    if (withTech) row.push(t.technician || '');
+    row = row.concat([UI.dateOnly(t.createdAt), t.turnaroundHours == null ? '' : t.turnaroundHours]);
     if (withCost) row.push((t.diagnosis && t.diagnosis.cost) || 0);
     rows.push(row);
   });

@@ -110,12 +110,16 @@ def test_engine_lifecycle():
     check("coordinator cannot accept on the office's behalf", not r.get("ok"), r)
     r = engine.call(st, "requester", "officeDecision", ["IT-2026-000143", "accepted", {"person": "M. Bataller"}])
     check("officeDecision accepted ok", r.get("ok"), r)
+    t = engine.get_ticket(st, "IT-2026-000143")
+    check("acceptance closes in one step", t["status"] == "closed" and t["closure"] == "confirmation", t["status"])
+    check("acceptance records the confirming person and date",
+          t["confirmation"]["person"] == "M. Bataller" and bool(t["confirmation"]["date"]), t["confirmation"])
+    check("acceptance notifies the coordinator", any(
+        n["role"] == "coordinator" and n.get("ticketId") == "IT-2026-000143" for n in st["notifications"]))
     r = engine.call(st, "coordinator", "close", ["IT-2026-000143", "confirmation", ""])
     check("coordinator cannot close by confirmation", not r.get("ok"), r)
     r = engine.call(st, "requester", "close", ["IT-2026-000143", "confirmation", ""])
-    check("close ok after confirmation", r.get("ok"), r)
-    t = engine.get_ticket(st, "IT-2026-000143")
-    check("closed", t["status"] == "closed" and t["closure"] == "confirmation")
+    check("close blocked once acceptance closed the ticket", not r.get("ok"), r)
 
 
 def test_engine_guards():
@@ -163,8 +167,7 @@ def test_engine_recurrence():
     r = engine.call(st, "requester", "officeDecision",
                     ["IT-2026-000141", "accepted", {"person": "R. Villanueva"}], user=req)
     check("office accepted result", r.get("ok"), r)
-    r = engine.call(st, "requester", "close", ["IT-2026-000141", "confirmation", ""], user=req)
-    check("ticket closed", r.get("ok") and engine.get_ticket(st, "IT-2026-000141")["status"] == "closed", r)
+    check("ticket closed", engine.get_ticket(st, "IT-2026-000141")["status"] == "closed", r)
     r = engine.call(st, "coordinator", "createLinkedTicket", ["IT-2026-000141", {"issue": "happened again"}])
     check("createLinkedTicket ok", r.get("ok"), r)
     check("old marked recurring", engine.get_ticket(st, "IT-2026-000141")["recurring"] is True)
@@ -893,12 +896,12 @@ def test_tenancy():
                       "issue": "printer jam"}], user=req)
     check("tenancy createTicket ok", r.get("ok"), r)
     tid = r["id"]
-    check("tenancy forces the requester office",
-          engine.get_ticket(st, tid)["office"] == "Records Office")
+    check("tenancy keeps the chosen office",
+          engine.get_ticket(st, tid)["office"] == "Library")
 
     engine.call(st, "coordinator", "requestInfo", [tid, "serial number"])
     r = engine.call(st, "requester", "submitInfo", [tid, {"issue": "fixed", "note": "SN 42"}], user=req)
-    check("tenancy allows the requester office", r.get("ok"), r)
+    check("tenancy allows the request the requester raised", r.get("ok"), r)
     check("tenancy does not leak the acting user", "_user" not in st)
 
     st2 = fresh()
@@ -907,6 +910,83 @@ def test_tenancy():
                       "issue": "x"}], user=None)
     check("tenancy unscoped without a user",
           r.get("ok") and engine.get_ticket(st2, r["id"])["office"] == "Library", r)
+
+
+def test_requester_scope_includes_own_requests():
+    """A requester sees their office and the requests they raised elsewhere."""
+
+    class Dummy:
+        _redact_costs = staticmethod(appmod.ItcHandler._redact_costs)
+
+    snap = {
+        "tickets": [
+            {"id": "A", "office": "Records Office", "requester": "Someone Else"},
+            {"id": "B", "office": "Library", "requester": "A. Delos Reyes"},
+            {"id": "C", "office": "Library", "requester": "Someone Else"},
+        ],
+        "schedules": [], "jobs": [], "audit": [],
+        "notifications": [
+            {"id": 1, "role": "requester", "office": "Library", "ticketId": "B"},
+            {"id": 2, "role": "requester", "office": "Library", "ticketId": "C"},
+        ],
+    }
+    user = {"role": "requester", "name": "A. Delos Reyes", "office": "Records Office"}
+    out = appmod.ItcHandler._scoped_requester(Dummy(), snap, user)
+    ids = [t["id"] for t in out["tickets"]]
+    check("scope keeps the office records", "A" in ids)
+    check("scope keeps the request the requester raised", "B" in ids)
+    check("scope hides another office's other records", "C" not in ids)
+    check("scope keeps notifications for the request raised",
+          [n["id"] for n in out["notifications"]] == [1], out["notifications"])
+
+
+# ------------------------------------------------------------- intake fields
+def test_intake_priority():
+    st = fresh()
+    req = {"role": "requester", "name": "A. Delos Reyes", "office": "Records Office"}
+    before = len(st["tickets"])
+
+    r = engine.call(st, "requester", "createTicket", [{
+        "office": "Records Office", "requester": "A. Delos Reyes",
+        "category": "Hardware Repair", "issue": "Monitor flickers.",
+        "priority": "high", "dateReported": "2026-09-30",
+        "idempotencyKey": "intake-priority-1",
+    }], user=req)
+    check("intake accepts a priority", r.get("ok"), r)
+    t = engine.get_ticket(st, r["id"])
+    check("requester intake starts at Medium", t["priority"] == "medium", t["priority"])
+    check("intake stores the reported date", t["dateReported"] == "2026-09-30", t.get("dateReported"))
+    check("intake stores the duplicate key", t["idempotencyKey"] == "intake-priority-1", t.get("idempotencyKey"))
+
+    r2 = engine.call(st, "requester", "createTicket", [{
+        "office": "Records Office", "requester": "A. Delos Reyes",
+        "category": "Hardware Repair", "issue": "Monitor flickers.",
+        "priority": "high", "idempotencyKey": "intake-priority-1",
+    }], user=req)
+    check("intake duplicate key returns the first ticket",
+          r2.get("ok") and r2.get("id") == r["id"] and r2.get("duplicate"), r2)
+    check("intake duplicate key creates no second ticket", len(st["tickets"]) == before + 1)
+
+    coord = {"role": "coordinator", "name": "System Admin"}
+    okay = engine.call(st, "coordinator", "createTicket", [{
+        "office": "Records Office", "requester": "A. Delos Reyes",
+        "category": "Hardware Repair", "issue": "Monitor flickers.", "priority": "high",
+    }], user=coord)
+    check("coordinator intake stores the chosen priority",
+          okay.get("ok") and engine.get_ticket(st, okay["id"])["priority"] == "high", okay)
+    bad = engine.call(st, "coordinator", "createTicket", [{
+        "office": "Records Office", "requester": "A. Delos Reyes",
+        "category": "Hardware Repair", "issue": "Monitor flickers.", "priority": "urgent",
+    }], user=coord)
+    check("coordinator intake rejects an unknown priority", not bad.get("ok"), bad)
+
+    plain = engine.call(st, "requester", "createTicket", [{
+        "office": "Records Office", "requester": "A. Delos Reyes",
+        "category": "Hardware Repair", "issue": "Keyboard sticks.",
+    }], user=req)
+    check("intake defaults to Medium when no priority is given",
+          engine.get_ticket(st, plain["id"])["priority"] == "medium",
+          engine.get_ticket(st, plain["id"])["priority"])
 
 
 # ------------------------------------------------- conversation + intake edits
@@ -1048,12 +1128,17 @@ def test_admin_engine():
 
     r = engine.call(st, "management", "updateSchedule",
                     ["SCH-2026-024", {"frequency": "monthly", "technician": "J. Tan"}])
+    check("schedule update blocked for management", not r.get("ok"), r)
+    r = engine.call(st, "coordinator", "updateSchedule",
+                    ["SCH-2026-024", {"frequency": "monthly", "technician": "J. Tan"}])
     check("schedule updated", r.get("ok"), r)
     sc = next(s for s in st["schedules"] if s["id"] == "SCH-2026-024")
     check("schedule fields applied", sc["frequency"] == "monthly" and sc["technician"] == "J. Tan")
     r = engine.call(st, "technician", "updateSchedule", ["SCH-2026-024", {"frequency": "weekly"}])
     check("schedule update blocked for technician", not r.get("ok"), r)
     r = engine.call(st, "management", "setScheduleActive", ["SCH-2026-024", False])
+    check("schedule pause blocked for management", not r.get("ok"), r)
+    r = engine.call(st, "coordinator", "setScheduleActive", ["SCH-2026-024", False])
     check("schedule paused", r.get("ok") and not sc["active"], r)
 
 
@@ -1071,7 +1156,6 @@ def test_audit_trail():
     engine.call(st, "technician", "recordTest", [tid, "pass", "stable"])
     engine.call(st, "requester", "officeDecision",
                 [tid, "accepted", {"person": "M. Bataller"}])
-    engine.call(st, "requester", "close", [tid, "confirmation", ""])
 
     added = st["audit"][base:]
     check("audit grows with the lifecycle", len(added) >= 8, len(added))
@@ -1082,7 +1166,7 @@ def test_audit_trail():
     check("audit records resolve transition",
           any(e["status"] == "Resolved" and "->" in e["text"] for e in added), added)
     check("audit records closure transition",
-          any(e["status"] == "Closed" and "Closed after office confirmation" in e["text"] for e in added), added)
+          any(e["status"] == "Closed" and "closed after confirmation" in e["text"] for e in added), added)
     check("audit carries actors", all(e.get("by") for e in added), added)
     check("audit subjects point at the ticket",
           all(e["subjectId"] == tid for e in added), added)
@@ -1121,6 +1205,12 @@ def test_query_module():
     check("office filter", res["total"] == 2 and all(t["office"] == "Registrar" for t in res["items"]))
     res = query_mod.query_tickets(tickets, {"priority": "high"})
     check("priority filter", res["total"] == 3, res["total"])
+    sample = [{"id": "A", "priority": "low"}, {"id": "B", "priority": "critical"},
+              {"id": "C", "priority": "high"}, {"id": "D", "priority": "medium"}]
+    res = query_mod.query_tickets(sample, {"sort": "priority", "order": "desc", "size": "10"})
+    check("priority sort ranks critical first",
+          [t["id"] for t in res["items"]] == ["B", "C", "D", "A"],
+          [t["id"] for t in res["items"]])
     res = query_mod.query_tickets(tickets, {"mine": "1"}, user_name="A. Delos Reyes")
     check("mine filter", res["total"] == 2 and all(
         t["requester"] == "A. Delos Reyes" for t in res["items"]), res["total"])
@@ -1233,6 +1323,81 @@ def test_role_scope_and_policy():
     check("the matrix rejects an impact level outside the domain", not r.get("ok"), r)
 
 
+def test_reassign_and_no_response():
+    st = fresh()
+    tid = "IT-2026-000130"
+    before = engine.get_ticket(st, tid)
+    check("the seed ticket starts with a technician", before["technician"] == "J. Tan", before.get("technician"))
+    r = engine.call(st, "technician", "reassign", [tid, "M. Uy"])
+    check("a technician cannot reassign", not r.get("ok"), r)
+    r = engine.call(st, "management", "reassign", [tid, "M. Uy"])
+    check("the administrator cannot reassign", not r.get("ok"), r)
+    r = engine.call(st, "coordinator", "reassign", [tid, "J. Tan"])
+    check("reassigning to the same technician is refused", not r.get("ok"), r)
+    r = engine.call(st, "coordinator", "reassign", [tid, "M. Uy"])
+    check("the coordinator reassigns the technician", r.get("ok"), r)
+    t = engine.get_ticket(st, tid)
+    check("the assignment changed and the status did not",
+          t["technician"] == "M. Uy" and t["status"] == before["status"], (t["technician"], t["status"]))
+    check("the reassignment is in the history",
+          any("Reassigned from J. Tan to M. Uy" in h["text"] for h in t["history"]), t["history"][-1])
+    check("the reassignment is audited",
+          any(e["kind"] == "reassign" and e["subjectId"] == tid for e in st["audit"]))
+    check("the new technician is notified",
+          any(n["role"] == "technician" and n.get("ticketId") == tid and n["kind"] == "assign"
+              for n in st["notifications"]), st["notifications"][-1])
+    check("the office is notified without the technician's name",
+          any(n["role"] == "requester" and n.get("ticketId") == tid and "different technician" in n["text"]
+              for n in st["notifications"]), st["notifications"][-1])
+
+    # ---- No response keeps Resolved and sends the reminder ----------------
+    st2 = fresh()
+    req = {"role": "requester", "name": "R. Villanueva", "office": "Accounting"}
+    r = engine.call(st2, "requester", "officeDecision",
+                    ["IT-2026-000141", "no_response", {}], user=req)
+    check("no response is recorded", r.get("ok"), r)
+    t2 = engine.get_ticket(st2, "IT-2026-000141")
+    check("no response keeps the status Resolved", t2["status"] == "resolved", t2["status"])
+    check("no response marks the confirmation state", t2["confirmation"]["state"] == "no_response")
+    check("no response sends the follow-up reminder", len(t2["reminders"]) == 1, t2["reminders"])
+    check("the office receives the reminder",
+          any(n["role"] == "requester" and n.get("ticketId") == "IT-2026-000141"
+              and n["kind"] == "remind" for n in st2["notifications"]))
+
+
+def test_management_readonly():
+    st = fresh()
+    # Review the seeded ticket so assignment would otherwise be allowed.
+    engine.call(st, "coordinator", "assess",
+                ["IT-2026-000143", {"impact": "Medium", "urgency": "Medium", "priority": "medium", "target": "2026-11-01"}])
+    blocked = {
+        "assign": ["IT-2026-000143", "J. Tan"],
+        "approve": ["IT-2026-000143", "ok"],
+        "cancel": ["IT-2026-000143", "duplicate"],
+        "close": ["IT-2026-000143", "authorized", "done"],
+        "officeDecision": ["IT-2026-000143", "accepted", {"person": "Someone"}],
+        "startWork": ["IT-2026-000143"],
+        "addComment": ["IT-2026-000143", {"text": "looking", "visibility": "internal"}],
+        "sendReminder": ["IT-2026-000143"],
+        "runScheduleCheck": [False],
+        "updateSchedule": ["SCH-2026-024", {"frequency": "monthly"}],
+        "setScheduleActive": ["SCH-2026-024", False],
+        "closeJob": ["MNT-2026-0061", "Successful"],
+    }
+    for name, args in blocked.items():
+        r = engine.call(st, "management", name, args)
+        check("the administrator cannot %s" % name, not r.get("ok"), r)
+    t = engine.get_ticket(st, "IT-2026-000143")
+    check("the blocked calls changed nothing",
+          t["status"] == "submitted" and t["technician"] is None, (t["status"], t["technician"]))
+    r = engine.call(st, "management", "saveSettings",
+                    [{"authorizedClosureRoles": ["management"]}])
+    check("the administrator cannot name itself as a closure role", not r.get("ok"), r)
+    check("the closure role setting is unchanged",
+          st["settings"]["authorizedClosureRoles"] == ["coordinator"],
+          st["settings"]["authorizedClosureRoles"])
+
+
 def main():
     tmp = tempfile.mkdtemp(prefix="itc-tests-")
     print("ITC backend tests")
@@ -1245,11 +1410,15 @@ def main():
     test_schedule_generation()
     test_world_tick()
     test_tenancy()
+    test_requester_scope_includes_own_requests()
+    test_intake_priority()
     test_conversation()
     test_notifications_read()
     test_admin_engine()
     test_audit_trail()
     test_role_scope_and_policy()
+    test_reassign_and_no_response()
+    test_management_readonly()
     print("query:")
     test_query_module()
     print("oidc:")

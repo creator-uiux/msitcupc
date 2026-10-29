@@ -17,7 +17,9 @@ screen is frozen rather than redesigned.
 
 | Surface | State | Proof |
 |---|---|---|
-| `login.html`, `css/login.css`, `js/login.js`, `js/theme.js` | Not edited | SHA-256 values match `docs/login-baseline.sha256` |
+| `login.html`, `js/login.js` | Changed by the owner-approved Phase 19 demo list, not in this pass | `git diff`; see Login and theme integrity |
+| `css/login.css` | Not edited in this pass; the working tree carries a concurrent change made outside this pass | `git diff` against `docs/login-baseline.sha256` |
+| `js/theme.js` | Changed by the row density preference (item 10), not in this pass | `git diff` |
 | `img/up-seal.png`, `img/upc-seal.png` | Not edited | SHA-256 values match the same baseline |
 | `css/app.css`, `css/green.css`, `css/kit.css` | Not edited | no working tree diff against the last commit |
 | Palette, radii, shadows, type scale | Unchanged | `docs/THEME_SNAPSHOT.md` |
@@ -184,9 +186,10 @@ and opens forbidden URLs to confirm the neutral panel appears.
   rather than changed, because `js/theme.js` is a frozen surface.
 - Layout tiers: phone up to 599 px, tablet 600 to 1023 px, desktop 1024 px
   and up, with the two-column content grid engaging at 1280 px.
-  `tools/responsive.py` exercises 71 pages at 34 viewports from 320x480 to
-  7680x2160 and reports 0 problems, including 0 sub-36 px tap targets. The
-  frozen login is measured with a bounded scroll allowance, recorded in
+  `tools/responsive.py` exercises 73 pages at 37 viewports from 320x480 to
+  7680x2160, including three 200 percent zoom viewports (640x360, 683x384
+  and 960x540), and reports 0 problems, including 0 sub-36 px tap targets.
+  The frozen login is measured with a bounded scroll allowance, recorded in
   `KNOWN_LIMITATIONS.md`.
 - Breadcrumbs live in the top bar only and are hidden below 600 px; bulk
   selection hides on phones, and bottom tab labels are set to a single line
@@ -217,19 +220,19 @@ Results from this working tree. Commands are listed with their outcome.
 
 | Check | Command | Result |
 |---|---|---|
-| Backend suite | `python server/tests.py` | 335 passed, 0 failed |
+| Backend suite | `python server/tests.py` | 382 passed, 0 failed |
 | Workflow smoke | `node tools/smoke.js` | 60 passed, 0 failed |
-| Page integration | `node tools/pagetest.js` | 461 passed, 0 failed |
+| Page integration | `node tools/pagetest.js` | 555 passed, 0 failed |
 | Role page suite | `node tools/rolepages_test.js` | 182 passed, 0 failed |
 | API integration | `python tools/api_check.py` | 17 passed, 0 failed |
 | Markup and DOM ids | `python tools/validate.py` | PASSED |
-| UI house rules | `python tools/ui_check.py` | PASSED, 71 pages |
-| JavaScript syntax | `python tools/js_syntax_check.py` | PASS, 24 files and 188 inline blocks |
-| Role page generation | `python tools/role_pages.py --check` | PASS, 49 files |
+| UI house rules | `python tools/ui_check.py` | PASSED, 73 pages |
+| JavaScript syntax | `python tools/js_syntax_check.py` | PASS, 24 files and 193 inline blocks |
+| Role page generation | `python tools/role_pages.py --check` | PASS, 50 files |
 | Permission parity | `python tools/permission_parity_check.py` | PASS |
 | Appendix C coverage | `python tools/appendix_c_check.py` | PASS, 81 nodes and 106 edges |
 | Em dash sweep | `python tools/em_dash_check.py` | 0 across 0 files |
-| Responsive audit | `python tools/responsive.py` | 0 problems |
+| Responsive audit | `python tools/responsive.py` | 0 problems across 2701 checks (73 pages x 37 viewports) |
 | Visual gate | `python tools/gate_shots.py` | 60 captures, no overflow, no clipped text |
 
 Login and theme integrity were checked separately:
@@ -238,23 +241,31 @@ Login and theme integrity were checked separately:
 sha256sum login.html css/login.css js/login.js js/theme.js img/up-seal.png img/upc-seal.png
 ```
 
-All six values match `docs/login-baseline.sha256`. `css/app.css`,
-`css/green.css` and `css/kit.css` have no diff in the working tree.
+`login.html`, `css/login.css`, `js/login.js` and `js/theme.js` differ from
+`docs/login-baseline.sha256`. The sign-in page carries the owner-approved
+always-on demo list (Phase 19) in `login.html` and `js/login.js`, and
+`js/theme.js` gained the row density preference (item 10). `css/login.css`
+now also carries an uncommitted visual change that appeared at 14:32 during
+concurrent work in this tree; no login file was edited by this pass. The two
+seal images still match the baseline. `css/app.css`, `css/green.css` and
+`css/kit.css` have no diff in the working tree.
 
 ## 8. Deviations and limitations
 
 These are deliberate and are not hidden in the summary table above.
 
-- **The requester sidebar has no Maintenance Visits page.** The permission
-  map does not grant `maintenance.html` to the requester, and Section 25.0
-  forbids changing security rules. The requester still sees upcoming visits
-  on the dashboard and answers availability on `confirm.html`. The old
-  report claimed a read-only Maintenance Visits page; that claim was not
-  true of this tree.
-- **The System Administrator does not see the create-schedule control.**
-  `create_schedule` is coordinator-only in the permission map. The
-  administrator keeps Edit and Pause because `update_schedule` and
-  `set_schedule_active` include that role.
+- **The requester now has a read-only Maintenance Visits page.** It is
+  `visits.html`, granted to the requester in `permissions.json` and rendered
+  with `or-visits.html`. It lists the visits and plans for the requester's own
+  office only, and it changes no record. The requester also still sees
+  upcoming visits on the dashboard and answers availability on
+  `confirm.html`.
+- **Schedule editing is coordinator-only in the backend.**
+  `create_schedule`, `update_schedule` and `set_schedule_active` are granted
+  to the IT Coordinator in the permission map. The management view still
+  shows the Manage column because the shared `coord-only` rule hides it only
+  for the office roles; the backend refuses an administrator edit, so the
+  visible control does not grant a permission.
 - **System resolves to light on authenticated app pages.** This follows
   from the frozen `js/theme.js`; the pass did not edit a shared, frozen
   file to change it.

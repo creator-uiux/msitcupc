@@ -98,11 +98,13 @@ design snapshots; the sidebar simply links to the role-named ones.
 Authentication is **UPMail Google Workspace only**, restricted to
 `@upcebu.edu.ph`, with no local passwords. When the backend runs with a Google
 client id, `login.html` performs real Google Identity Services sign-in and the
-server verifies the `id_token`. The development account chooser is shown only
-when demo mode is explicitly on (`--demo` or `ITC_DEMO_MODE`), never in a
-network-facing deployment. Either way the chosen account scopes the whole
-workspace to that role, and an account with no provisioned role sees **Access
-not granted**:
+server verifies the `id_token`. The four demo accounts are always listed on the
+sign-in page, labelled "Demo only", so the same build can be previewed on any
+localhost port, a static copy or Firebase Hosting. On a server whose demo gate
+is closed, a demo account opens a browser-only session backed by the bundled
+seed; the server still refuses demo credentials. Either way the chosen account
+scopes the whole workspace to that role, and an account with no provisioned
+role sees **Access not granted**:
 
 | Role | Person | Can primarily |
 |---|---|---|
@@ -206,13 +208,13 @@ Zero-config checkers under `tools/` (plus the backend suite):
 
 | Command | What it proves |
 |---|---|
-| `python tools/ui_check.py` | **the UI house rules** on all 71 pages: the four authenticated stylesheets (three plus `login.css` on the sign-in page) load in order, no inline style survives, the shell placeholders and the page head are always there, every class used in the markup is defined in the stylesheets, and no page carries its own `<style>` block |
+| `python tools/ui_check.py` | **the UI house rules** on all 73 pages: the four authenticated stylesheets (three plus `login.css` on the sign-in page) load in order, no inline style survives, the shell placeholders and the page head are always there, every class used in the markup is defined in the stylesheets, and no page carries its own `<style>` block |
 | `python tools/validate.py` | HTML well-formedness, duplicate ids, `label for` → id, dead internal links, `getElementById` targets exist |
 | `node tools/smoke.js` | **60 workflow assertions**  --  the whole SOP engine (`store/ui/flow/live`) in a VM: every branch of the flowchart |
-| `node tools/pagetest.js` | **355 page assertions**  --  serves the pages and drives every screen in jsdom: forms, modals, sign-in, page guard, role-lane separation, filters, schedule check, plus a load+sentinel check for every Phase-C screen in each role and a reply-composer regression guard; fails on any console/window error |
-| `node tools/rolepages_test.js` | **173 role-URL assertions**  --  every legal role page exists, no forbidden combo does, each page pins its own role and prefixes its nav links, a **sessionless** load renders the URL's role (never login  --  the import/share path), a signed-in wrong-role URL redirects, bare pages still work, role visibility classes are hidden or shown as the permission map says, and a forbidden URL shows the neutral panel |
-| `python tools/responsive.py` | **responsive checks** (71 pages × 34 viewports, 320x480 to 7680x2160)  --  drives headless Chrome over the DevTools Protocol and flags horizontal overflow, elements past the viewport, clipped text and sub-36 px tap targets (content inside an intentional horizontal scroller is exempt) |
-| `python server/tests.py` | **335 backend assertions**  --  engine, RBAC, requester office-tenancy, technician data scope, Google OIDC verification, notification delivery, SQLite persistence, HTTP API, SSE, seed shape, site serving |
+| `node tools/pagetest.js` | **555 page assertions**  --  serves the pages and drives every screen in jsdom: forms, modals, sign-in, page guard, role-lane separation, filters, schedule check, plus a load+sentinel check for every Phase-C screen in each role and a reply-composer regression guard; fails on any console/window error |
+| `node tools/rolepages_test.js` | **182 role-URL assertions**  --  every legal role page exists, no forbidden combo does, each page pins its own role and prefixes its nav links, a **sessionless** load renders the URL's role (never login  --  the import/share path), a signed-in wrong-role URL redirects, bare pages still work, role visibility classes are hidden or shown as the permission map says, and a forbidden URL shows the neutral panel |
+| `python tools/responsive.py` | **responsive checks** (73 pages × 37 viewports, 320x480 to 7680x2160, plus 200 percent zoom at 640x360, 683x384 and 960x540)  --  drives headless Chrome over the DevTools Protocol and flags horizontal overflow, elements past the viewport, clipped text and sub-36 px tap targets (content inside an intentional horizontal scroller is exempt) |
+| `python server/tests.py` | **382 backend assertions**  --  engine, RBAC, requester office-tenancy, technician data scope, Google OIDC verification, notification delivery, SQLite persistence, HTTP API, SSE, seed shape, site serving |
 | `python tools/api_check.py` | **17 end-to-end assertions**  --  real Chrome loads the site served by the backend and verifies the UI talks to it (live by default) |
 | `python tools/permission_parity_check.py` | the permission map, the backend guards and the frontend mirror never drift apart |
 | `python tools/appendix_c_check.py` | every node and edge of the Appendix C workflow data is present in the Workflow Guide |
@@ -256,7 +258,7 @@ Server-Sent Events, and serves the whole site on the same origin:
 ```
 python server/app.py                 # serves http://127.0.0.1:8787/
 python server/app.py --open          # ...and opens your browser
-python server/tests.py               # 335 assertions
+python server/tests.py               # 382 assertions
 ```
 
 Open `http://127.0.0.1:8787/` and every page is live. `js/api.js` wires the

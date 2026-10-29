@@ -79,7 +79,7 @@
           <!-- status distribution -->
           <div class="card card-pad">
             <div class="card-head-row">
-              <b class="card-title">Status distribution</b><span class="hint">live</span>
+              <b class="card-title">Status distribution</b><span class="hint" id="rStatusHint">live</span>
             </div>
             <div class="bars hbar-list" id="rStatus"></div>
           </div>
@@ -88,7 +88,8 @@
           <div class="card card-pad lead-only">
             <b class="card-title">Workload by technician</b>
             <div class="bars hbar-list" id="rWork"></div>
-            <div class="legend-line mt-sm"><span><i></i>Assigned / active</span><span><i class="alt"></i>Completed</span></div>
+            <div class="legend-line mt-sm"><span><i class="is-active"></i>Active</span><span><i class="is-done"></i>Completed</span></div>
+            <p class="chart-note" id="rWorkNote"></p>
           </div>
 
           <!-- turnaround + costs -->
@@ -96,11 +97,15 @@
             <b class="card-title">Turnaround &amp; costs</b>
             <div class="info mt" id="rTurn"></div>
           </div>
-
-          <div class="note"><span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3l7 3v5c0 4.4-3 8.2-7 10-4-1.8-7-5.6-7-10V6z"/><path d="M9.3 12l1.9 1.9 3.6-3.7"/></svg></span><div><b>Reporting rules:</b> cancelled separate from completed totals; authorized office access; role-based IT access; completed records and audit history preserved; services stay linked to their office.</div></div>
-
-          <div class="note"><span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m15 5 4 4"/><path d="M13 7 3 17a2.1 2.1 0 0 0 3 3l10-10"/><path d="m9 11 2 2"/><path d="m11 9 2 2"/></svg></span><div><b>Metric definitions:</b> <b>turnaround</b> = resolved − created; <b>overdue</b> = active ticket past its target date (or, with no target, past intake + <span id="rSla">5</span> days). Both are computed in one place (<code>js/query.js</code> / <code>server/query.py</code>).</div></div>
         </div>
+      </section>
+
+      <!-- the two rule notes read as footnotes at the page width, so they do
+           not stretch the right column past the other cards -->
+      <section class="notes-2 mt">
+        <div class="note"><span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3l7 3v5c0 4.4-3 8.2-7 10-4-1.8-7-5.6-7-10V6z"/><path d="M9.3 12l1.9 1.9 3.6-3.7"/></svg></span><div><b>Reporting rules:</b> cancelled separate from completed totals; authorized office access; role-based IT access; completed records and audit history preserved; services stay linked to their office.</div></div>
+
+        <div class="note"><span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m15 5 4 4"/><path d="M13 7 3 17a2.1 2.1 0 0 0 3 3l10-10"/><path d="m9 11 2 2"/><path d="m11 9 2 2"/></svg></span><div><b>Metric definitions:</b> <b>turnaround</b> = resolved − created; <b>overdue</b> = active ticket past its target date (or, with no target, past intake + <span id="rSla">5</span> days). Both are computed in one place (<code>js/query.js</code> / <code>server/query.py</code>).</div></div>
       </section>
 
       <!-- the eight standard office IT service reports -->
@@ -255,16 +260,20 @@ function render() {
   var order = ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved', 'closed', 'cancelled'];
   var sc = {}; order.forEach(function (s) { sc[s] = 0; });
   rows.forEach(function (t) { sc[t.status] = (sc[t.status] || 0) + 1; });
-  var maxS = Math.max.apply(null, order.map(function (s) { return sc[s]; }).concat([1]));
   /* The status distribution is a horizontal list rather than eight columns:
      the exact status names need more room than a narrow card allows, and a
-     row per status reads cleanly at any width. */
+     row per status reads cleanly at any width.  The fill is the share of the
+     filtered records, so the bar and the percentage always agree, and the
+     title repeats the count and its denominator. */
+  var statusHint = document.getElementById('rStatusHint');
+  if (statusHint) statusHint.textContent = rows.length + (rows.length === 1 ? ' record' : ' records') + ' after filters';
   document.getElementById('rStatus').innerHTML = order.map(function (s) {
-    var h = Math.round(sc[s] / maxS * 100);
-    return '<div class="hbar' + (s === 'closed' || s === 'cancelled' ? ' alt' : '') + '">' +
+    var share = rows.length ? Math.round(sc[s] / rows.length * 100) : 0;
+    return '<div class="hbar" title="' + UI.attr(sc[s] + ' of ' + rows.length + ' records (' + share + '%)') + '">' +
       '<span class="hbar-lbl">' + UI.esc(UI.STATUS[s][0]) + '</span>' +
-      '<span class="hbar-track"><span class="hbar-fill" style="width:' + Math.max(h, 2) + '%"></span></span>' +
-      '<span class="hbar-num">' + sc[s] + '</span></div>';
+      '<span class="hbar-track"><span class="hbar-fill" style="width:' + Math.max(share, sc[s] ? 2 : 0) + '%"></span></span>' +
+      '<span class="hbar-num">' + sc[s] + '</span>' +
+      '<span class="hbar-pct">' + share + '%</span></div>';
   }).join('');
 
   /* workload */
@@ -279,21 +288,36 @@ function render() {
     techs[j.technician] = techs[j.technician] || { active: 0, done: 0 };
     if (j.status === 'closed') techs[j.technician].done++; else techs[j.technician].active++;
   });
-  var names = Object.keys(techs);
+  var names = Object.keys(techs).sort(function (a, b) {
+    return (techs[b].active + techs[b].done) - (techs[a].active + techs[a].done) || a.localeCompare(b);
+  });
+  var activeTotal = 0, doneTotal = 0;
+  names.forEach(function (n) { activeTotal += techs[n].active; doneTotal += techs[n].done; });
+  var allWork = activeTotal + doneTotal;
   var maxW = Math.max.apply(null, names.map(function (n) { return techs[n].active + techs[n].done; }).concat([1]));
   document.getElementById('rWork').innerHTML = names.length ? names.map(function (n) {
     var d = techs[n];
     var total = d.active + d.done;
-    var activePct = Math.round(d.active / maxW * 100);
-    var donePct = Math.round(d.done / maxW * 100);
+    var share = allWork ? Math.round(total / allWork * 100) : 0;
+    function seg(cls, value) {
+      return value ? '<i class="hbar-seg ' + cls + '" style="width:' + (value / maxW * 100).toFixed(1) + '%" title="' + value + '"></i>' : '';
+    }
     /* A row per technician, like the status distribution: a technician name
-       needs more room than a narrow chart column allows. */
-    return '<div class="hbar">' +
+       needs more room than a narrow chart column allows.  The two segments
+       share one track, so active and completed read against the same scale. */
+    return '<div class="hbar" title="' + UI.attr(n + ': ' + d.active + ' active, ' + d.done + ' completed (' + share + '% of all work)') + '">' +
       '<span class="hbar-lbl">' + UI.esc(n) + '</span>' +
-      '<span class="hbar-track"><span class="hbar-fill" style="width:' + Math.max(activePct, 2) + '%"></span>' +
-      '<span class="hbar-fill alt" style="width:' + Math.max(donePct, 0) + '%"></span></span>' +
-      '<span class="hbar-num">' + total + '</span></div>';
+      '<span class="hbar-split" aria-hidden="true">' + seg('is-active', d.active) + seg('is-done', d.done) + '</span>' +
+      '<span class="hbar-num">' + total + '</span>' +
+      '<span class="hbar-pct">' + share + '%</span></div>';
   }).join('') : '<div class="empty"> <img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No workload data for these filters.</div>';
+  var workNote = document.getElementById('rWorkNote');
+  if (workNote) {
+    workNote.textContent = names.length
+      ? activeTotal + ' active · ' + doneTotal + ' completed across ' + names.length +
+        (names.length === 1 ? ' technician' : ' technicians')
+      : '';
+  }
 
   /* turnaround & costs */
   var jobsFiltered = db.jobs.filter(function (j) {
@@ -392,12 +416,19 @@ function renderCatalogue(rows, jobsFiltered) {
       jobsCompliant + ' / ' + jobsDue + ' occurrences compliant (' + compliancePct + '%)']
   ];
 
-  document.getElementById('rCatBody').innerHTML = reports.map(function (r, i) {
-    return '<tr style="--row-index:' + i + '"><td data-label="#">' + (i + 1) + '</td>' +
+  /* Priority is an IT assessment: the office and technicians never see the
+     distribution.  The original index is kept so the CSV export mapping
+     does not shift. */
+  var hidePriority = UI.roleKey() === 'requester' || UI.roleKey() === 'technician';
+  var shown = [];
+  reports.forEach(function (r, i) { if (!(hidePriority && r[0] === 'Priority distribution')) shown.push({ r: r, i: i }); });
+  document.getElementById('rCatBody').innerHTML = shown.map(function (e, n) {
+    var r = e.r;
+    return '<tr style="--row-index:' + n + '"><td data-label="#">' + (n + 1) + '</td>' +
       '<td data-label="Report"><div class="t-title">' + UI.esc(r[0]) + '</div></td>' +
       '<td data-label="Definition"><div class="t-sub">' + UI.esc(r[1]) + '</div></td>' +
       '<td data-label="Result"><div class="t-title">' + UI.esc(r[2]) + '</div></td>' +
-      '<td data-label="Export"><button class="btn btn-ghost btn-sm" data-rcat="' + i + '">CSV</button></td></tr>';
+      '<td data-label="Export"><button class="btn btn-ghost btn-sm" data-rcat="' + e.i + '">CSV</button></td></tr>';
   }).join('');
 
   var sla = document.getElementById('rSla');
@@ -421,11 +452,17 @@ function exportReport(idx, reports, rows, jobs, byOffice, byCat, byTech, bySourc
   var out = [[reports[idx][0]], ['definition', reports[idx][1]], ['result', reports[idx][2]], []];
   if (idx === 0 || idx === 1) {
     var withCost = UI.roleKey() !== 'requester';
-    out.push(withCost ? ['ticket', 'office', 'status', 'category', 'technician', 'created', 'resolved', 'cost']
-                      : ['ticket', 'office', 'status', 'category', 'technician', 'created', 'resolved']);
+    var withTech = UI.roleKey() !== 'requester';
+    var head = ['ticket', 'office', 'status', 'category'];
+    if (withTech) head.push('technician');
+    head = head.concat(['created', 'resolved']);
+    if (withCost) head.push('cost');
+    out.push(head);
     (idx === 1 ? rows.filter(function (t) { return t.status === 'closed' || t.status === 'cancelled'; }) : rows)
       .forEach(function (t) {
-        var row = [t.id, t.office, t.status, t.category, t.technician || '', t.createdAt, t.resolvedAt || ''];
+        var row = [t.id, t.office, t.status, t.category];
+        if (withTech) row.push(t.technician || '');
+        row = row.concat([t.createdAt, t.resolvedAt || '']);
         if (withCost) row.push(t.diagnosis.cost || 0);
         out.push(row);
       });

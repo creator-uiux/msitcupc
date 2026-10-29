@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS tickets (
   authorized_reason TEXT, resolved_at TEXT, closed_at TEXT, hold_return TEXT,
   created_at TEXT, updated_at TEXT, rev INTEGER DEFAULT 0,
   diagnosis TEXT, confirmation TEXT, dependency TEXT, reminders TEXT,
-  previous_record TEXT
+  previous_record TEXT, date_reported TEXT, idempotency_key TEXT
 );
 
 CREATE TABLE IF NOT EXISTS ticket_history (
@@ -152,6 +152,8 @@ def _migrate(conn):
         conn.execute("ALTER TABLE tickets ADD COLUMN previous_record TEXT")
     if "idempotency_key" not in tcols:
         conn.execute("ALTER TABLE tickets ADD COLUMN idempotency_key TEXT")
+    if "date_reported" not in tcols:
+        conn.execute("ALTER TABLE tickets ADD COLUMN date_reported TEXT")
     if "approval" not in tcols:
         conn.execute("ALTER TABLE tickets ADD COLUMN approval TEXT")
 
@@ -251,6 +253,7 @@ def _ticket(row, hist, tests, comments):
         "asset": row["asset"], "attachments": _j(row["attachments"], []),
         "status": row["status"], "impact": row["impact"], "urgency": row["urgency"],
         "priority": row["priority"], "target": row["target"],
+        "dateReported": row["date_reported"] if "date_reported" in row.keys() else "",
         "technician": row["technician"], "reviewed": bool(row["reviewed"]),
         "recurring": bool(row["recurring"]), "linkedTo": row["linked_to"],
         "idempotencyKey": row["idempotency_key"] if "idempotency_key" in row.keys() else "",
@@ -381,8 +384,8 @@ def save_state(conn, st):
                attachments,status,impact,urgency,priority,target,technician,reviewed,
                recurring,linked_to,cancel_reason,closure,authorized_reason,resolved_at,
                closed_at,hold_return,created_at,updated_at,rev,diagnosis,confirmation,
-               dependency,reminders,previous_record)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               dependency,reminders,previous_record,date_reported,idempotency_key)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (t["id"], t.get("office"), t.get("requester"), t.get("category"), t.get("source"),
              t.get("issue"), t.get("asset"), json.dumps(t.get("attachments", [])),
              t.get("status"), t.get("impact"), t.get("urgency"), t.get("priority"),
@@ -392,7 +395,8 @@ def save_state(conn, st):
              t.get("closedAt"), t.get("holdReturn"), t.get("createdAt"), t.get("updatedAt"),
              t.get("rev", 0), json.dumps(t.get("diagnosis", {})),
              json.dumps(t.get("confirmation", {})), json.dumps(t.get("dependency")),
-             json.dumps(t.get("reminders", [])), t.get("previousRecord")))
+             json.dumps(t.get("reminders", [])), t.get("previousRecord"),
+             t.get("dateReported"), t.get("idempotencyKey")))
         for i, h in enumerate(t.get("history", [])):
             conn.execute("INSERT INTO ticket_history VALUES (?,?,?,?,?,?,?,?)",
                          (t["id"], i, h.get("at"), h.get("by"), h.get("role"),

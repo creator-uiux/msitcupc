@@ -77,36 +77,33 @@
         <div class="card-head"><h3>Maintenance schedules</h3>
           <span class="hint">record: office, assets, category, checklist, frequency, due date, technician</span></div>
         <table class="table">
-          <thead><tr><th>Schedule</th><th>Office / assets</th><th>Frequency</th><th>Next due</th><th>Technician</th><th>State</th><th class="schedule-manage">Manage</th></tr></thead>
+          <thead><tr><th>Schedule</th><th>Office / assets</th><th>Frequency</th><th>Next due</th><th>Technician</th><th>State</th><th class="schedule-manage coord-only">Manage</th></tr></thead>
           <tbody id="sBody"></tbody>
         </table>
         <div id="sPagination"></div>
         <div class="card-foot" id="schedControls">
           <button class="btn btn-primary schedule-manage coord-only" id="btnNewSched">New maintenance schedule</button>
-          <button class="btn btn-ghost schedule-manage" id="btnCheck">Run schedule check now</button>
+          <button class="btn btn-ghost schedule-manage coord-only" id="btnCheck">Run schedule check now</button>
           <span class="hint">also runs automatically every few seconds</span>
         </div>
       </div>
 
-      <section class="grid grid-2 mt">
-        <div class="stack">
-          <!-- jobs -->
-          <div class="card">
-            <div class="card-head"><h3>Maintenance jobs</h3><span class="hint" id="jCount"> -- </span></div>
-            <table class="table">
-              <thead><tr><th>Job</th><th>Schedule / office</th><th>Status</th><th>Checklist</th><th></th></tr></thead>
-              <tbody id="jBody"></tbody>
-            </table>
-            <div id="jPagination"></div>
-            <div class="empty" id="jEmpty" hidden><img src="img/empty-maintenance.svg" alt="" width="120" height="90" loading="lazy">No jobs  --  they appear when a schedule falls due.</div>
-          </div>
+      <!-- jobs and the selected job: the detail uses the full page width,
+           because a 363px rail left half the jobs table's height blank -->
+      <section class="mt">
+        <div class="card">
+          <div class="card-head"><h3>Maintenance jobs</h3><span class="hint" id="jCount"> -- </span></div>
+          <table class="table">
+            <thead><tr><th>Job</th><th>Schedule / office</th><th>Status</th><th>Checklist</th><th>Detail</th></tr></thead>
+            <tbody id="jBody"></tbody>
+          </table>
+          <div id="jPagination"></div>
+          <div class="empty" id="jEmpty" hidden><img src="img/empty-maintenance.svg" alt="" width="120" height="90" loading="lazy">No jobs  --  they appear when a schedule falls due.</div>
         </div>
 
-        <div class="stack">
-          <div id="jobPanel"></div>
+        <div id="jobPanel" class="mt"></div>
 
-          <div class="note"><span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span><div><b>Job already exists?</b> The system checks the schedule occurrence first and reuses the existing job  --  duplicate maintenance jobs are never generated.</div></div>
-        </div>
+        <div class="note mt"><span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span><div><b>Job already exists?</b> The system checks the schedule occurrence first and reuses the existing job  --  duplicate maintenance jobs are never generated.</div></div>
       </section>
     </main>
 
@@ -369,7 +366,7 @@ function render() {
   var db = Store.db;
   var role = Store.db.role;
   var isCoord = role === 'coordinator';
-  var canManageSched = role === 'coordinator' || role === 'management';
+  var canManageSched = role === 'coordinator';
   document.getElementById('schedControls').hidden = !isCoord;
   /* The trusted server already scopes a technician to their own schedules and
      jobs.  The same rule is applied here so the offline demo shows the same
@@ -407,7 +404,7 @@ function render() {
       (overdue ? '<div class="t-sub nowrap">overdue</div>' : '') + '</td>' +
       '<td data-label="Technician"><div class="t-title">' + UI.esc(s.technician) + '</div></td>' +
       '<td data-label="State"><span class="badge ' + (s.active ? 'b-resolved' : 'b-cancelled') + '">' + (s.active ? 'Active' : 'Paused') + '</span></td>' +
-      '<td class="schedule-manage" data-label="Manage">' + (canManageSched
+      '<td class="schedule-manage coord-only" data-label="Manage">' + (canManageSched
         ? '<div class="chip-row">' +
           '<button class="btn btn-ghost btn-sm" data-sedit="' + UI.attr(s.id) + '">Edit</button>' +
           '<button class="btn ' + (s.active ? 'btn-danger-soft' : 'btn-soft') + ' btn-sm" data-stoggle="' + UI.attr(s.id) + '" data-on="' + (s.active ? '0' : '1') + '">' + (s.active ? 'Pause' : 'Activate') + '</button>' +
@@ -455,7 +452,7 @@ function render() {
       '<td data-label="Schedule"><div class="t-title">' + UI.esc(j.office) + '</div><div class="t-sub mono">' + UI.esc(j.scheduleId) + '</div></td>' +
       '<td data-label="Status">' + UI.badge(j.status) + UI.waitingOn(j.status, true) + '</td>' +
       '<td data-label="Checklist">' + done + '/' + j.items.length + '</td>' +
-      '<td data-label="">open</td></tr>';
+      '<td data-label="Detail" class="nowrap">open</td></tr>';
   }).join('');
   document.querySelectorAll('#jBody tr[data-job]').forEach(function (tr) {
     tr.addEventListener('click', function () { selJob = tr.dataset.job; render(); });
@@ -480,12 +477,14 @@ function render() {
       closed: 'Closed', cancelled: 'Cancelled'
     }[j.status] || j.status;
 
-    panel.innerHTML = '<div class="card card-pad">' +
-      '<div class="card-head-row">' +
+    /* record and checklist side by side: the detail card owns the page width,
+       so nothing hangs below a short jobs table */
+    var headHtml = '<div class="card-head-row">' +
       '<div class="row"><span class="t-id">' + UI.esc(j.id) + '</span><span class="chip">' + UI.esc(status) + '</span>' + UI.waitingOn(j.status, true) + '</div>' +
       '<span class="chip">' + done + '/' + j.items.length + '</span></div>' +
-      '<div class="mt-sm">' + UI.stepper(j.status, true) + '</div>' +
-      '<div class="info mt">' +
+      '<div class="mt-sm">' + UI.stepper(j.status, true) + '</div>';
+
+    var recordHtml = '<div class="info mt">' +
       '<div><div class="k">Schedule</div><div class="v mono">' + UI.esc(j.scheduleId) + '</div></div>' +
       '<div><div class="k">Office / assets</div><div class="v">' + UI.esc(j.office) + ' · ' + UI.esc(j.assets.join(', ')) + '</div></div>' +
       '<div><div class="k">Technician</div><div class="v">' + UI.esc(j.technician) + '</div></div>' +
@@ -493,24 +492,11 @@ function render() {
       '<div><div class="k">Additional fault?</div><div class="v">' + UI.esc(j.additionalFault) + '</div></div>' +
       '<div><div class="k">Next due date</div><div class="v">' + (j.nextDue || (sc ? UI.dateOnly(sc.dueDate) + ' (schedule)' : ' -- ')) + '</div></div>' +
       '</div>' +
-      (j.reschedules.length ? '<ul class="list list-divided">' +
+      (j.reschedules.length ? '<ul class="list list-divided mt">' +
         j.reschedules.slice().reverse().map(function (r) {
           return '<li><span class="ico warn">' + UI.icon('cal') + '</span><div class="body"><strong>Record reschedule → ' + UI.dateOnly(r.to) + '</strong>' +
             '<span>' + UI.esc(r.reason) + '</span></div><span class="when">' + UI.timeAgo(r.at) + '</span></li>';
         }).join('') + '</ul>' : '') +
-
-      /* checklist (read-only here; technician records from My Work) */
-      '<div class="mt"><div class="card-head-row">' +
-      '<b class="card-title">Checklist execution</b>' +
-      '<span class="hint">' + (canRun ? 'record from My Work' : 'blocked until the visit is coordinated') + '</span></div>' +
-      '<div class="meter"><i class="' + (done === j.items.length ? 'ok' : '') + '" style="width:' + Math.round(done / j.items.length * 100) + '%"></i></div>' +
-      '<div class="check-stack mt">' +
-      j.items.map(function (it) {
-        return '<div class="checkline' + (it.done ? ' done' : '') + '"><span class="box">' + (it.done ? UI.icon('check') : '') + '</span>' +
-          '<div><b>' + UI.esc(it.task) + '</b>' +
-          (it.done ? '<small>' + UI.esc(it.result) + (it.finding ? ' · ' + UI.esc(it.finding) : '') + ' · ' + UI.esc(it.tech || '') + '</small>' : '<small>pending</small>') +
-          '</div></div>';
-      }).join('') + '</div></div>' +
 
       /* availability + outcome actions.
          Every button is gated by the one permission map, so the screen never
@@ -543,12 +529,29 @@ function render() {
             ? '<div class="row mt"><a class="btn btn-sm btn-primary" href="confirm.html">Open Confirmation &amp; Closure</a></div>'
             : j.status === 'resolved'
               ? '<div class="row mt"><span class="chip">Waiting on the office to confirm the result</span></div>' : '')
-        : '<div class="note mt"><span>' + UI.icon('info') + '</span><div>Office confirmation unlocks once the technician completes the visit and records the checklist.</div></div>') +
+        : '<div class="note mt"><span>' + UI.icon('info') + '</span><div>Office confirmation unlocks once the technician completes the visit and records the checklist.</div></div>');
 
+    /* checklist (read-only here; technician records from My Work) */
+    var workHtml = '<div><div class="card-head-row">' +
+      '<b class="card-title">Checklist execution</b>' +
+      '<span class="hint">' + (canRun ? 'record from My Work' : 'blocked until the visit is coordinated') + '</span></div>' +
+      '<div class="meter"><i class="' + (done === j.items.length ? 'ok' : '') + '" style="width:' + Math.round(done / j.items.length * 100) + '%"></i></div>' +
+      '<div class="check-stack mt">' +
+      j.items.map(function (it) {
+        return '<div class="checkline' + (it.done ? ' done' : '') + '"><span class="box">' + (it.done ? UI.icon('check') : '') + '</span>' +
+          '<div><b>' + UI.esc(it.task) + '</b>' +
+          (it.done ? '<small>' + UI.esc(it.result) + (it.finding ? ' · ' + UI.esc(it.finding) : '') + ' · ' + UI.esc(it.tech || '') + '</small>' : '<small>pending</small>') +
+          '</div></div>';
+      }).join('') + '</div></div>' +
       /* additional fault  --  a linked corrective ticket, raised by the
          assigned technician and created by the system */
-      faultPanel(j) +
-      '</div>';
+      faultPanel(j);
+
+    panel.innerHTML = '<div class="card card-pad">' + headHtml +
+      '<div class="jd-grid mt">' +
+      '<div class="stack">' + recordHtml + '</div>' +
+      '<div class="stack">' + workHtml + '</div>' +
+      '</div></div>';
 
     panel.querySelectorAll('[data-m]').forEach(function (b) {
       b.addEventListener('click', function () { mAct(b.dataset.m, j.id); });

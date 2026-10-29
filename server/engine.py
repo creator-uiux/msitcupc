@@ -217,7 +217,7 @@ TRANSITIONS_FALLBACK = {
                     "cancelled": ("coordinator",)},
     "on_hold":     {"in_progress": ("coordinator",),
                     "cancelled": ("coordinator",)},
-    "resolved":    {"closed": ("requester", "coordinator", "management"),
+    "resolved":    {"closed": ("requester", "coordinator"),
                     "in_progress": ("requester",),
                     "cancelled": ("coordinator",)},
     "closed":      {},
@@ -289,12 +289,19 @@ def _scope_office(state):
     return None
 
 
-def _office_block(state, office):
-    """Requester tenancy (SOP 28.2): a requester may only touch their own office."""
+def _office_block(state, office, requester=None):
+    """Requester tenancy (SOP 28.2): a requester may only touch their own office.
+
+    The requests they raised stay reachable when they chose another active
+    office at intake, so the requester field on the ticket is the same
+    signed-in name.
+    """
     if state.get("role") != "requester":
         return None
     scope = _scope_office(state)
     if scope and office and office != scope:
+        if requester and requester == _who(state)["by"]:
+            return None
         return {"ok": False, "msg": "Blocked by office-based access (28.2)."}
     return None
 
@@ -374,13 +381,14 @@ def _record_ticket(state, d, created_by=None, created_by_role="requester"):
         # Section 5 intake: the date the office reported the issue (defaults to now).
         "dateReported": d.get("dateReported") or now_iso(),
         "attachments": list(d.get("attachments") or []), "status": "submitted",
-        "impact": None, "urgency": None, "priority": "medium", "target": None, "technician": None,
+        "impact": None, "urgency": None, "priority": d.get("priority") or "medium", "target": None,
+        "technician": None,
         "createdAt": now_iso(), "updatedAt": now_iso(), "reviewed": False,
         "previousRecord": d.get("previousRecord") or d.get("linkedTo"),
         "idempotencyKey": d.get("idempotencyKey") or "",
         "approval": None,
         "history": [{"at": now_iso(), "by": hist_by, "role": created_by_role, "status": "submitted",
-                     "kind": "status", "text": "Request recorded - Status: Submitted. Captured ticket, office, requester, category, issue, date, asset, attachments, source."}],
+                     "kind": "status", "text": "Request recorded - Status: Submitted. Captured ticket, office, requester, category, priority, issue, date, asset, attachments, source."}],
         "tests": [], "reminders": [], "dependency": None, "linkedTo": d.get("linkedTo"),
         "cancelReason": None, "closure": None, "authorizedReason": "", "recurring": bool(d.get("linkedTo")),
         "withdrawal": None,
@@ -398,12 +406,20 @@ def create_ticket(state, role, d):
         return g
     if not isinstance(d, dict):
         return {"ok": False, "msg": "Provide the request details."}
-    scope = _scope_office(state)
-    if state.get("role") == "requester" and scope:
-        d = dict(d)
-        d["office"] = scope  # SOP 28.2 - a requester raises tickets for their own office
+    # A requester may choose any active office; the office they pick is kept.
     if not d.get("office") or not d.get("issue") or not d.get("category") or not d.get("requester"):
         return {"ok": False, "msg": "Office, requester, category and issue are required."}
+    # Priority is set by the IT Coordinator during assessment.  A requester
+    # cannot see or choose it (Office Requester lane: hidden priority), so an
+    # intake filed by the office starts at Medium whatever the payload says.
+    if role == "requester":
+        prio = "medium"
+    else:
+        prio = str(d.get("priority") or "medium").strip().lower()
+        if prio not in ("low", "medium", "high"):
+            return {"ok": False, "msg": "Unknown priority (%s). Choose one of: Low, Medium, High." % prio}
+    d = dict(d)
+    d["priority"] = prio
     # Intake source must be one of the configured reference values, so free
     # text from a crafted request can never enter reports by_source.
     src = str(d.get("source") or "email").strip()
@@ -442,7 +458,7 @@ def submit_info(state, role, tid, d):
     t = get_ticket(state, tid)
     if not t:
         return {"ok": False, "msg": "Ticket not found."}
-    ob = _office_block(state, t.get("office"))
+    ob = _office_block(state, t.get("office"), t.get("requester"))
     if ob:
         return ob
     if t["status"] != "needs_info":
@@ -486,7 +502,7 @@ def office_decision(state, role, tid, decision, data):
     t = get_ticket(state, tid)
     if not t:
         return {"ok": False, "msg": "Ticket not found."}
-    ob = _office_block(state, t.get("office"))
+    ob = _office_block(state, t.get("office"), t.get("requester"))
     if ob:
         return ob
     if t["status"] != "resolved":
@@ -496,14 +512,22 @@ def office_decision(state, role, tid, decision, data):
     if decision == "accepted":
         if not data.get("person"):
             return {"ok": False, "msg": "Confirmation requires the confirming person."}
+        chk = _check_transition(state, t, "closed")
+        if chk:
+            return chk
         t["confirmation"] = {"state": "accepted", "person": data["person"], "date": now_iso(), "feedback": data.get("feedback") or ""}
-        _hist(t, t["status"], "confirm", "Office accepts result - confirmation recorded for %s." % data["person"],
+        t["status"] = "closed"
+        t["closedAt"] = now_iso()
+        t["closure"] = "confirmation"
+        t["authorizedReason"] = ""
+        _hist(t, "closed", "confirm", "Office accepts result - confirmation recorded for %s. Status: Closed." % data["person"],
               data["person"], "requester")
-        notify(state, "coordinator", "%s confirmed by office - ready to close." % t["id"], "confirm", {"ticketId": t["id"]})
-        _audit(state, "ticket", tid, "confirm",
-               "Office accepted the result - confirmation recorded for %s." % data["person"], _label(t["status"]))
+        _audit_status(state, t, "resolved", "closed", "confirm",
+                      "Office accepted the result - confirmation recorded for %s; closed after confirmation." % data["person"])
+        notify(state, "coordinator", "%s confirmed and closed by the office." % t["id"], "confirm", {"ticketId": t["id"]})
+        notify(state, "requester", "%s is now Closed. Thank you." % t["id"], "confirm", {"ticketId": t["id"], "office": t["office"]})
         _touch(state)
-        return {"ok": True, "msg": "Confirmation recorded for %s." % tid}
+        return {"ok": True, "msg": "Confirmation recorded for %s - Status: Closed." % tid}
     if decision == "rejected":
         if not data.get("feedback"):
             return {"ok": False, "msg": "Record office feedback before rejecting."}
@@ -523,11 +547,15 @@ def office_decision(state, role, tid, decision, data):
         _touch(state)
         return {"ok": True, "msg": "Feedback recorded - %s returned to diagnosis." % tid}
     t["confirmation"]["state"] = "no_response"
-    _hist(t, t["status"], "confirm", "No response from office - Status kept Resolved; follow-up reminder scheduled.", "System", "system")
+    t.setdefault("reminders", []).append(now_iso())
+    _hist(t, t["status"], "confirm",
+          "No response from office - Status kept Resolved; follow-up reminder 1 sent to the office.", "System", "system")
     _audit(state, "ticket", tid, "confirm",
-           "No response from office - Status kept %s; reminder scheduled." % _label(t["status"]), _label(t["status"]))
+           "No response from office - Status kept %s; follow-up reminder sent." % _label(t["status"]), _label(t["status"]))
+    notify(state, "requester", "Follow-up reminder: please confirm the result of %s (%s)." % (t["id"], t["office"]),
+           "remind", {"ticketId": t["id"], "office": t["office"]})
     _touch(state)
-    return {"ok": True, "msg": "No response recorded - %s stays Resolved." % tid}
+    return {"ok": True, "msg": "No response recorded - %s stays Resolved, reminder sent." % tid}
 
 
 def create_linked_ticket(state, role, tid, d):
@@ -538,7 +566,7 @@ def create_linked_ticket(state, role, tid, d):
     old = get_ticket(state, tid)
     if not old:
         return {"ok": False, "msg": "Ticket not found."}
-    ob = _office_block(state, old.get("office"))
+    ob = _office_block(state, old.get("office"), old.get("requester"))
     if ob:
         return ob
     if old["status"] != "closed":
@@ -636,7 +664,7 @@ def assign(state, role, tid, tech):
     _hist(t, "assigned", "status", "Assigned to %s - Status: Assigned. Notify technician and requester." % tech, _who(state)["by"], _who(state)["role"])
     _audit_status(state, t, "submitted", "assigned", "status", "Assigned to %s." % tech)
     notify(state, "technician", "%s assigned to you (%s - %s)." % (t["id"], t["office"], t["category"]), "assign", {"ticketId": t["id"]})
-    notify(state, "requester", "%s assigned to %s - Status: Assigned." % (t["id"], tech), "assign", {"ticketId": t["id"], "office": t["office"]})
+    notify(state, "requester", "%s has been assigned to a technician - Status: Assigned." % t["id"], "assign", {"ticketId": t["id"], "office": t["office"]})
     _touch(state)
     return {"ok": True, "msg": "Status: Assigned - technician and requester notified."}
 
@@ -649,7 +677,7 @@ def reassign(state, role, tid, tech):
     are notified and the change is audited with the reason.
     """
     state["role"] = role
-    g = _guard(state, ["coordinator", "management"])
+    g = _guard(state, ["coordinator"])
     if not g["ok"]:
         return g
     t = get_ticket(state, tid)
@@ -668,7 +696,7 @@ def reassign(state, role, tid, tech):
     _audit(state, "ticket", tid, "reassign",
            "Reassigned from %s to %s." % (old or "unassigned", tech), _label(t["status"]))
     notify(state, "technician", "%s reassigned to you (%s)." % (t["id"], t["office"]), "assign", {"ticketId": t["id"]})
-    notify(state, "requester", "%s reassigned to %s." % (t["id"], tech), "assign", {"ticketId": t["id"], "office": t["office"]})
+    notify(state, "requester", "%s is now handled by a different technician." % t["id"], "assign", {"ticketId": t["id"], "office": t["office"]})
     _touch(state)
     return {"ok": True, "msg": "Reassigned to %s." % tech}
 
@@ -681,7 +709,7 @@ def approve(state, role, tid, note):
     ``start_work`` refuses a gated ticket until this sign-off exists.
     """
     state["role"] = role
-    g = _guard(state, ["coordinator", "management"])
+    g = _guard(state, ["coordinator"])
     if not g["ok"]:
         return g
     t = get_ticket(state, tid)
@@ -741,7 +769,7 @@ def request_withdrawal(state, role, tid, reason):
     t = get_ticket(state, tid)
     if not t:
         return {"ok": False, "msg": "Ticket not found."}
-    ob = _office_block(state, t.get("office"))
+    ob = _office_block(state, t.get("office"), t.get("requester"))
     if ob:
         return ob
     if t["status"] in ("closed", "cancelled"):
@@ -771,7 +799,7 @@ def cancel(state, role, tid, reason):
     t = get_ticket(state, tid)
     if not t:
         return {"ok": False, "msg": "Ticket not found."}
-    ob = _office_block(state, t.get("office"))
+    ob = _office_block(state, t.get("office"), t.get("requester"))
     if ob:
         return ob
     if t["status"] in ("closed", "cancelled"):
@@ -1061,13 +1089,13 @@ def record_test(state, role, tid, result, note):
 
 def close(state, role, tid, mode, reason):
     state["role"] = role
-    g = _guard(state, ["coordinator", "requester", "management"])
+    g = _guard(state, ["coordinator", "requester"])
     if not g["ok"]:
         return g
     t = get_ticket(state, tid)
     if not t:
         return {"ok": False, "msg": "Ticket not found."}
-    ob = _office_block(state, t.get("office"))
+    ob = _office_block(state, t.get("office"), t.get("requester"))
     if ob:
         return ob
     if t["status"] != "resolved":
@@ -1088,7 +1116,10 @@ def close(state, role, tid, mode, reason):
             return {"ok": False, "msg": "Authorized closure requires a reason."}
         allowed = _settings(state).get("authorizedClosureRoles")
         if not (isinstance(allowed, (list, tuple)) and allowed):
-            allowed = ["coordinator", "management"]
+            allowed = ["coordinator"]
+        allowed = [r for r in allowed if r != "management"]
+        if not allowed:
+            allowed = ["coordinator"]
         if role not in allowed:
             return {"ok": False, "msg": "Authorized closure is limited to: %s." % ", ".join(allowed)}
     chk = _check_transition(state, t, "closed")
@@ -1111,7 +1142,7 @@ def close(state, role, tid, mode, reason):
 
 def send_reminder(state, role, tid):
     state["role"] = role
-    g = _guard(state, ["coordinator", "management", "system"])
+    g = _guard(state, ["coordinator", "system"])
     if not g["ok"]:
         return g
     t = get_ticket(state, tid)
@@ -1218,7 +1249,7 @@ def world_tick(state):
     now_ms = now.timestamp() * 1000
 
     for t in state["tickets"]:
-        if t["status"] != "resolved" or t["confirmation"]["state"] != "pending":
+        if t["status"] != "resolved" or t["confirmation"]["state"] not in ("pending", "no_response"):
             continue
         base = _parse_ms(t.get("resolvedAt") or t["updatedAt"])
         st = _settings(state)
@@ -1560,7 +1591,7 @@ def run_schedule_check(state, role, silent=False):
     job is reused or generated, so running it twice never duplicates a job.
     """
     state["role"] = role
-    g = _guard(state, ["coordinator", "management", "system"])
+    g = _guard(state, ["coordinator", "system"])
     if not g["ok"]:
         return g
     events = _run_schedule_check(state, silent=bool(silent))
@@ -1573,11 +1604,12 @@ def close_job(state, role, job_id, reason):
 
     The office did not answer, so the job stays Resolved and a reminder goes
     out.  When the record must nevertheless be closed, only the IT Coordinator
-    or the System Administrator may do it, only with a reason, and the action
-    is always visible in the job history as an authorized closure.
+    may do it, only with a reason, and the action is always visible in the job
+    history as an authorized closure.  The System Administrator holds no
+    ticket or maintenance work.
     """
     state["role"] = role
-    g = _guard(state, ["coordinator", "management"])
+    g = _guard(state, ["coordinator"])
     if not g["ok"]:
         return g
     j = get_job(state, job_id)
@@ -1658,13 +1690,13 @@ def _next_comment_id(state, t):
 def add_comment(state, role, tid, d):
     """Post a message on a ticket: public reply or internal staff note."""
     state["role"] = role
-    g = _guard(state, ["management", "coordinator", "technician", "requester"])
+    g = _guard(state, ["coordinator", "technician", "requester"])
     if not g["ok"]:
         return g
     t = get_ticket(state, tid)
     if not t:
         return {"ok": False, "msg": "Ticket not found."}
-    ob = _office_block(state, t.get("office"))
+    ob = _office_block(state, t.get("office"), t.get("requester"))
     if ob:
         return ob
     if role == "technician" and not _assigned_to_actor(state, t):
@@ -2016,7 +2048,7 @@ def save_ref(state, role, d):
 
 def update_schedule(state, role, sid, d):
     state["role"] = role
-    g = _guard(state, ["management", "coordinator"])
+    g = _guard(state, ["coordinator"])
     if not g["ok"]:
         return g
     sc = get_schedule(state, sid)
@@ -2046,7 +2078,7 @@ def update_schedule(state, role, sid, d):
 
 def set_schedule_active(state, role, sid, active):
     state["role"] = role
-    g = _guard(state, ["management", "coordinator"])
+    g = _guard(state, ["coordinator"])
     if not g["ok"]:
         return g
     sc = get_schedule(state, sid)
@@ -2112,6 +2144,8 @@ def save_settings(state, role, d):
         bad = [r for r in val if r not in ROLES]
         if bad:
             return {"ok": False, "msg": "Unknown role(s): %s." % ", ".join(map(str, bad))}
+        if "management" in val:
+            return {"ok": False, "msg": "The System Administrator holds no ticket work and cannot be an authorized closure role."}
         val = [r for r in ROLES if r in val]
         if settings.get("authorizedClosureRoles") != val:
             settings["authorizedClosureRoles"] = val

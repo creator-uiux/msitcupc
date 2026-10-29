@@ -66,10 +66,12 @@
       return x.toFixed(1) + ',' + y.toFixed(1);
     });
     var area = pad + ',' + (h - pad) + ' ' + pts.join(' ') + ' ' + (w - pad) + ',' + (h - pad);
+    var last = pts[pts.length - 1].split(',');
     return '<svg class="spark' + (opts.cls ? ' ' + opts.cls : '') +
       '" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true">' +
       '<polygon points="' + area + '" class="spark-area"/>' +
-      '<polyline points="' + pts.join(' ') + '" class="spark-line"/></svg>';
+      '<polyline points="' + pts.join(' ') + '" class="spark-line"/>' +
+      '<circle class="spark-dot" cx="' + last[0] + '" cy="' + last[1] + '" r="2.4"/></svg>';
   }
 
   /* A radial completion gauge. The number is printed in the middle so the
@@ -104,8 +106,12 @@
     var files = Array.isArray(t.attachments) ? t.attachments.length : 0;
     var due = t.target ? dateOnly(t.target) : '';
     var tech = t.technician || '';
+    /* Priority is the IT assessment (not shown to the office or technicians);
+       the assigned technician is staff detail the office never sees. */
+    var showPrio = role !== 'requester' && role !== 'technician';
+    var showTech = role !== 'requester';
     var subject = String(t.issue == null ? '' : t.issue);
-    return '<a class="wo-card wo-p-' + attr(pKey) + '" href="' + attr(href) + '"' +
+    return '<a class="wo-card' + (showPrio ? ' wo-p-' + attr(pKey) : '') + '" href="' + attr(href) + '"' +
       (t.status === 'cancelled' ? ' data-cancelled="1"' : '') + '>' +
       '<span class="wo-top"><span class="wo-id">' + esc(t.id) + '</span>' +
       '<span class="wo-cat">' + icon(categoryIcon(t.category)) +
@@ -114,18 +120,18 @@
       '<span class="wo-office">' + icon('building') + esc(t.office || '') +
       (t.requester ? ' · ' + esc(t.requester) : '') + '</span>' +
       '<span class="wo-foot">' + badge(t.status) +
-      '<span class="wo-prio prio p-' + attr(pKey) + '">' + esc(pLabel) + '</span>' +
+      (showPrio ? '<span class="wo-prio prio p-' + attr(pKey) + '">' + esc(pLabel) + '</span>' : '') +
       (due || overdue ? '<span class="wo-due' + (overdue ? ' is-overdue' : '') + '">' +
         icon(overdue ? 'alert' : 'cal') + (overdue ? 'Overdue' : esc(due)) +
         (overdue && due ? ' · ' + esc(due) : '') + '</span>' : '') +
       '</span>' +
-      '<span class="wo-bar"><span class="wo-tech">' +
+      '<span class="wo-bar">' + (showTech ? '<span class="wo-tech">' +
       (tech
         ? '<span class="wo-avatar" aria-hidden="true">' + esc(initials(tech)) + '</span>' +
           '<span class="wo-tech-name">' + esc(tech) + '</span>'
         : '<span class="wo-avatar is-empty" aria-hidden="true">' + icon('user') + '</span>' +
           '<span class="wo-tech-name">Unassigned</span>') +
-      '</span><span class="wo-counts">' +
+      '</span>' : '') + '<span class="wo-counts">' +
       (files ? '<span title="' + files + ' attachment(s)">' + icon('paperclip') + files + '</span>' : '') +
       (replies ? '<span title="' + replies + ' reply(ies)">' + icon('message') + replies + '</span>' : '') +
       '</span></span></a>';
@@ -251,6 +257,7 @@
     'review.html': ['coordinator'],
     'technician.html': ['technician'],
     'maintenance.html': ['technician', 'coordinator', 'management'],
+    'visits.html': ['requester'],
     'confirm.html': ['requester', 'coordinator'],
     /* System Administrator screens (key `management`, prefix `mgmt`) */
     'users.html': ['management'],
@@ -349,6 +356,31 @@
   function initials(name) {
     return String(name || '').split(/[\s.]+/).filter(Boolean)
       .map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+  }
+  /* One-tap contact: a phone in a pocket should dial, a desktop should open
+     the mail client.  Contact details come from the people directory, never
+     from a guessed address. */
+  function contactFor(name) {
+    var people = (S.db && S.db.people) || [];
+    for (var i = 0; i < people.length; i++) if (people[i].name === name) return people[i];
+    return null;
+  }
+  function telHref(phone) { return 'tel:' + String(phone || '').replace(/[^\d+]/g, ''); }
+  function mailLink(email, label) {
+    if (!email) return '';
+    return '<a class="contact-link" href="mailto:' + attr(email) + '">' + icon('mail') + esc(label || email) + '</a>';
+  }
+  function telLink(phone, label) {
+    if (!phone) return '';
+    return '<a class="contact-link" href="' + attr(telHref(phone)) + '">' + icon('phone') + esc(label || phone) + '</a>';
+  }
+  function personLinks(name) {
+    var p = contactFor(name);
+    if (!p) return '';
+    var bits = [];
+    if (p.phone) bits.push('<a class="contact-link" href="' + attr(telHref(p.phone)) + '" aria-label="Call ' + attr(name) + '">' + icon('phone') + 'Call</a>');
+    if (p.email) bits.push('<a class="contact-link" href="mailto:' + attr(p.email) + '" aria-label="Email ' + attr(name) + '">' + icon('mail') + 'Email</a>');
+    return bits.length ? ' <span class="contact-links">' + bits.join('') + '</span>' : '';
   }
   function auth() {
     if (S.db.auth) return S.db.auth;
@@ -915,6 +947,7 @@
     'review.html': { section: 'Service requests', label: 'Review and assign' },
     'technician.html': { section: 'Service delivery', label: 'My work' },
     'maintenance.html': { section: 'Maintenance', label: 'Maintenance' },
+    'visits.html': { section: 'Records', label: 'Maintenance Visits' },
     'register.html': { section: 'Records', label: 'Office register' },
     'reports.html': { section: 'Records', label: 'Reports' },
     'confirm.html': { section: 'Office confirmation', label: 'Confirmation' },
@@ -949,6 +982,7 @@
       ]);
       add('Records', [
         { href: 'register.html', label: 'Office Register', ic: 'case' },
+        { href: 'visits.html', label: 'Maintenance Visits', ic: 'cal' },
         { href: 'reports.html', label: 'Reports', ic: 'chart' }
       ]);
     } else if (role === 'technician') {
@@ -1033,6 +1067,7 @@
       '<span class="chip">' + esc(a.office || r.office) + '</span></div>' +
       (demo ? '<div class="acct-note">Demo session  --  you are not signed in.</div>' : '') +
       themePickerHTML() +
+      densityPickerHTML() +
       '<a class="btn btn-ghost btn-block" href="' + urlFor('profile.html', roleKey()) + '">Profile and account settings</a>' +
       (demo
         ? '<a class="btn btn-primary btn-block" href="login.html">Sign in with UPMail</a>'
@@ -1061,6 +1096,34 @@
         applyTheme(b.dataset.themeSet);
         document.querySelectorAll('[data-theme-set]').forEach(function (o) {
           var on = o.dataset.themeSet === themeChoice();
+          o.classList.toggle('on', on);
+          o.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+      });
+    });
+  }
+
+  /* Comfortable or Compact rows.  The registers can be long, so the choice
+     belongs to the person and follows them across every page. */
+  function densityPickerHTML() {
+    var cur = (window.Theme && window.Theme.density) ? window.Theme.density() : 'comfortable';
+    var opts = [['comfortable', 'Comfortable', 'list'], ['compact', 'Compact', 'menu']];
+    return '<div class="theme-picker density-picker" role="group" aria-label="Row density">' +
+      '<span class="theme-picker-label">Row density</span>' +
+      '<div class="seg theme-seg">' + opts.map(function (o) {
+        return '<button type="button" data-density-set="' + o[0] + '"' +
+          (cur === o[0] ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"') + '>' +
+          icon(o[2]) + '<span>' + o[1] + '</span></button>';
+      }).join('') + '</div></div>';
+  }
+
+  function bindDensityPicker(root) {
+    (root || document).querySelectorAll('[data-density-set]').forEach(function (b) {
+      if (b.dataset.bound) return; b.dataset.bound = '1';
+      b.addEventListener('click', function () {
+        var d = (window.Theme && window.Theme.applyDensity) ? window.Theme.applyDensity(b.dataset.densitySet) : b.dataset.densitySet;
+        document.querySelectorAll('[data-density-set]').forEach(function (o) {
+          var on = o.dataset.densitySet === d;
           o.classList.toggle('on', on);
           o.setAttribute('aria-pressed', on ? 'true' : 'false');
         });
@@ -1170,6 +1233,7 @@
       toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
     bindThemePicker(appbar);
+    bindDensityPicker(appbar);
     renderAccountTriggers(appbar);
     var search = document.getElementById('tbSearchMobile');
     if (search) search.addEventListener('click', function () { openPalette(); });
@@ -1442,6 +1506,7 @@
       bellHTML('notifD') +
       accountHTML('acctD');
     bindThemePicker(topbar);
+    bindDensityPicker(topbar);
     renderAccountTriggers(topbar);
     var trigger = document.getElementById('tbSearch');
     if (trigger) trigger.addEventListener('click', function () { openPalette(); });
@@ -1783,8 +1848,15 @@
         .replace(/\s*\(?₱[\d,]+(?:\.\d+)?(?:\s*·\s*[\d.]+h)?\)?/g, '')
         .replace(/\s{2,}/g, ' ').trim();
     }
+    /* The office sees that a technician took the work, never which one. */
+    function hideAssignment(text) {
+      if (role !== 'requester') return text;
+      return String(text || '')
+        .replace(/^Assigned to .*?(?= - )/, 'Assigned to a technician')
+        .replace(/^Reassigned from .* to .*\.$/, 'Reassigned to a different technician.');
+    }
     (t.history || []).forEach(function (h) {
-      items.push({ at: h.at, kind: h.kind || 'status', text: hideCost(h.text), by: h.by, role: h.role,
+      items.push({ at: h.at, kind: h.kind || 'status', text: hideAssignment(hideCost(h.text)), by: h.by, role: h.role,
         legacyStatus: h.status, subject: 'history' });
     });
     (t.comments || []).forEach(function (c) {
@@ -1921,6 +1993,19 @@
   }
   function toggleTheme() { return applyTheme(theme() === 'dark' ? 'light' : 'dark'); }
 
+  /* Comfortable or Compact rows, owned by js/theme.js so every page and the
+     account tray agree.  Compact only tightens spacing, never hides content. */
+  function density() {
+    if (window.Theme && window.Theme.density) return window.Theme.density();
+    return document.documentElement.getAttribute('data-density') === 'compact' ? 'compact' : 'comfortable';
+  }
+  function applyDensity(name) {
+    if (window.Theme && window.Theme.applyDensity) return window.Theme.applyDensity(name);
+    var d = name === 'compact' ? 'compact' : 'comfortable';
+    document.documentElement.setAttribute('data-density', d);
+    return d;
+  }
+
   function activeNav() {
     var page = pageId();
     document.querySelectorAll('.side-link[href],.bottomnav a[href]').forEach(function (a) {
@@ -2023,7 +2108,9 @@
     timelineHistory: timelineHistory, stepper: stepper,
     feed: feed, canSeeInternal: canSeeInternal, qs: qs, activeNav: activeNav,
     applyTheme: applyTheme, theme: theme, toggleTheme: toggleTheme,
+    applyDensity: applyDensity, density: density,
     themePickerHTML: themePickerHTML, bindThemePicker: bindThemePicker,
+    densityPickerHTML: densityPickerHTML, bindDensityPicker: bindDensityPicker,
     paginate: paginate, renderPagination: renderPagination,
     pageId: pageId, STATUS: STATUS, notifRead: notifRead, viewerName: viewerName, markAllRead: markAllRead,
     confirmDialog: confirmDialog, setHTML: setHTML, byId: byId, debounce: debounce, downloadCSV: downloadCSV,
@@ -2034,6 +2121,7 @@
     /* role model & access */
     ROLES: ROLES, ROLE_ORDER: ROLE_ORDER, ACCESS: ACCESS, CAPS: CAPS, ALL: ALL,
     roleKey: roleKey, currentRole: currentRole, can: can, initials: initials, auth: auth,
+    personLinks: personLinks, mailLink: mailLink, telLink: telLink, telHref: telHref,
     canAct: canAct, nowMs: nowMs, skeleton: skeleton,
     /* next action owner (specification 4A.3) */
     NEXT_OWNER: NEXT_OWNER, NEXT_OWNER_JOB: NEXT_OWNER_JOB,

@@ -37,7 +37,7 @@ The authoritative workflow is the 29 step SOP in the bundled
 | 2.11 | Idempotent intake and maintenance occurrence keys | DONE | `idempotencyKey` on intake; normalized occurrence key plus a unique index |
 | 2.12 | Unprovisioned Google accounts are refused with "Access not granted" | DONE | `server/auth.py` `not_provisioned`; `login.html` access panel |
 | 2.13 | Google sign-in is restricted to `@upcebu.edu.ph` on the trusted layer | DONE | default allowed domain in `server/app.py`; domain check in `server/oidc.py`; assertion in `server/tests.py` |
-| 2.14 | Demo sign-in is behind an explicit flag and off by default on a network bind | DONE | `server/app.py` demo gate, `--demo` / `--no-demo`, `ITC_DEMO_MODE`; demo usernames refused when off |
+| 2.14 | Server demo credentials are behind an explicit flag and off by default on a network bind (the sign-in account list is always shown, see Phase 19) | DONE | `server/app.py` demo gate, `--demo` / `--no-demo`, `ITC_DEMO_MODE`; demo usernames refused when off |
 | 2.15 | Attachments are limited to the specified types and size | DONE | `server/app.py` allows jpg, png, webp, pdf, docx, xlsx, csv and txt only, 10 MB per file and 10 files per record; video is refused by test |
 | 2.16 | Attachments are streamed from an authorised endpoint, never a public path | DONE | `GET /api/attachment` checks the bearer token or the media token, office scope and role |
 
@@ -228,10 +228,113 @@ The authoritative workflow is the 29 step SOP in the bundled
 | 17.1 | Workflow Guide and Roles and Access no longer clutter the signed-in navigation | DONE | the Reference group is removed from `navModel` in `js/ui.js`, the top bar help link is removed from `renderTop`, and the mobile More sheet derives from `navModel`, so none of the three surfaces lists either page. `pagetest.js` `roleNav` checks all four roles and `mobileNav` checks the More sheet |
 | 17.2 | Routes and permissions are unchanged | DONE | `ACCESS` still grants `flow.html` and `roles.html` to every role; `rolesPage` and the role page suite still open them; `permission_parity_check.py` and `parity_check.js` pass |
 | 17.3 | One responsive matrix covers phones, tablets, laptops, desktops, ultrawide and 8K | DONE | `tools/responsive.py` `VIEWPORTS` holds 34 viewports from 320x480 to 7680x2160, including 844x390, 932x430, 820x1180, 1180x820, 1366x768, 3440x1440 and 3840x2160 |
-| 17.4 | The frozen login is measured, not edited | DONE | `FROZEN_SCREEN_SCROLL` accepts a bounded scroll of at most 120 px on `login.html` only; the largest observed overshoot is 85 px at 360x640. `git diff` shows no change to `login.html`, `css/login.css`, `js/login.js` or the login images |
+| 17.4 | The frozen login is measured, not edited | DONE | `FROZEN_SCREEN_SCROLL` accepted a bounded scroll of at most 120 px on `login.html` only; the largest observed overshoot was 85 px at 360x640. `git diff` showed no change to `login.html`, `css/login.css`, `js/login.js` or the login images. Superseded by Phase 19: the demo account block is now always shown |
 | 17.5 | Static checks and suites | DONE | `pagetest.js` 461 passed; `rolepages_test.js` 182 passed; `server/tests.py` 335 passed; `ui_check.py` 71 pages; `validate.py`, `html_check.js` (355), `script_order_check.js` (67), `parity_check.js` (54), `permission_parity_check.py`, `appendix_c_check.py`, `js_syntax_check.py` and `em_dash_check.py` pass |
 | 17.6 | Documentation matches the trimmed navigation | DONE | `DESIGN_SYSTEM.md`, `UI_POLISH_REPORT.md`, `ROLE_MATRIX.md`, `KNOWN_LIMITATIONS.md`, `TRACEABILITY.md` and `README.md` describe the hidden entries, the 34-viewport matrix and the bounded login scroll |
 | 17.7 | Every page at every audited size | DONE | `responsive.py`: 2414 checks (71 pages x 34 viewports) with 0 problems. The only accepted scroll is the frozen login at 320x480 (19 px), 360x640 (85 px), 375x667 (61 px) and 844x390 (75 px) |
+
+## Phase 18. Requester name locked to the signed-in account
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 18.1 | An Office Requester files only under their own name | DONE | `request.html` `applyRequesterLock`: for the requester role the Requester field shows `UI.auth().name` (A. Delos Reyes on the demo account) and is disabled, so it cannot be typed over |
+| 18.2 | The locked value still reaches the ticket | DONE | the submit handler reads `form.elements.requester`, so the disabled field files under the signed-in account; `pagetest.js` asserts the created ticket carries it |
+| 18.3 | Clear and Submit another keep the lock | DONE | both paths re-run `applyRequesterLock`; `pagetest.js` checks Clear leaves the field disabled with the same name |
+| 18.4 | A coordinator keeps the field editable | DONE | the lock is guarded by `Store.db.role === 'requester'`; the field explains what to enter and `pagetest.js` checks both states |
+| 18.5 | Reply mode is unchanged and honest | DONE | `respond` mode still shows the ticket's requester, disabled, with the help text "Carried over from the original ticket." |
+| 18.6 | Disabled fields read as set, in both themes | DONE | `css/console.css` locked-value rule uses existing tokens; captured at 1440 in light and dark, computed colours confirm the muted surface and `not-allowed` cursor |
+| 18.7 | Tests | DONE | role pages regenerated and `role_pages.py --check` passes; `pagetest.js` 470 passed; `rolepages_test.js` 182 passed; `responsive.py` on the three request pages 0 problems; syntax, em dash, HTML, script order, permission parity and `ui_check.py` pass |
+
+## Phase 19. Demo accounts on the sign-in page everywhere
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 19.1 | The four demo accounts are always listed on the sign-in page, labelled "Demo only", on every host: any localhost port, a static copy and Firebase Hosting. The list no longer depends on `ITC_DEMO_MODE` or the `itc-demo-mode` meta tag | DONE | `js/login.js` `renderDemo` and `showDemo` run unconditionally; the flag branch was removed from the UPMail click; `login.html` no longer carries the meta tag |
+| 19.2 | Demo sign-in still works when a hosted server keeps its demo gate closed, without widening server access | DONE | on `0.0.0.0:8799 --no-demo` the page listed all four accounts and the coordinator choice reached `ic-dashboard.html` with `ApiMode` false and a local session; on `127.0.0.1:8798` (demo on) it reached the same page with a server token and `ApiMode` true. `server/app.py` still refuses `{"role": ...}` with `demo_disabled` |
+| 19.3 | Page tests cover the new behavior | DONE | `tools/pagetest.js` asserts the list is visible on load, four accounts, the click message and a local coordinator sign-in; PAGE TESTS: 479 passed, 0 failed |
+| 19.4 | Every audited viewport still passes | DONE | `tools/responsive.py --pages=login.html`: 34 viewports, 0 problems; the accepted scroll is 377 px at 360x640, 336 px at 320x480 and 345 px at 844x390, recorded in `FROZEN_SCREEN_SCROLL` with a bound of 400 px |
+| 19.5 | The service worker ships the new sign-in script | DONE | `sw.js` cache version raised to `itc-shell-v3`, so a returning visitor does not keep the cached `js/login.js` |
+| 19.6 | Rules and docs match | DONE | `AGENTS.md`, `DECISIONS.md` D25, `ASSUMPTIONS.md` A26, `DESIGN_SYSTEM.md`, `KNOWN_LIMITATIONS.md`, `README.md` and this checklist describe the always-on list and the bounded scroll |
+
+## Phase 20. Intake priority, office scope and the conversation composer
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 20.1 | New Request offers the office's priority | DONE | `request.html` `#fPriority` lists Low, Medium and High with Medium selected; Critical stays hidden and is reachable only when an existing ticket carries it into reply mode |
+| 20.2 | The chosen priority reaches the ticket in both transports | DONE | `Flow.createTicket` validates the value and stores it; `engine.create_ticket` accepts only low, medium and high and stores the choice; `server/tests.py` `test_intake_priority` checks the stored value and the Medium default |
+| 20.3 | Reply mode cannot silently re-prioritise | DONE | `setMode` copies the ticket priority, disables the control and labels it "Carried over from the original ticket." |
+| 20.4 | The other intake controls are no longer decorative | DONE | the submit handler sends `dateReported` and `idempotencyKey`; the date defaults to today; `Flow.createTicket` and the backend both honour the duplicate key; `server/db.py` persists `date_reported` and `idempotency_key` |
+| 20.5 | The Office dropdown covers the real directory | DONE | `fillOffices` reads active offices from `Store.db.offices`, so IT Office and Office of the Director appear; the coordinator keeps every active office selectable (the requester office lock is superseded by 21.1) |
+| 20.6 | The conversation reply box is legible in both themes | DONE | `#tComposer textarea` in `css/console.css` uses `--surface-2`, `--ink`, `--line-strong`, `--muted` and the shared focus ring; light and dark captures at 1440 show the placeholder "Write a reply or update..." clearly |
+| 20.7 | Tests and responsive audit | DONE | PAGE TESTS: 490 passed, 0 failed; `server/tests.py`: 343 passed; `responsive.py --pages=request.html,or-request.html,ic-request.html,ticket.html,or-ticket.html`: 0 problems; `rolepages_test.js`: 182 passed; UI, validation, HTML, script order, parity, permissions, Appendix C, syntax and em dash checks pass |
+| 20.8 | The new shell reaches returning visitors | DONE | `sw.js` cache version raised to `itc-shell-v4`, so the updated request page, `js/flow.js` and `css/console.css` replace the cached v3 shell |
+| 20.9 | Documentation matches the intake | DONE | `docs/DATA_MODEL.md` describes intake priority and its confirmation during assessment; this checklist records the phase |
+
+## Phase 21. Requester chooses the office at intake
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 21.1 | The Office Requester can choose the office on New Request | DONE | `request.html` `applyRequesterLock` leaves `#fOffice` enabled, starts it on the signed-in office and locks only `#fReq`; reply mode still carries both fields from the original ticket |
+| 21.2 | The chosen office is stored in both transports | DONE | `Flow.createTicket` stores `d.office`; `engine.create_ticket` no longer overwrites it with the caller's office; `server/tests.py` `test_tenancy` checks the Library ticket keeps Library |
+| 21.3 | A requester can follow a request raised for another office | DONE | `officeBlock(office, requester)` in `js/flow.js` and `_office_block(state, office, requester)` in `server/engine.py` allow the signed-in name; `_scoped_requester` includes those tickets and their notifications; attachments follow the same rule |
+| 21.4 | Other offices stay closed | DONE | `test_tenancy` still blocks `IT-2026-000143`; `test_requester_scope_includes_own_requests` hides another requester's Library ticket and its notification |
+| 21.5 | A saved draft keeps the chosen office | DONE | `restoreDraft()` now runs after `applyRequesterLock()`, so a saved draft reopens with its office; Clear and Submit another return the office to the requester default |
+| 21.6 | Tests and static checks | DONE | `server/tests.py`: 347 passed; PAGE TESTS: 549 passed; ROLE PAGE TESTS: 182 passed; `smoke.js`: 60 passed; `validate.py`: 365 assertions; `ui_check.py`: 73 pages; `role_pages.py --check` passes; HTML, script order, parity, Appendix C, syntax and em dash checks pass |
+| 21.7 | Return visitors get the new page | DONE | `sw.js` cache version raised to `itc-shell-v5`, so the updated request page, `js/flow.js` and register note replace the cached v4 shell |
+| 21.8 | Rules and docs match | DONE | `DECISIONS.md` D26, `ASSUMPTIONS.md` A12, `DATA_MODEL.md`, `ROLE_MATRIX.md` and `OPERATIONS.md` describe the selectable office and the raised-request follow-up; this checklist records the phase |
+
+## Phase 23. Maintenance visual language and the responsive matrix
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 23.1 | The board allows only valid, role-permitted moves and explains a refused move | DONE | `tickets.html` board cards carry a Move menu built from `Flow.canTransition`; the chosen move calls the same guarded action as the table, and a refusal keeps the card in place and shows the reason. `pagetest.js` `workOrderCards` asserts every move carries `data-move` and `data-id` |
+| 23.2 | The board shows six workflow columns plus one collapsed archive lane | DONE | Submitted through Resolved render in workflow order; Closed and Cancelled share one `details.wo-archive` lane that starts collapsed and has no move controls. `workOrderCards` asserts 7 columns and the collapsed archive |
+| 23.3 | Checklist cards record a result, finding and evidence, with progress and a sticky action bar | DONE | `technician.html` `renderJobs` draws one `.chk-card` per task with a four-way segmented control (Passed, Attention needed, Failed, Not applicable), a finding field, evidence chips and a camera input (`accept="image/*" capture="environment"`), a progress bar with text, and a sticky footer with Save progress and Flag additional fault. `pagetest.js` `maintenancePage` covers recording, the dialog fallback and the outcome guard |
+| 23.4 | The technician lands on Today and My queue first | DONE | `#wToday` sits above the queue with Visits today and Due or overdue, and My queue sorts In Progress, Assigned, On Hold, Resolved before target date. `technicianToday` covers both |
+| 23.5 | One-tap contact, camera evidence and preserved drafts | DONE | `UI.personLinks`, `telLink` and `mailLink` put tel: and mailto: chips on the ticket, user directory and register; contact chips are 36 px and grow to 40 px on a coarse pointer. `request.html` keeps a local draft of the intake fields, and `ticket.html` keeps a separate draft for the office-visible and internal reply modes. `oneTapContact` and `requestDraft` cover them |
+| 23.6 | The Office Register shows office health | DONE | `register.html` `#gHealth` renders five health cards for the selected office, each with a tone, counts and a completion meter. `registerHealthAndTimeline` checks five cards, the office scope and the open count |
+| 23.7 | A service timeline serves the register and asset history | DONE | the register gains a Service timeline tab built from tickets and jobs, every event carries a mono id and links to its record, and the timeline follows both the role scope and the office filter. `registerHealthAndTimeline` checks the hidden and shown states, the events and the filter |
+| 23.8 | Quick create and the command palette stay inside the permitted scope | DONE | every dashboard carries role-specific quick actions, and the palette searches tickets, offices, assets and schedules through `cmScoped`, so a requester sees only their office and a technician only their queue. `commandPalette` covers the groups, the scope and the keyboard |
+| 23.9 | The requester has a read-only Maintenance Visits page | DONE | `visits.html` is granted to the requester in `permissions.json` and mirrored in `js/permissions.js`; `or-visits.html` is generated by `tools/role_pages.py`. It lists the visits and plans for the requester's own office and changes no record. `maintenanceVisits` and the 50 page role suite cover it |
+| 23.10 | Row density can be comfortable or compact | DONE | `js/theme.js` applies `data-density` before the first paint, the account tray and `profile.html` both offer the choice, and `css/console.css` tightens only table and list padding. `tableDensity` checks the attribute, persistence and the control |
+| 23.11 | The responsive techniques and the 200 percent zoom audit | DONE | `css/console.css` adds `dvh` for the app frame, sidebar, trays, palette and dialogs; container queries for the checklist card and the health cards; `hover` rules only under `hover: hover`; and a 40 px control floor under `pointer: coarse`. `tools/responsive.py` now runs 37 viewports, including 640x360, 683x384 and 960x540 as the 200 percent zoom of 1280x720, 1366x768 and 1920x1080 |
+| 23.12 | Documentation matches the final prompt | DONE | `docs/MASTER_PROMPT_COMPLETE.md` is the 1456 line final prompt (Sections 25.5A and 25.5B, D27, Definition of Done 35, items 99 to 102, corrected Appendix B.6); the `guide/` copies match. `DECISIONS.md` gains D27, and `KNOWN_LIMITATIONS.md` and `TRACEABILITY.md` use the corrected B.6 wording |
+| 23.13 | Suites and captures | DONE | `pagetest.js` 555 passed; `server/tests.py` 382 passed; `rolepages_test.js` 182 passed; `ui_check.py` 73 pages; `js_syntax_check.py` 24 files and 193 inline blocks; `role_pages.py --check` 50 files; `validate.py`, `html_check.js`, `script_order_check.js`, `parity_check.js`, `permission_parity_check.py`, `appendix_c_check.py` and `em_dash_check.py` pass; `responsive.py` 0 problems over 73 pages × 37 viewports (the first 23 viewports in one pass, the remaining 14 in three viewport-bounded passes); `gate_shots.py` 60 captures, machine check PASS |
+
+## Phase 18. Chart detail
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 18.1 | The activity chart reads as a chart, not a strip of bars | DONE | `renderActivity` in `dashboard.html` draws a four step count axis with dashed gridlines and five evenly spaced date labels; `chartScale` keeps whole number ticks and a four step top; the four series, the `#actTable` alternative and the CSV export are unchanged |
+| 18.2 | Every day explains itself | DONE | each `.col-day` carries a title with the date, the day's event total and the per series counts; the legend prints the period total beside each series |
+| 18.3 | The selected period is summarised | DONE | `#actChart` prints events in range, the busiest day and its count, events per day and days with activity; an empty period states that no activity was recorded |
+| 18.4 | Bar lists print their share as well as their count | DONE | the dashboard status breakdown and technician workload, and the reports status distribution and workload, add a `%` column with a title that states the count and denominator; the status fills now use the printed share, so bar length and percentage agree |
+| 18.5 | The reports workload bar is genuinely split | FIXED | `#rWork` uses `hbar-split` with one track and two segments. Before, the second `display:block` fill stacked below the first and was clipped, so completed work was invisible. Active uses `--brand-3`, completed `--line-strong`, and the legend names both |
+| 18.6 | The ring and sparklines carry more context | DONE | the compliance ring prints `x of y visits successful`, or states that no visits are recorded, under its caption; every KPI sparkline marks its last point with `.spark-dot` in the tile tone |
+| 18.7 | Small screens keep the detail readable | DONE | long status and technician names wrap at 599 px and below instead of losing letters, the axis labels drop to 9 px, and the share column tightens; `responsive.py` 2414 checks with 0 problems |
+| 18.8 | Tests and evidence | DONE | `ui_check.py` 71 pages, `validate.py`, `html_check.js` 355, `js_syntax_check.py` 24 files and 188 inline blocks, `em_dash_check.py` 0, `pagetest.js` 461 passed, `rolepages_test.js` 182 passed, `role_pages.py --check` 49 files; light and dark 1440 captures reviewed and the 390 px chart section crops reviewed |
+
+## Phase 22. Lane strictness: acceptance, visibility and the read-only administrator
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 22.1 | Accepting the office result records the confirming person and date and closes in one step | DONE | `server/engine.py` `office_decision` accepted writes `confirmation`, sets `status = closed`, `closure = confirmation`, history and audit in the same call; `js/flow.js` mirrors it; `confirm.html` offers one "Office accepts result and closes" action; `server/tests.py` checks one-step closure and the confirming person/date |
+| 22.2 | No response keeps the ticket Resolved and sends a reminder | DONE | `office_decision` `no_response` sets `confirmation.state = no_response`, appends a reminder, keeps `resolved`, notifies the office; `js/live.js` and `engine.world_tick` keep the reminder loop running for `pending` and `no_response` |
+| 22.3 | The office never sees priority, impact, urgency, technician or maintenance plans | DONE | `server/app.py` `_scoped_requester` removes those fields and empties schedules; `request.html` hides the priority field; `ticket.html`, `tickets.html`, `register.html`, `visits.html`, `dashboard.html`, `reports.html` hide the columns and rows; `js/ui.js` `workCard` and `feed` omit priority and neutralise assignment text |
+| 22.4 | The technician never sees priority or assignment controls | DONE | `ticket.html` omits the priority badge and assignment; `tickets.html` and `reports.html` hide the priority column for the technician; `technician.html` drops the priority badge |
+| 22.5 | The coordinator can reassign the technician | DONE | `server/engine.py` `reassign` and `js/flow.js` `reassign` (Assigned, In Progress, On Hold; same-tech refused; history, audit and notifications); `review.html` offers "Reassign technician"; `js/actions.js` modal; page test drives it |
+| 22.6 | The System Administrator holds no ticket or maintenance work | DONE | Backend guards and `TRANSITIONS_FALLBACK` no longer list management for reassign, approve, cancel, close, reminder, schedule check, schedule edit, job close or comments; `_api_upload` and state merges refuse management; `save_settings` rejects management as a closure role; `maintenance.html` hides the Manage column and schedule check; `permissions.json` management actions are the six administration methods only |
+| 22.7 | Tests and static checks | DONE | `server/tests.py`: 382 passed (reassign, no response and administrator read-only covered); PAGE TESTS: 555 passed; ROLE PAGE TESTS: 182 passed; `smoke.js`: 60 passed; `validate.py`: 365 assertions; `ui_check.py`: 73 pages; `html_check.js` 365 passed; `script_order_check.js` 69 passed; `parity_check.js` 54 passed; `api_check.py` 17 passed; `responsive.py` reports 0 problems on the changed screens at 320, 360, 744, 932, 1366 and 1920 px; `role_pages.py --check`, permission parity, Appendix C, JS syntax and em dash checks pass |
+| 22.8 | Return visitors get the new shell | DONE | `sw.js` cache version raised to `itc-shell-v6` |
+| 22.9 | Rules and docs match | DONE | `ROLE_MATRIX.md` action table, rules and transition notes updated; `DECISIONS.md` D4, D14, D28 and D29 updated; this checklist records the phase |
+
+## Phase 24. Sign-in glass (owner request)
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 24.1 | The sign-in card reads as real glass over the campus photo | DONE | `.lp-card` drops the opaque fill, `.lp-hero` and `.lp-panel` use translucent gradients with `backdrop-filter` and a 1 px rim in `css/login.css`. No markup, copy, font, route or token value changed |
+| 24.2 | Both themes keep the same look and the copy stays readable | DONE | the dark theme mirrors the light glass in the same sheet; 1440, 1280 and 390 px captures reviewed in light and dark |
+| 24.3 | Checks | DONE | `ui_check.py` 73 pages, `validate.py` passed, `pagetest.js` 555 passed, `responsive.py --pages=login.html` 0 problems across 37 viewports |
 
 ## Known gaps
 

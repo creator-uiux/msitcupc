@@ -113,7 +113,8 @@ The backend refuses, with a message the interface shows as a toast:
 - Any status change that is not in the transition whitelist.
 - Any operation called by a role the permission map does not list.
 - A technician acting on a ticket or a job that is not assigned to them.
-- An office requester reaching outside their own office.
+- An office requester reaching another office's records, except the requests
+  they raised themselves.
 - An office requester accepting or rejecting on the office's behalf.
 - A ticket becoming Resolved without a passed test.
 - A maintenance job becoming Successful without a complete checklist.

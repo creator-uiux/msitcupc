@@ -54,7 +54,7 @@ def seed():
              "simulate": False, "slaDays": 5, "reminderBusinessDays": 3,
              "reminderRepeatDays": 7, "timezone": "Asia/Manila",
              "maxUploadBytes": 10 * 1024 * 1024,
-             "authorizedClosureRoles": ["coordinator", "management"],
+             "authorizedClosureRoles": ["coordinator"],
              "approvalCategories": [],
              "priorityMatrix": {
                  "high": {"high": "critical", "medium": "high", "low": "medium"},

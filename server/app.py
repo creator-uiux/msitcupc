@@ -134,6 +134,11 @@ class ItcHandler(BaseHTTPRequestHandler):
 
     def _json(self, obj, status=200):
         body = json.dumps(obj).encode("utf-8")
+        # An error reply sent before the request body is read must close the
+        # socket: the unread bytes would be parsed as the next request line on
+        # this keep-alive connection and every later call would fail.
+        if self.command == "POST" and self._body_unread():
+            self.close_connection = True
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -148,14 +153,22 @@ class ItcHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 
-    def _read_json(self):
+    def _body_length(self):
         try:
-            length = int(self.headers.get("Content-Length") or 0)
+            return max(int(self.headers.get("Content-Length") or 0), 0)
         except ValueError:
-            length = 0
+            return 0
+
+    def _body_unread(self):
+        return self._body_length() > 0 and not getattr(self, "_body_read", False)
+
+    def _read_json(self):
+        length = self._body_length()
         if not length:
+            self._body_read = True
             return {}
         raw = self.rfile.read(length)
+        self._body_read = True
         try:
             return json.loads(raw or b"{}")
         except ValueError:
@@ -265,11 +278,14 @@ class ItcHandler(BaseHTTPRequestHandler):
             return snap
         scope = user["office"]
         snap = dict(snap)
-        # tickets
+        # tickets: the office's records plus the requests this user raised,
+        # which may name another active office
         tickets = []
+        visible = set()
         for t in snap.get("tickets", []):
-            if t.get("office") != scope:
+            if t.get("office") != scope and t.get("requester") != user.get("name"):
                 continue
+            visible.add(t.get("id"))
             tt = dict(t)
             # Redact internal notes/comments from requester view
             if tt.get("comments"):
@@ -285,14 +301,25 @@ class ItcHandler(BaseHTTPRequestHandler):
                     dict(h, text=self._redact_costs(h.get("text") or ""))
                     for h in tt["history"]
                 ]
+            # Assignment and the internal assessment stay with the IT team
+            # (Office Requester lane: hidden assignment, priority, schedules).
+            for key in ("technician", "priority", "impact", "urgency"):
+                tt.pop(key, None)
             tickets.append(tt)
         snap["tickets"] = tickets
-        snap["schedules"] = [s for s in snap.get("schedules", []) if s.get("office") == scope]
-        snap["jobs"] = [j for j in snap.get("jobs", []) if j.get("office") == scope]
+        # Preventive schedules are an IT planning surface; the office only
+        # reads the visits that concern it.
+        snap["schedules"] = []
+        snap["jobs"] = [
+            {k: v for k, v in j.items() if k != "technician"}
+            for j in snap.get("jobs", []) if j.get("office") == scope
+        ]
         snap["notifications"] = [
             n for n in snap.get("notifications", [])
             if n.get("role") == "any"
-            or (n.get("role") == "requester" and (not n.get("office") or n.get("office") == scope))]
+            or (n.get("role") == "requester"
+                and (not n.get("office") or n.get("office") == scope
+                     or (n.get("ticketId") and n.get("ticketId") in visible)))]
         # The audit log is an administration screen; an office user never reads it
         snap["audit"] = []
         snap["scope"] = scope
@@ -555,6 +582,19 @@ class ItcHandler(BaseHTTPRequestHandler):
 
         state = self.server.state
         with state.lock:
+            # The System Administrator holds no ticket or maintenance work.
+            if user["role"] == "management":
+                return self._json({"ok": False, "msg": "The System Administrator is read-only on workflow records."}, 403)
+            # a technician attaches only to the records assigned to them
+            if user["role"] == "technician":
+                if ticket_id:
+                    target = engine.get_ticket(state.data, ticket_id)
+                    if not target or target.get("technician") != user["name"]:
+                        return self._json({"ok": False, "msg": "Blocked by role-based access (28.2)."}, 403)
+                elif job_id:
+                    target = next((j for j in state.data.get("jobs", []) if j["id"] == job_id), None)
+                    if not target or target.get("technician") != user["name"]:
+                        return self._json({"ok": False, "msg": "Blocked by role-based access (28.2)."}, 403)
             # tenancy: requesters only attach to their own office's records
             if user["role"] == "requester":
                 target = None
@@ -568,7 +608,8 @@ class ItcHandler(BaseHTTPRequestHandler):
                         return self._json({"ok": False, "msg": "Job not found."}, 404)
                 if target is None:
                     return self._json({"ok": False, "msg": "Choose a ticket to attach to."}, 400)
-                if target.get("office") != user.get("office"):
+                if (target.get("office") != user.get("office")
+                        and target.get("requester") != user.get("name")):
                     return self._json({"ok": False, "msg": "Blocked by office-based access (28.2)."}, 403)
             # at most ten files on one record (D21)
             if ticket_id or job_id:
@@ -632,7 +673,7 @@ class ItcHandler(BaseHTTPRequestHandler):
         if user["role"] == "requester":
             allowed = row["uploaded_by"] == user["name"]
             t = engine.get_ticket(self.server.state.data, row["ticket_id"]) if row["ticket_id"] else None
-            if t and t.get("office") == user.get("office"):
+            if t and (t.get("office") == user.get("office") or t.get("requester") == user.get("name")):
                 allowed = True
             j = next((j for j in self.server.state.data.get("jobs", [])
                       if j["id"] == row["job_id"]), None) if row["job_id"] else None
@@ -640,6 +681,13 @@ class ItcHandler(BaseHTTPRequestHandler):
                 allowed = True
             if not allowed:
                 return self._json({"ok": False, "msg": "Blocked by office-based access (28.2)."}, 403)
+        elif user["role"] == "technician":
+            # a technician reads only the evidence on their own records
+            t = engine.get_ticket(self.server.state.data, row["ticket_id"]) if row["ticket_id"] else None
+            j = next((x for x in self.server.state.data.get("jobs", [])
+                      if x["id"] == row["job_id"]), None) if row["job_id"] else None
+            if not ((t and t.get("technician") == user["name"]) or (j and j.get("technician") == user["name"])):
+                return self._json({"ok": False, "msg": "Blocked by role-based access (28.2)."}, 403)
         download = (qs.get("download") or ["0"])[0] in ("1", "true")
         body = row["data"] or b""
         ctype = row["mime"] or "application/octet-stream"
@@ -770,6 +818,10 @@ class ItcHandler(BaseHTTPRequestHandler):
         incoming = body.get("state")
         state = self.server.state
         role = user["role"]
+        # The System Administrator holds no ticket work: a state merge can
+        # never create or edit a workflow record under that role.
+        if role == "management" and isinstance(incoming, dict) and incoming.get("tickets"):
+            return self._json({"ok": False, "msg": "The System Administrator is read-only on workflow records."}, 403)
         # Workflow-protected fields: the server copy always wins; a client
         # payload can never set or change them through this endpoint.
         PROTECTED = ("status", "technician", "confirmation", "closure", "authorizedReason",
@@ -795,7 +847,8 @@ class ItcHandler(BaseHTTPRequestHandler):
                     if tid in cur_t:
                         old = cur_t[tid]
                         # enforce office tenancy
-                        ob = engine._office_block({"role": role, "_user": user}, old.get("office"))
+                        ob = engine._office_block({"role": role, "_user": user}, old.get("office"),
+                                                  old.get("requester"))
                         if ob:
                             return self._json(ob, 403)
                         # No status changes over this endpoint, for any role.
@@ -1138,9 +1191,10 @@ def build_server(host="127.0.0.1", port=8787, db_path=None, start_worker=True, i
                  demo=None):
     """Create (but do not start) the HTTP server. Returns (server, state, worker).
 
-    Demo sign-in (the role shorthand and the account list) is on for loopback
-    hosts and off for a network-facing bind, unless ITC_DEMO_MODE or the
-    ``demo`` argument says otherwise.  Production therefore never exposes it.
+    Demo sign-in (the role shorthand and the seeded demo credentials) is on for
+    loopback hosts and off for a network-facing bind, unless ITC_DEMO_MODE or
+    the ``demo`` argument says otherwise.  The sign-in page itself always lists
+    the demo accounts, but they only reach real server data through this gate.
     """
     if demo is None:
         demo = _demo_from_env()

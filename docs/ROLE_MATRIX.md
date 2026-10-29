@@ -43,7 +43,7 @@ move the map does not allow.
 | Office Requester (Office Representative) | Office Requester or Office Representative | only the offices the user belongs to |
 | IT Technician | IT Technician | tickets and maintenance jobs assigned to them, plus read-only office and asset history for those offices |
 | IT Coordinator | IT Coordinator | all offices |
-| System Administrator | not a swimlane | all offices, read-only on the operational workflow, authorized closure only when configured |
+| System Administrator | not a swimlane | all offices, read-only oversight: no ticket, maintenance, scheduling or closure work; administration only |
 | System | System lane (automated, no screens) | n/a |
 
 ## Pages
@@ -54,6 +54,7 @@ move the map does not allow.
 | Tickets | yes | yes | yes | yes |
 | Ticket detail | yes | yes | yes | yes |
 | Office Service Register | yes | yes | yes | yes |
+| Maintenance Visits (read-only) | yes | no | no | no |
 | Reports | yes | yes | yes | yes |
 | Workflow Guide | yes | yes | yes | yes |
 | Roles and Access | yes | yes | yes | yes |
@@ -97,10 +98,10 @@ role may use in the current status, and it reads the same map through
 | `requestInfo` | no | no | yes | no |
 | `assess` | no | no | yes | no |
 | `assign` | no | no | yes | no |
-| `reassign` | no | no | yes | yes |
-| `approve` | no | no | yes | yes |
+| `reassign` | no | no | yes | no |
+| `approve` | no | no | yes | no |
 | `coordinate` | no | yes | yes | no |
-| `cancel` | no | no | yes | yes |
+| `cancel` | no | no | yes | no |
 | `cancelFromDependency` | no | no | yes | no |
 | `followUp` | no | no | yes | no |
 | `resolveDependency` | no | no | yes | no |
@@ -109,20 +110,20 @@ role may use in the current status, and it reads the same map through
 | `recordRepair` | no | yes | no | no |
 | `placeHold` | no | yes | no | no |
 | `recordTest` | no | yes | no | no |
-| `close` | yes | no | yes | yes |
-| `sendReminder` | no | no | yes | yes |
+| `close` | yes | no | yes | no |
+| `sendReminder` | no | no | yes | no |
 | `createSchedule` | no | no | yes | no |
-| `runScheduleCheck` | no | no | yes | yes |
+| `runScheduleCheck` | no | no | yes | no |
 | `rescheduleJob` | yes | no | yes | no |
 | `confirmAvailability` | yes | no | yes | no |
 | `recordChecklistItem` | no | yes | no | no |
 | `flagAdditionalFault` | no | yes | no | no |
 | `createFaultTicket` | no | yes | no | no |
 | `recordOutcome` | no | yes | yes | no |
-| `closeJob` | no | no | yes | yes |
-| `addComment` | yes | yes | yes | yes |
-| `updateSchedule` | no | no | yes | yes |
-| `setScheduleActive` | no | no | yes | yes |
+| `closeJob` | no | no | yes | no |
+| `addComment` | yes | yes | yes | no |
+| `updateSchedule` | no | no | yes | no |
+| `setScheduleActive` | no | no | yes | no |
 | `saveOffice`, `setOfficeActive` | no | no | no | yes |
 | `savePerson`, `setPersonActive` | no | no | no | yes |
 | `saveRef` | no | no | no | yes |
@@ -131,10 +132,11 @@ role may use in the current status, and it reads the same map through
 Three rules carry most of the lane ownership:
 
 - **The office decides.**  `officeDecision` and `jobConfirmation` belong to
-  the Office Requester alone.  The IT Coordinator may not accept or reject
-  on the office's behalf, and only the owning office closes a confirmed
-  ticket.  The coordinator closes an unanswered record through the audited
-  authorized closure, which always carries a reason.
+  the Office Requester alone.  Accepting records the confirming person and
+  the date and closes the ticket in that one step; No response keeps the
+  ticket Resolved and sends a follow-up reminder.  The IT Coordinator may not
+  accept or reject on the office's behalf, and closes an unanswered record
+  only through the audited authorized closure, which always carries a reason.
 - **The technician works on their own queue.**  `startWork`, `diagnose`,
   `recordRepair`, `placeHold`, `recordTest`, `recordChecklistItem`,
   `flagAdditionalFault` and `createFaultTicket` are refused for any record
@@ -145,9 +147,16 @@ Three rules carry most of the lane ownership:
 
 `close` has two modes.  `mode == "confirmation"` is an office decision and
 is limited to the owning office requester.  Authorized closure is limited to
-`settings.authorizedClosureRoles`, default `["coordinator", "management"]`,
-and always requires a reason.  `closeJob` is the same rule for a
-maintenance visit.
+`settings.authorizedClosureRoles`, default `["coordinator"]`; the System
+Administrator is rejected even if a stale configuration still names it, and
+a reason is always required.  `closeJob` is the same rule for a maintenance
+visit.
+
+The System Administrator administers, it does not operate.  Its actions are
+`saveOffice`, `setOfficeActive`, `savePerson`, `setPersonActive`, `saveRef`
+and `saveSettings`.  It reads the operational screens for oversight but the
+backend refuses every workflow mutation, including state merges and
+attachment uploads.
 
 `recordOutcome` has two halves.  The assigned technician completes a visit
 that has a full checklist, which hands the job to the office.  The IT
@@ -162,7 +171,7 @@ this table is refused by the trusted backend.
 
 | From | To | Allowed role | Required data |
 |---|---|---|---|
-| (new) | Submitted | requester, or coordinator on behalf of an office | office, requester, category, issue, date reported, source |
+| (new) | Submitted | requester (name fixed, any active office; priority starts at Medium), or coordinator on behalf of an office | office, requester, category, issue, date reported, source; the coordinator may also set priority |
 | Submitted | Needs Information | coordinator | the missing details requested |
 | Needs Information | Submitted | requester, or coordinator recording what arrived | the information supplied, on the same ticket |
 | Submitted | Assigned | coordinator | impact, urgency, priority, target date, technician |
@@ -209,7 +218,7 @@ The queue owner per status, used for the "Needs my action" queue and the
 | Internal notes never reach an office session | `app._scoped` strips `visibility == "internal"` comments for requesters; the audit entry for an internal note is written by the engine, not exposed to the requester view |
 | Completed and cancelled records are never edited, only actioned through an audited path | `engine` exposes no update or delete for a closed ticket, and the audit log is append-only |
 | The audit log cannot be changed by any client | `POST /api/state` ignores the client audit list entirely; the database rejects updates and deletes on the audit table |
-| Reports and exports respect the data scope | `app._api_reports` and `app._api_export` use the same scoped snapshot as the screens: an office user sees its own office, a technician their own workload, the coordinator and the administrator every office |
+| Reports and exports respect the data scope | `app._api_reports` and `app._api_export` use the same scoped snapshot as the screens: an office user sees its own office and the requests it raised, a technician their own workload, the coordinator and the administrator every office |
 
 ## Verification
 

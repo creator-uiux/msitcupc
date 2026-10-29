@@ -116,6 +116,10 @@ function render() {
     '<div class="seg" id="themeSeg">' +
     '<button type="button" class="' + (UI.theme() !== 'dark' ? 'on' : '') + '" data-th="light">Light</button>' +
     '<button type="button" class="' + (UI.theme() === 'dark' ? 'on' : '') + '" data-th="dark">Dark</button></div>' +
+    '<div class="pref-label">Row density</div>' +
+    '<div class="seg" id="densitySeg">' +
+    '<button type="button" class="' + (UI.density() !== 'compact' ? 'on' : '') + '" data-dn="comfortable">Comfortable</button>' +
+    '<button type="button" class="' + (UI.density() === 'compact' ? 'on' : '') + '" data-dn="compact">Compact</button></div>' +
     '<div class="row row-between mt-md">' +
     '<span class="hint">Signed in as <b>' + UI.esc(a.name) + '</b></span>' +
     '<a class="btn btn-ghost btn-sm" href="login.html">Switch account</a></div>';
@@ -123,19 +127,19 @@ function render() {
   document.querySelectorAll('#themeSeg button').forEach(function (b) {
     b.onclick = function () { UI.applyTheme(b.dataset.th); render(); };
   });
+  document.querySelectorAll('#densitySeg button').forEach(function (b) {
+    b.onclick = function () { UI.applyDensity(b.dataset.dn); render(); };
+  });
 }
 
 function saveContact() {
   var email = document.getElementById('pEmail').value.trim();
   var phone = document.getElementById('pPhone').value.trim();
   if (email && !UI.VALIDATORS.email(email)) { UI.toast('Please enter a valid email address.', 'err'); return; }
-  if (window.ApiMode && window.Api) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', 'api/profile', false);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    try { xhr.send(JSON.stringify({ email: email, phone: phone })); } catch (e) { /* offline */ }
-    if (xhr.status === 200) {
-      try { var res = JSON.parse(xhr.responseText); UI.toast(res.msg || 'Profile updated.', res.ok ? 'ok' : 'err'); } catch (e) { }
+  if (window.ApiMode && window.Api && window.Api.profile) {
+    var res = window.Api.profile({ email: email, phone: phone });
+    if (res.status === 200 && res.data) {
+      UI.toast(res.data.msg || 'Profile updated.', res.data.ok ? 'ok' : 'err');
       Api.pull(); render(); return;
     }
   }
@@ -156,15 +160,12 @@ function savePassword() {
   var cf = document.getElementById('pwConfirm').value;
   if (nw.length < 4) { UI.toast('New password must be at least 4 characters.', 'err'); return; }
   if (nw !== cf) { UI.toast('The new passwords do not match.', 'err'); return; }
-  if (window.ApiMode && window.Api) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', 'api/profile', false);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    try { xhr.send(JSON.stringify({ currentPassword: cur, newPassword: nw })); } catch (e) { /* offline */ }
-    if (xhr.status === 200) {
-      try { var res = JSON.parse(xhr.responseText); UI.toast(res.msg || 'Password changed.', res.ok ? 'ok' : 'err'); } catch (e) { }
+  if (window.ApiMode && window.Api && window.Api.profile) {
+    var res = window.Api.profile({ currentPassword: cur, newPassword: nw });
+    if (res.status === 200 && res.data) {
+      UI.toast(res.data.msg || 'Password changed.', res.data.ok ? 'ok' : 'err');
     } else {
-      try { var err = JSON.parse(xhr.responseText); UI.toast(err.msg || 'Password change failed.', 'err'); } catch (e) { UI.toast('Password change failed.', 'err'); }
+      UI.toast((res.data && res.data.msg) || 'Password change failed.', 'err');
       return;
     }
   } else {

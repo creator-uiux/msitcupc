@@ -36,7 +36,7 @@
 
       // 15.3 / 16: Resolved awaiting confirmation -> send follow-up reminder (loop)
       db.tickets.forEach(function (t) {
-        if (t.status !== 'resolved' || t.confirmation.state !== 'pending') return;
+        if (t.status !== 'resolved' || (t.confirmation.state !== 'pending' && t.confirmation.state !== 'no_response')) return;
         var base = new Date(t.resolvedAt || t.updatedAt).getTime();
         var every = db.settings.reminderMinutes * 60000;
         var due = base + (t.reminders.length + 1) * every;

@@ -81,7 +81,7 @@
               <div class="card">
                 <div class="card-head">
                   <h3>Status breakdown</h3>
-                  <span class="hint">every record the role may see</span>
+                  <span class="hint" id="statusHint">every record the role may see</span>
                 </div>
                 <div class="card-pad">
                   <div class="bars hbar-list" id="statusBars"></div>
@@ -95,7 +95,7 @@
             <div class="card">
               <div class="card-head">
                 <h3>Technician workload</h3>
-                <span class="hint">open records by technician</span>
+                <span class="hint" id="workloadHint">open records by technician</span>
               </div>
               <div class="card-pad">
                 <div class="bars hbar-list" id="workloadBars"></div>
@@ -107,6 +107,18 @@
               </div>
             </div>
           </section>
+
+          <!-- coming up: the scheduled work that follows the current queue -->
+          <div class="card staff-only">
+            <div class="card-head">
+              <h3>Coming up</h3>
+              <span class="hint">Maintenance visits and due dates</span>
+            </div>
+            <ul class="list" id="maintDue"></ul>
+            <div class="card-foot">
+              <a class="btn btn-soft btn-block" id="maintLink" href="maintenance.html">Open maintenance schedule</a>
+            </div>
+          </div>
 
         </div>
 
@@ -130,17 +142,6 @@
 
           <div class="card">
             <div class="card-head">
-              <h3>Coming up</h3>
-              <span class="hint">Maintenance visits and due dates</span>
-            </div>
-            <ul class="list" id="maintDue"></ul>
-            <div class="card-foot">
-              <a class="btn btn-soft btn-block" id="maintLink" href="maintenance.html">Open maintenance schedule</a>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-head">
               <h3>Recent updates</h3>
             </div>
             <ul class="list" id="activity"></ul>
@@ -160,7 +161,7 @@
             <thead>
               <tr>
                 <th>Ticket</th><th>Office / Requester</th><th>Status</th>
-                <th>Priority</th><th>Target</th><th class="tech-only">Technician</th>
+                <th class="lead-only">Priority</th><th>Target</th><th class="tech-only">Technician</th>
               </tr>
             </thead>
             <tbody id="queueBody"></tbody>
@@ -182,6 +183,7 @@
               <div class="gauge-block">
                 <div id="complianceGauge"></div>
                 <span class="gauge-cap">Preventive compliance</span>
+                <span class="gauge-sub" id="gaugeSub"></span>
               </div>
               <div class="info grow" id="costInfo"></div>
             </div>
@@ -243,11 +245,6 @@ UI.mountChrome({ title: 'Service Dashboard', sub: 'Office IT Service Request, Ma
   var roleName = (UI.currentRole && UI.currentRole().name) || '';
   document.getElementById('dashTitle').textContent = titles[role] || 'Service dashboard';
   document.getElementById('dashGreeting').textContent = 'Good day, ' + roleName + '. ' + (lead[role] || '');
-  var link = document.getElementById('maintLink');
-  if (link && role === 'requester') {
-    link.href = 'confirm.html';
-    link.textContent = 'Open maintenance visits';
-  }
 })();
 
 var LIVE = ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved', 'closed', 'cancelled'];
@@ -313,7 +310,7 @@ function roleKpis(role, counts, overdue, jobs) {
       { label: 'Open requests', value: open, delta: 'Everything currently with IT', cls: 'k-brand', ic: 'inbox', href: 'tickets.html?queue=open', spark: 'intake' },
       { label: 'Awaiting your reply', value: counts.needs_info, delta: 'IT needs more information', cls: 'k-warn', ic: 'pen', href: 'tickets.html?status=needs_info', spark: 'needs' },
       { label: 'Ready to confirm', value: counts.resolved, delta: 'Resolved by IT, awaiting your answer', cls: 'k-ok', ic: 'checkCircle', href: 'confirm.html', spark: 'resolved' },
-      { label: 'Maintenance visits', value: activeJobs, delta: 'Scheduled for your office', cls: 'k-brand', ic: 'cal', href: 'confirm.html', spark: 'visits' }
+      { label: 'Maintenance visits', value: activeJobs, delta: 'Scheduled for your office', cls: 'k-brand', ic: 'cal', href: 'confirm.html', spark: 'jobvisits' }
     ];
   }
   if (role === 'technician') {
@@ -465,16 +462,32 @@ function renderWorkload(tickets) {
   var rows = Object.keys(groups).map(function (k) { return groups[k]; });
   rows.forEach(function (g) { g.total = g.assigned + g.in_progress + g.on_hold + g.other; });
   rows.sort(function (a, b) { return b.total - a.total || a.name.localeCompare(b.name); });
+  var openTotal = 0, unassigned = 0;
+  rows.forEach(function (g) {
+    openTotal += g.total;
+    if (g.name === 'Unassigned') unassigned = g.total;
+  });
+  var hint = document.getElementById('workloadHint');
+  if (hint) {
+    hint.textContent = openTotal + ' open ' + (openTotal === 1 ? 'record' : 'records') +
+      ' across ' + rows.length + (rows.length === 1 ? ' queue' : ' queues') +
+      (unassigned ? ' · ' + unassigned + ' unassigned' : '');
+  }
   var max = 1;
   rows.forEach(function (g) { if (g.total > max) max = g.total; });
   document.getElementById('workloadBars').innerHTML = rows.map(function (g) {
     function seg(cls, n) {
       return n ? '<i class="wl-seg ' + cls + '" style="width:' + (n / max * 100).toFixed(1) + '%" title="' + n + '"></i>' : '';
     }
-    return '<div class="hbar"><span class="hbar-lbl">' + UI.esc(g.name) + '</span>' +
+    var share = openTotal ? Math.round(g.total / openTotal * 100) : 0;
+    var detail = g.assigned + ' assigned, ' + g.in_progress + ' in progress, ' +
+      g.on_hold + ' on hold' + (g.other ? ', ' + g.other + ' waiting' : '');
+    return '<div class="hbar" title="' + UI.attr(g.name + ': ' + detail + ' (' + share + '% of open work)') + '">' +
+      '<span class="hbar-lbl">' + UI.esc(g.name) + '</span>' +
       '<span class="hbar-track wl-track">' + seg('s-assigned', g.assigned) + seg('s-progress', g.in_progress) +
       seg('s-hold', g.on_hold) + seg('s-other', g.other) + '</span>' +
-      '<span class="hbar-num">' + g.total + '</span></div>';
+      '<span class="hbar-num">' + g.total + '</span>' +
+      '<span class="hbar-pct">' + share + '%</span></div>';
   }).join('') || '<p class="hint">No open records are assigned yet.</p>';
 }
 
@@ -600,7 +613,7 @@ function render() {
       '<div class="t-sub">' + UI.esc(t.category) + (t.asset ? ' · Asset ' + UI.esc(t.asset) : '') + (t.linkedTo ? ' · linked to ' + UI.esc(t.linkedTo) : '') + '</div></td>' +
       '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div><div class="t-sub">' + UI.esc(t.requester) + '</div></td>' +
       '<td data-label="Status">' + UI.badge(t.status) + UI.waitingOn(t.status) + '</td>' +
-      '<td data-label="Priority">' + UI.prio(t.priority) + '</td>' +
+      '<td class="lead-only" data-label="Priority">' + UI.prio(t.priority) + '</td>' +
       '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : ' -- ') + '</td>' +
       '<td class="tech-only" data-label="Technician"><div class="t-title">' + UI.esc(t.technician || ' -- ') + '</div></td></tr>';
   }).join('');
@@ -672,13 +685,17 @@ function renderStatusBars(tickets) {
   var counts = {};
   LIVE.forEach(function (s) { counts[s] = 0; });
   tickets.forEach(function (t) { if (counts[t.status] !== undefined) counts[t.status]++; });
-  var max = 1;
-  LIVE.forEach(function (s) { if (counts[s] > max) max = counts[s]; });
+  var total = tickets.length;
+  var hint = document.getElementById('statusHint');
+  if (hint) hint.textContent = total + (total === 1 ? ' record' : ' records') + ' across the eight statuses';
   document.getElementById('statusBars').innerHTML = LIVE.map(function (s) {
-    var pct = Math.round(counts[s] / max * 100);
-    return '<div class="hbar"><span class="hbar-lbl">' + UI.esc(UI.STATUS[s][0]) + '</span>' +
-      '<span class="hbar-track"><span class="hbar-fill" style="width:' + Math.max(pct, counts[s] ? 3 : 0) + '%"></span></span>' +
-      '<span class="hbar-num">' + counts[s] + '</span></div>';
+    var share = total ? Math.round(counts[s] / total * 100) : 0;
+    var width = counts[s] ? Math.max(share, 3) : 0;
+    return '<div class="hbar" title="' + UI.attr(counts[s] + ' of ' + total + ' records (' + share + '%)') + '">' +
+      '<span class="hbar-lbl">' + UI.esc(UI.STATUS[s][0]) + '</span>' +
+      '<span class="hbar-track"><span class="hbar-fill" style="width:' + width + '%"></span></span>' +
+      '<span class="hbar-num">' + counts[s] + '</span>' +
+      '<span class="hbar-pct">' + share + '%</span></div>';
   }).join('');
 }
 
@@ -695,6 +712,10 @@ function renderCosts(tickets, jobs) {
   var openJobs = jobs.filter(function (j) { return j.status !== 'closed' && j.status !== 'cancelled'; }).length;
   var gaugeHost = document.getElementById('complianceGauge');
   if (gaugeHost) gaugeHost.innerHTML = UI.gauge(compliance, 'Preventive compliance');
+  var gaugeSub = document.getElementById('gaugeSub');
+  if (gaugeSub) gaugeSub.textContent = jobsDue
+    ? jobsOk + ' of ' + jobsDue + ' visits successful'
+    : 'No maintenance visits recorded';
   document.getElementById('costInfo').innerHTML =
     (UI.roleKey() === 'requester' ? '' : '<div><div class="k">Service cost recorded</div><div class="v">₱' + cost.toLocaleString('en-PH', { minimumFractionDigits: 2 }) + '</div></div>') +
     '<div><div class="k">Recurring issues</div><div class="v">' + recurring + '</div></div>' +
@@ -747,6 +768,16 @@ var ACT_KINDS = [
   { key: 'cancelled', label: 'Cancelled', cls: 'c-cancelled' }
 ];
 
+/* A count axis in four even steps, with whole number ticks. */
+function chartScale(max) {
+  max = Math.max(1, max);
+  var step = Math.max(1, Math.ceil(max / 4));
+  return { top: step * 4, step: step };
+}
+function shortDay(label) {
+  return String(label || '').replace(/,\s*\d{4}$/, '');
+}
+
 function renderActivity(tickets) {
   var win = actWindow();
   var days = [], seen = {};
@@ -770,25 +801,78 @@ function renderActivity(tickets) {
     });
   });
 
-  var max = 1;
+  var max = 1, totals = { submitted: 0, resolved: 0, closed: 0, cancelled: 0 };
   days.forEach(function (row) {
-    ACT_KINDS.forEach(function (k) { if (row.counts[k.key] > max) max = row.counts[k.key]; });
+    ACT_KINDS.forEach(function (k) {
+      totals[k.key] += row.counts[k.key];
+      if (row.counts[k.key] > max) max = row.counts[k.key];
+    });
+  });
+  var scale = chartScale(max);
+  var ticks = [];
+  for (var v = scale.top; v >= 0; v -= scale.step) ticks.push(v);
+
+  var totalEvents = totals.submitted + totals.resolved + totals.closed + totals.cancelled;
+  var activeDays = 0, busiest = { label: 'None', total: 0 };
+  days.forEach(function (row) {
+    var sum = 0;
+    ACT_KINDS.forEach(function (k) { sum += row.counts[k.key]; });
+    if (sum > 0) activeDays++;
+    if (sum > busiest.total) busiest = { label: row.label, total: sum };
   });
 
-  var chart = '<div class="cols" role="img" aria-label="Submitted, resolved, closed and cancelled tickets per day">' +
+  var aria = 'Ticket activity from ' + days[0].label + ' to ' + days[days.length - 1].label +
+    '. Submitted ' + totals.submitted + ', resolved ' + totals.resolved +
+    ', closed ' + totals.closed + ', cancelled ' + totals.cancelled + '.';
+  var chart = '<div class="chart-axis" role="img" aria-label="' + UI.attr(aria) + '">' +
+    '<div class="chart-y" aria-hidden="true">' +
+    ticks.map(function (t) { return '<span>' + t + '</span>'; }).join('') +
+    '</div>' +
+    '<div class="chart-plot">' +
+    '<div class="chart-grid" aria-hidden="true">' +
+    ticks.filter(function (t) { return t > 0; }).map(function (t) {
+      return '<i style="--y:' + (t / scale.top * 100) + '%"></i>';
+    }).join('') +
+    '</div>' +
+    '<div class="cols' + (days.length > 45 ? ' is-dense' : '') + '">' +
     days.map(function (row) {
-      return '<div class="col-day" title="' + UI.esc(row.label) + '">' +
+      var sum = 0;
+      ACT_KINDS.forEach(function (k) { sum += row.counts[k.key]; });
+      var detail = ACT_KINDS.map(function (k) {
+        return k.label + ' ' + row.counts[k.key];
+      }).join(', ');
+      var title = row.label + ' · ' + sum + (sum === 1 ? ' event' : ' events') + ' · ' + detail;
+      return '<div class="col-day" title="' + UI.attr(title) + '">' +
         ACT_KINDS.map(function (k) {
-          var h = Math.round(row.counts[k.key] / max * 100);
+          var h = Math.round(row.counts[k.key] / scale.top * 100);
           return '<span class="col ' + k.cls + '" style="height:' + (row.counts[k.key] ? Math.max(h, 2) : 0) + '%"></span>';
         }).join('') + '</div>';
-    }).join('') + '</div>' +
+    }).join('') + '</div></div></div>' +
+    '<div class="chart-x" aria-hidden="true">' +
+    (function () {
+      var count = days.length <= 7 ? days.length : 5;
+      var picks = [];
+      if (count === 1) picks = [0];
+      else for (var i = 0; i < count; i++) picks.push(Math.round(i * (days.length - 1) / (count - 1)));
+      return picks.map(function (idx) {
+        var left = ((idx + 0.5) / days.length * 100).toFixed(2);
+        return '<span style="--x:' + left + '%">' + UI.esc(shortDay(days[idx].label)) + '</span>';
+      }).join('');
+    })() +
+    '</div>' +
     '<div class="legend-line mt-sm">' +
     ACT_KINDS.map(function (k) {
-      return '<span><i class="' + k.cls + '"></i>' + k.label + '</span>';
-    }).join('') + '</div>';
-  document.getElementById('actChart').innerHTML = days.length ? chart :
-    '<div class="empty"> <img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No activity in this period.</div>';
+      return '<span><i class="' + k.cls + '"></i>' + k.label + ' <b>' + totals[k.key] + '</b></span>';
+    }).join('') + '</div>' +
+    '<div class="chart-summary">' +
+    '<div class="chart-stat"><b>' + totalEvents + '</b><span>events in range</span></div>' +
+    '<div class="chart-stat"><b>' + (busiest.total ? UI.esc(shortDay(busiest.label)) : 'None') + '</b>' +
+    '<span>busiest day · ' + busiest.total + (busiest.total === 1 ? ' event' : ' events') + '</span></div>' +
+    '<div class="chart-stat"><b>' + (totalEvents / days.length).toFixed(1) + '</b><span>events per day</span></div>' +
+    '<div class="chart-stat"><b>' + activeDays + ' of ' + days.length + '</b><span>days with activity</span></div>' +
+    '</div>' +
+    (totalEvents ? '' : '<p class="chart-note">No recorded activity in this period.</p>');
+  document.getElementById('actChart').innerHTML = chart;
 
   var rows = days.map(function (row) {
     return '<tr><td data-label="Day">' + UI.esc(row.label) + '</td>' +

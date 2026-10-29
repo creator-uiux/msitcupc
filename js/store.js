@@ -52,7 +52,7 @@
         reminderMinutes: 2, reminderMode: 'business', tickMs: 9000,
         reminderBusinessDays: 3, reminderRepeatDays: 7, timezone: 'Asia/Manila',
         simulate: true, slaDays: 5, maxUploadBytes: 10 * 1024 * 1024,
-        authorizedClosureRoles: ['coordinator', 'management'],
+        authorizedClosureRoles: ['coordinator'],
         approvalCategories: [],
         priorityMatrix: {
           high: { high: 'critical', medium: 'high', low: 'medium' },

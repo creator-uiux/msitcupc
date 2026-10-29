@@ -5,9 +5,11 @@ apply to every change, every conversation, and every generated file.
 
 ## Frozen surfaces
 
-- The login page is frozen: `login.html`, `css/login.css`, `js/login.js`, and
-  the login images. Do not edit their markup, styles, assets, copy, or
-  behavior. Prove the freeze with `git diff` and a render comparison.
+- The login page is frozen except for the demo account block: `login.html`,
+  `css/login.css`, `js/login.js`, and the login images. Do not edit their
+  markup, styles, assets, copy, or behavior beyond that block without an
+  explicit owner request. Prove the freeze with `git diff` and a render
+  comparison.
 - The colour theme is frozen. Token values live in `docs/THEME_SNAPSHOT.md`
   and come from `css/app.css`, `css/green.css`, and `css/kit.css`. Do not
   change those values. New styles go in `css/console.css`, use the existing
@@ -37,7 +39,10 @@ Closed, Cancelled.
 
 - Google sign-in is restricted to `@upcebu.edu.ph` on the trusted layer.
   Unprovisioned accounts see "Access not granted".
-- Demo accounts exist only behind an explicit demo flag, never in production.
+- The sign-in page always lists the four demo accounts, labelled "Demo only",
+  on every host: any localhost port, a static copy and Firebase Hosting. The
+  server demo gate still governs server-side demo credentials, and a browser
+  fallback session only ever reads the bundled seed dataset.
 - No secrets or credentials in client code. Do not add a second database.
   Browser storage is a demo transport, not the production database.
 - Audit history is append-only and cannot be edited or deleted by clients.

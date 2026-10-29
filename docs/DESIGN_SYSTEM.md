@@ -184,7 +184,7 @@ on the photograph; the right half is an off-white panel. The stylesheet is
 .lp-upm           the full-width "Login with UPMail" pill with the Google mark
 .lp-hint          "Sign in using your existing UPMail."
 .lp-domain        "Restricted to @upcebu.edu.ph UPMail accounts."
-.lp-demo          the development account list, shown only behind the flag
+.lp-demo          the demo account list, always shown and labelled "Demo only"
 .lp-denied        the "Access not granted" state for an unprovisioned account
 .lp-foot          "University of the Philippines Cebu - IT Office"
 ```
@@ -192,9 +192,11 @@ on the photograph; the right half is an off-white panel. The stylesheet is
 There is no email field and no password field: the system is opened with a
 UPMail Google account, and the only provider button is the Google mark. When
 a Google client id is configured, Google's own button is rendered in the same
-place; when it is not, the same control opens the list of demo accounts. An
-account outside `@upcebu.edu.ph` is refused, and an account with no
-provisioned role sees "Access not granted" rather than a default role.
+place. The list of four demo accounts sits below the helper line on every
+host, so the same build can be previewed on any localhost port, a static copy
+or Firebase Hosting. An account outside `@upcebu.edu.ph` is refused, and an
+account with no provisioned role sees "Access not granted" rather than a
+default role.
 
 The theme defaults to light. `?theme=dark`, the switch, or a saved
 `itc_login_theme` switches to the dark card; the photograph stays and only the
@@ -210,11 +212,10 @@ The sign-in screen stands on **one measure and one axis**:
 - Below 900px the hero moves above the panel and both share one column.
   Below 760px the header becomes a stacked card; below 620px the composition
   compacts rather than hiding the paragraph or the tiles.
-- The sign-in screen carries `data-fit="viewport"`: it is a single purpose
-  screen, so it must stand on one screen and never need a scrollbar of its
-  own. `tools/responsive.py` fails the build when it does. The card is the
-  only element allowed to scroll internally, and only when the demo account
-  chooser is open on a short viewport.
+- The sign-in screen carries `data-fit="viewport"`. The demo account list is
+  always part of the page, so on small screens the screen is allowed a bounded
+  vertical scroll, recorded in `tools/responsive.py`
+  (`FROZEN_SCREEN_SCROLL`). Anything past that bound is a failure.
 - The headline holds two lines from 320px up; the compact breakpoint moves
   the tiles instead of shrinking the type until it wraps.
 - The demo account list moves its role chip under the name and the mail
@@ -376,7 +377,7 @@ informative image carries alt text (decorative artwork is `alt=""`).
 | Tool | What it proves |
 |---|---|
 | `python tools/ui_check.py` | every page loads its stylesheets in order (four on authenticated pages, three plus `login.css` on the sign-in page), carries no inline style, keeps the shell and the page head, uses only classes the stylesheets define, and has no page-local `<style>` block |
-| `python tools/responsive.py` | no overflow, no clipping, no tap target under 36px across 34 viewports from 320x480 to 7680x2160; the frozen login is allowed its recorded bounded scroll |
+| `python tools/responsive.py` | no overflow, no clipping, no tap target under 36px across 37 viewports from 320x480 to 7680x2160, including 200 percent zoom; the frozen login is allowed its recorded bounded scroll |
 | `node tools/pagetest.js` | every page renders, every control is wired, icons and badges behave |
 | `node tools/smoke.js` | the workflow still runs end to end in the browser |
 | `python tools/validate.py` | every element id referenced by the scripts exists |

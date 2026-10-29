@@ -179,6 +179,20 @@
     return r.data;   /* { ok, rows, total, page, size, pages, counts, office } */
   }
 
+  /* Own profile and password (POST /api/profile). */
+  function profile(body) {
+    var r = xhr('POST', '/api/profile', body || {});
+    if (r.status === 401 && login(role || 'requester')) r = xhr('POST', '/api/profile', body || {});
+    return { status: r.status, data: r.data };
+  }
+
+  /* Accounts listing (GET /api/users; the server keeps it management-only). */
+  function users(params) {
+    var r = xhr('GET', '/api/users' + qs(params));
+    if (r.status === 401 && login(role || 'management')) r = xhr('GET', '/api/users' + qs(params));
+    return { status: r.status, data: r.data };
+  }
+
   /* Upload one file as base64 JSON -> { ok, file:{id,name,mime,size} }. */
   function upload(file, opts) {
     opts = opts || {};
@@ -208,12 +222,18 @@
     return url;
   }
 
+  /* Predicates read Store.db and answer immediately; they must stay local.
+     Proxying one turns every render-time call into a blocking round trip. */
+  var LOCAL_ONLY = { Flow: ['canTransition'] };
+
   function installProxies() {
     ['Flow', 'Maint', 'Admin'].forEach(function (ns) {
       var real = window[ns];
       if (!real) return;
+      var keep = LOCAL_ONLY[ns] || [];
       var proxy = {};
       Object.keys(real).forEach(function (name) {
+        if (keep.indexOf(name) !== -1) { proxy[name] = real[name]; return; }
         proxy[name] = function () {
           return call(name, Array.prototype.slice.call(arguments));
         };
@@ -260,6 +280,8 @@
     loginWithCredential: loginWithCredential,
     logout: clearSession,
     tickets: tickets,
+    profile: profile,
+    users: users,
     upload: upload,
     attachmentURL: attachmentURL,
     get role() { return role; },

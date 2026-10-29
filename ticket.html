@@ -248,15 +248,19 @@ function whereCard(t) {
 
 function render() {
   pickList();
+  var role = Store.db.role;
   var t = Store.getTicket(currentId);
   if (!t) { document.getElementById('tTitle').textContent = 'No tickets'; return; }
   document.getElementById('tTitle').innerHTML = UI.esc(t.issue.slice(0, 54)) + (t.issue.length > 54 ? '…' : '');
   document.getElementById('tPick').value = t.id;
 
-  /* head */
+  /* head.  Priority is the IT assessment (hidden from the office and from
+     technicians); the assigned technician and impact/urgency are staff
+     detail the office never sees. */
   document.getElementById('tHead').innerHTML =
     '<div class="card-head-row">' +
-    '<div class="row"><span class="t-id">' + UI.esc(t.id) + '</span>' + UI.badge(t.status) + UI.prio(t.priority) +
+    '<div class="row"><span class="t-id">' + UI.esc(t.id) + '</span>' + UI.badge(t.status) +
+    (role === 'requester' || role === 'technician' ? '' : UI.prio(t.priority)) +
     (t.linkedTo ? '<span class="chip">linked → ' + UI.esc(t.linkedTo) + '</span>' : '') +
     (t.recurring ? '<span class="chip">recurring issue</span>' : '') + '</div>' +
     '<span class="hint">updated ' + UI.timeAgo(t.updatedAt) + '</span></div>' +
@@ -264,12 +268,14 @@ function render() {
     '<h3 class="record-subject">' + UI.esc(t.issue) + '</h3>' +
     '<div class="info mt">' +
     '<div><div class="k">Office</div><div class="v">' + UI.esc(t.office) + '</div></div>' +
-    '<div><div class="k">Requester</div><div class="v">' + UI.esc(t.requester) + '</div></div>' +
+    '<div><div class="k">Requester</div><div class="v">' + UI.esc(t.requester) + UI.personLinks(t.requester) + '</div></div>' +
     '<div><div class="k">Category / source</div><div class="v">' + UI.esc(t.category) + ' · ' + UI.esc(t.source) + '</div></div>' +
     '<div><div class="k">Asset</div><div class="v mono">' + UI.esc(t.asset || ' -- ') + '</div></div>' +
-    '<div><div class="k">Impact / urgency</div><div class="v">' + UI.esc(t.impact || ' -- ') + ' / ' + UI.esc(t.urgency || ' -- ') + '</div></div>' +
+    (role === 'requester' ? '' :
+      '<div><div class="k">Impact / urgency</div><div class="v">' + UI.esc(t.impact || ' -- ') + ' / ' + UI.esc(t.urgency || ' -- ') + '</div></div>') +
     '<div><div class="k">Target completion</div><div class="v">' + (t.target ? UI.dateOnly(t.target) : ' -- ') + '</div></div>' +
-    '<div><div class="k">Technician</div><div class="v">' + UI.esc(t.technician || ' -- ') + '</div></div>' +
+    (role === 'requester' ? '' :
+      '<div><div class="k">Technician</div><div class="v">' + UI.esc(t.technician || ' -- ') + (t.technician ? UI.personLinks(t.technician) : '') + '</div></div>') +
     '<div><div class="k">Attachments</div><div class="v">' + (t.attachments.length ? UI.esc(t.attachments.join(', ')) : ' -- ') + '</div></div>' +
     '</div>';
 
@@ -387,9 +393,30 @@ document.querySelectorAll('#tTabs .tab').forEach(function (btn) {
 });
 
 /* ---------- reply composer (public message / internal note) ---------- */
+/* A half-written reply survives a reload or a live refresh.  The draft is
+   per record and per mode, so an internal note never reappears in the
+   office-facing box. */
+function replyDraftKey(id) { return 'itc_draft_reply:' + id + ':' + replyVisibility; }
+function readReplyDraft(id) {
+  try { return localStorage.getItem(replyDraftKey(id)) || ''; } catch (e) { return ''; }
+}
+function saveReplyDraft(id, text) {
+  try {
+    if (String(text || '').trim()) localStorage.setItem(replyDraftKey(id), text);
+    else localStorage.removeItem(replyDraftKey(id));
+  } catch (e) { /* private mode */ }
+}
+function clearReplyDraft(id) {
+  try {
+    localStorage.removeItem('itc_draft_reply:' + id + ':public');
+    localStorage.removeItem('itc_draft_reply:' + id + ':internal');
+  } catch (e) { /* ignore */ }
+}
+
 function renderComposer(t) {
   var role = Store.db.role;
-  var canPost = UI.can(Store.db.role === 'requester' ? 'request.html' : 'ticket.html') &&
+  /* The System Administrator holds no ticket work: reading only. */
+  var canPost = role !== 'management' && UI.can(role === 'requester' ? 'request.html' : 'ticket.html') &&
     (role !== 'requester' || t.requester === (Store.db.auth && Store.db.auth.name) || t.requester === window.ROLES.requester.name);
   var closed = ['closed', 'cancelled'].indexOf(t.status) > -1;
 
@@ -455,6 +482,15 @@ function renderComposer(t) {
   if (send) send.onclick = doReply;
   var file = document.getElementById('tFile');
   if (file) file.onchange = doUpload;
+  var ta = document.getElementById('tReplyText');
+  if (ta) {
+    var draft = readReplyDraft(t.id);
+    if (draft) ta.value = draft;
+    ta.addEventListener('input', UI.debounce(function () {
+      var cur = document.getElementById('tReplyText');
+      if (cur) saveReplyDraft(t.id, cur.value);
+    }, 300));
+  }
 }
 
 function doReply() {
@@ -462,7 +498,7 @@ function doReply() {
   if (!text.trim()) { UI.toast('Write a message before sending.', 'err'); return; }
   var r = Flow.addComment(currentId, { text: text, visibility: replyVisibility });
   UI.toast(r.msg, r.ok ? 'ok' : 'err');
-  if (r.ok) UI.renderBell();
+  if (r.ok) { clearReplyDraft(currentId); UI.renderBell(); }
 }
 
 function doUpload(e) {
