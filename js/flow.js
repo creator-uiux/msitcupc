@@ -127,6 +127,25 @@
       if (['low', 'medium', 'high'].indexOf(priority) === -1) priority = 'medium';
       /* The office never sets priority; the coordinator assesses it. */
       if (S.db.role === 'requester') priority = 'medium';
+      /* The intake source is one of the configured reference values. */
+      var sources = (S.db.settings && S.db.settings.sources) || ['telephone', 'email', 'walk-in', 'on-site', 'online portal'];
+      var rawSource = String(d.source || 'email').trim().toLowerCase();
+      var source = sources.filter(function (s) { return String(s).toLowerCase() === rawSource; })[0];
+      if (!source) return { ok: false, msg: 'Unknown intake source (' + (d.source || '') + '). Choose one of: ' + sources.join(', ') + '.' };
+      /* A previous record must be a real ticket in the same office. */
+      var prev = String(d.previousRecord || '').trim();
+      if (prev) {
+        var pt = S.getTicket(prev);
+        if (!pt) return { ok: false, msg: 'Previous record ' + prev + ' was not found. Choose an existing ticket.' };
+        if (S.db.role === 'requester') {
+          if (pt.office !== d.office) {
+            return { ok: false, msg: 'Previous record ' + prev + ' belongs to ' + pt.office + ', not ' + d.office + '.' };
+          }
+          if (pt.requester !== who().by && pt.requester !== d.requester) {
+            return { ok: false, msg: 'Previous record ' + prev + ' belongs to another requester.' };
+          }
+        }
+      }
       var key = String(d.idempotencyKey || '').trim();
       if (key) {
         var dup = S.db.tickets.filter(function (x) { return x.idempotencyKey === key; })[0];
@@ -135,7 +154,8 @@
       var id = S.nextId('ticket'), t;
       S.update(function (db) {
         t = {
-          id: id, office: d.office, requester: d.requester, category: d.category, source: d.source || 'email',
+          id: id, office: d.office, requester: d.requester, category: d.category, source: source,
+          previousRecord: prev || d.linkedTo || null,
           issue: d.issue, asset: d.asset || '', attachments: (d.attachments || []).slice(),
           dateReported: d.dateReported || NOW(), idempotencyKey: key,
           status: 'submitted', impact: null, urgency: null, priority: priority, target: null,
@@ -717,9 +737,9 @@
             items: sc.checklist.map(function (task) { return { task: task, done: false, result: '', finding: '', tech: '', date: '', evidence: [] }; }),
             status: 'submitted', availability: null, visitDate: null, reschedules: [],
             additionalFault: 'unknown', linkedTicketId: null, outcome: null,
-            confirmation: { state: 'none', person: '', date: null }, nextDue: null, createdAt: NOW()
+            confirmation: { state: 'none', person: '', date: null }, nextDue: null, reminders: [], createdAt: NOW()
           });
-          S.notify('technician', jid + ' generated from ' + sc.id + ' (' + sc.office + ')  --  coordinate the visit.', 'job', { jobId: jid, office: sc.office });
+          S.notify('technician', jid + ' generated from ' + sc.id + ' (' + sc.office + ')  --  coordinate the visit.', 'job', { jobId: jid, office: sc.office, to: sc.technician });
           S.notify('coordinator', jid + ' generated from ' + sc.id + '  --  maintenance due.', 'job', { jobId: jid });
           events.push({ kind: 'gen', id: sc.id, jobId: jid, msg: sc.id + ' due  --  generated linked maintenance job ' + jid + '.' });
         }
@@ -743,29 +763,61 @@
         j.availability = 'pending';
         var sc = S.getSchedule(j.scheduleId);
         if (sc) { sc.dueDate = newDate; sc.nextCheck = newDate; }
-        S.notify('technician', 'Job ' + j.id + ' rescheduled to ' + newDate.slice(0, 10) + ' (record reschedule).', 'sched', { jobId: j.id });
+        S.notify('technician', 'Job ' + j.id + ' rescheduled to ' + newDate.slice(0, 10) + ' (record reschedule).', 'sched', { jobId: j.id, office: j.office, to: j.technician });
         S.notify('requester', 'Maintenance for ' + j.office + ' rescheduled to ' + newDate.slice(0, 10) + '.', 'sched', { jobId: j.id, office: j.office });
         audit('job', j.id, 'sched', 'Rescheduled to ' + newDate.slice(0, 10) + '  --  reason: ' + (reason || 'Office unavailable') + '.', 'Rescheduled');
       });
       return { ok: true, msg: 'Reschedule recorded  --  ' + newDate.slice(0, 10) + '.' };
     },
 
-    // Office available? Yes -> On agreed date -> coordinate visit
+    // Office available? Yes -> Status Assigned -> technician runs the checklist
+    // A rescheduled (On Hold) visit only returns to Assigned once its agreed
+    // date has arrived.
     confirmAvailability: function (jobId, yes) {
       var g = guardRole(['coordinator', 'requester']); if (!g.ok) return g;
       var j = S.getJob(jobId);
       if (!j) return { ok: false, msg: 'Job not found.' };
+      if (j.status !== 'submitted' && j.status !== 'on_hold') return { ok: false, msg: 'Availability is recorded while the visit is being coordinated (' + j.id + ' is ' + label(j.status) + ').' };
       if (yes) {
+        var res;
         S.update(function () {
+          var prev = j.status;
           j.availability = 'yes';
           j.visitDate = j.visitDate || NOW();
-          if (j.status === 'submitted') j.status = 'assigned';
-          S.notify('technician', 'Office available for ' + j.id + '  --  visit confirmed for ' + (j.visitDate || '').slice(0, 10) + '.', 'sched', { jobId: j.id });
-          audit('job', j.id, 'sched', 'Office available  --  visit confirmed for ' + (j.visitDate || '').slice(0, 10) + '.', j.status.replace('_', ' ').replace(/\b\w/g, function (m) { return m.toUpperCase(); }));
+          if (prev === 'submitted') j.status = 'assigned';
+          else if (prev === 'on_hold' && new Date(j.visitDate).getTime() <= Date.now()) j.status = 'assigned';
+          var visit = (j.visitDate || '').slice(0, 10);
+          if (j.status === 'assigned') {
+            S.notify('technician', 'Office available for ' + j.id + '  --  visit confirmed for ' + visit + '; the job is Assigned.', 'sched', { jobId: j.id, office: j.office, to: j.technician });
+            S.notify('coordinator', j.id + ': office available for ' + visit + '  --  job Assigned to ' + j.technician + '.', 'sched', { jobId: j.id, office: j.office });
+          } else {
+            S.notify('technician', 'Office available for ' + j.id + '  --  visit remains On Hold until ' + visit + '.', 'sched', { jobId: j.id, office: j.office, to: j.technician });
+          }
+          audit('job', j.id, 'sched', 'Office available  --  visit confirmed for ' + visit + '.', label(j.status));
+          res = { ok: true, msg: 'Office available  --  visit coordinated (' + label(j.status) + ').' };
         });
-        return { ok: true, msg: 'Office available  --  visit coordinated.' };
+        return res;
       }
       return { ok: false, msg: 'Record the reschedule instead (Office available? No).' };
+    },
+
+    // Section 10 step 7: the coordinator assigns the maintenance technician
+    reassignJob: function (jobId, tech) {
+      var g = guardRole(['coordinator']); if (!g.ok) return g;
+      var j = S.getJob(jobId);
+      if (!j) return { ok: false, msg: 'Job not found.' };
+      if (['submitted', 'assigned', 'in_progress', 'on_hold'].indexOf(j.status) === -1) return { ok: false, msg: 'Only an open visit can be reassigned (' + j.id + ' is ' + label(j.status) + ').' };
+      if (!tech) return { ok: false, msg: 'Choose a technician.' };
+      if (tech === j.technician) return { ok: false, msg: 'Already assigned to ' + tech + '.' };
+      var old = j.technician;
+      S.update(function () {
+        j.technician = tech;
+        audit('job', j.id, 'assign', 'Reassigned from ' + (old || 'unassigned') + ' to ' + tech + '.', label(j.status));
+        if (old) S.notify('technician', j.id + ' was reassigned to ' + tech + '; it is no longer yours.', 'assign', { jobId: j.id, office: j.office, to: old });
+        S.notify('technician', j.id + ' reassigned to you (' + j.office + ', visit ' + (j.visitDate || '-').slice(0, 10) + ').', 'assign', { jobId: j.id, office: j.office, to: tech });
+        S.notify('coordinator', j.id + ' reassigned from ' + (old || 'unassigned') + ' to ' + tech + ' by ' + who().by + '.', 'assign', { jobId: j.id, office: j.office });
+      });
+      return { ok: true, msg: 'Reassigned to ' + tech + '.' };
     },
 
     // Perform maintenance checklist using Section 2 -> Record task, result, findings, technician, date, evidence
@@ -773,12 +825,12 @@
       var g = guardRole(['technician']); if (!g.ok) return g;
       var j = S.getJob(jobId);
       if (!j) return { ok: false, msg: 'Job not found.' };
-      if (j.status === 'closed' || j.status === 'submitted') return { ok: false, msg: 'Coordinate the visit before running the checklist.' };
+      if (j.status !== 'assigned' && j.status !== 'in_progress') return { ok: false, msg: 'The checklist opens once the visit is Assigned (' + j.id + ' is ' + label(j.status) + ').' };
       if (!data.result) return { ok: false, msg: 'Record the result for this checklist item.' };
       S.update(function () {
         var it = j.items[idx];
         it.done = true; it.result = data.result; it.finding = data.finding || '';
-        it.tech = 'J. Tan'; it.date = NOW(); it.evidence = (data.evidence || []).length ? data.evidence : it.evidence;
+        it.tech = who().by; it.date = NOW(); it.evidence = (data.evidence || []).length ? data.evidence : it.evidence;
         j.status = 'in_progress';
         audit('job', j.id, 'checklist', 'Checklist item ' + (idx + 1) + '/' + j.items.length + ' done  --  ' + it.result + ': ' + it.task + '.', 'In Progress');
       });
@@ -834,6 +886,7 @@
       if (j.status === 'closed') return { ok: false, msg: 'Job already closed.' };
       var allDone = j.items.every(function (i) { return i.done; });
       if (outcome === 'success') {
+        if (j.status !== 'assigned' && j.status !== 'in_progress') return { ok: false, msg: 'The visit must be Assigned before it can be completed (' + j.id + ' is ' + label(j.status) + ').' };
         if (!allDone) return { ok: false, msg: 'Cannot complete the visit  --  incomplete checklist (' + j.items.filter(function (i) { return !i.done; }).length + ' pending).' };
         if (j.additionalFault === 'unknown') return { ok: false, msg: 'Answer "Additional fault discovered?" first.' };
       }
@@ -841,7 +894,8 @@
         j.outcomeNotes = notes || '';
         if (outcome === 'success') {
           j.status = 'resolved'; j.workComplete = true; j.outcome = null;
-          j.confirmation = { state: 'pending', person: '', date: null };
+          j.resolvedAt = NOW(); j.reminders = [];
+          j.confirmation = { state: 'pending', person: '', date: null, feedback: '' };
           audit('job', j.id, 'outcome', 'Maintenance work completed  --  checklist complete, handed to the office for Section 3 confirmation' + (notes ? '  --  ' + notes : '') + '.', 'Resolved');
           S.notify('requester', 'Maintenance ' + j.id + ' completed  --  Section 3 confirmation requested.', 'confirm', { jobId: j.id, office: j.office });
           S.notify('coordinator', 'Maintenance ' + j.id + ' is ready for the office to confirm.', 'confirm', { jobId: j.id });
@@ -881,8 +935,8 @@
       return { ok: true, msg: 'Maintenance job closed by authorized closure.' };
     },
 
-    // Section 3: maintenance confirmation & closure
-    jobConfirmation: function (jobId, decision, person) {
+    // Section 3: maintenance confirmation, feedback and closure
+    jobConfirmation: function (jobId, decision, person, feedback) {
       var g = guardRole(['requester']); if (!g.ok) return g;
       var j = S.getJob(jobId);
       if (!j) return { ok: false, msg: 'Job not found.' };
@@ -890,30 +944,37 @@
       if (decision === 'accepted') {
         if (!person) return { ok: false, msg: 'Record the confirming person.' };
         S.update(function () {
-          j.confirmation = { state: 'accepted', person: person, date: NOW() };
+          j.confirmation = { state: 'accepted', person: person, date: NOW(), feedback: feedback || '' };
           j.status = 'closed';
           j.outcome = j.items.every(function (i) { return i.done; }) ? 'success' : 'incomplete';
           advanceNextDue(j);
           S.notify('coordinator', 'Maintenance ' + j.id + ' confirmed by ' + person + '  --  Section 3 closure recorded.', 'confirm', { jobId: j.id });
+          S.notify('technician', 'Maintenance ' + j.id + ' confirmed by the office and closed.', 'confirm', { jobId: j.id, office: j.office, to: j.technician });
           audit('job', j.id, 'confirm', 'Office confirmed maintenance  --  confirming person: ' + person + '. Section 3 closure recorded.', 'Closed');
           audit('job', j.id, 'outcome', 'Record maintenance outcome: ' + (j.outcome === 'success' ? 'Successful' : 'Incomplete') + '. Do not mark incomplete or cancelled maintenance successful.', 'Closed');
         });
         return { ok: true, msg: 'Maintenance confirmed and closed (Section 3).' };
       }
       if (decision === 'rejected') {
+        if (!feedback) return { ok: false, msg: 'Record the office feedback before rejecting the maintenance.' };
         S.update(function () {
-          j.confirmation = { state: 'rejected', person: person || j.office, date: NOW() };
+          j.confirmation = { state: 'rejected', person: person || j.office, date: NOW(), feedback: feedback };
           j.status = 'in_progress'; j.outcome = null; j.workComplete = false;
-          S.notify('technician', 'Maintenance ' + j.id + ' rejected by office  --  continue maintenance verification.', 'confirm', { jobId: j.id });
-          audit('job', j.id, 'confirm', 'Office rejected the maintenance result  --  returned to verification.', 'In Progress');
+          j.resolvedAt = null; j.reminders = [];
+          S.notify('technician', 'Maintenance ' + j.id + ' rejected by office  --  return to verification. Feedback: "' + feedback + '"', 'confirm', { jobId: j.id, office: j.office, to: j.technician });
+          S.notify('coordinator', j.id + ' returned to verification on office feedback: "' + feedback + '"', 'confirm', { jobId: j.id, office: j.office });
+          audit('job', j.id, 'confirm', 'Office rejected the maintenance result  --  feedback: "' + feedback + '". Returned to verification.', 'In Progress');
         });
-        return { ok: true, msg: 'Rejected  --  job returned to verification.' };
+        return { ok: true, msg: 'Feedback recorded  --  job returned to verification.' };
       }
       S.update(function () {
         j.confirmation.state = 'no_response';
-        audit('job', j.id, 'confirm', 'No response from office  --  job kept pending confirmation.', j.status.replace('_', ' ').replace(/\b\w/g, function (m) { return m.toUpperCase(); }));
+        if (!j.reminders) j.reminders = [];
+        j.reminders.push(NOW());
+        S.notify('requester', 'Follow-up reminder: please confirm the result of maintenance ' + j.id + ' (' + j.office + ').', 'remind', { jobId: j.id, office: j.office });
+        audit('job', j.id, 'confirm', 'No response from office  --  job kept Resolved; follow-up reminder ' + j.reminders.length + ' sent to the office.', label(j.status));
       });
-      return { ok: true, msg: 'No response recorded  --  status kept pending, reminder scheduled.' };
+      return { ok: true, msg: 'No response recorded  --  job stays Resolved, reminder sent.' };
     },
 
     // Coordinator / administrator edits a preventive maintenance schedule

@@ -226,6 +226,35 @@ def test_engine_maintenance():
     check("authorized closure is audited",
           any(e["kind"] == "closure" for e in st4["audit"][-6:]), st4["audit"][-3:])
 
+    # Section 3: a rejection carries feedback, a no response sends a reminder
+    st6 = fresh()
+    r = engine.call(st6, "requester", "jobConfirmation", ["MNT-2026-0057", "rejected", "A. Delos Reyes", ""])
+    check("maintenance rejection requires feedback", not r.get("ok"), r)
+    r = engine.call(st6, "requester", "jobConfirmation",
+                    ["MNT-2026-0057", "rejected", "A. Delos Reyes", "Second unit still faulty"])
+    check("maintenance rejection with feedback ok", r.get("ok"), r)
+    j6 = engine.get_job(st6, "MNT-2026-0057")
+    check("rejected maintenance returns to In Progress", j6["status"] == "in_progress", j6["status"])
+    check("rejection feedback stays on the record",
+          j6["confirmation"]["feedback"] == "Second unit still faulty")
+    check("a rejected visit clears the reminder anchor", not j6.get("resolvedAt") and not j6.get("reminders"))
+    check("the assigned technician is told the feedback",
+          any(n["role"] == "technician" and n.get("jobId") == "MNT-2026-0057"
+              and "Second unit still faulty" in n["text"] for n in st6["notifications"]))
+
+    st7 = fresh()
+    r = engine.call(st7, "requester", "jobConfirmation", ["MNT-2026-0057", "no_response", "", ""])
+    check("maintenance no response is recorded", r.get("ok"), r)
+    j7 = engine.get_job(st7, "MNT-2026-0057")
+    check("maintenance no response keeps the job Resolved", j7["status"] == "resolved", j7["status"])
+    check("maintenance no response records a reminder", len(j7["reminders"]) == 1, j7.get("reminders"))
+    check("the office is reminded about the maintenance",
+          any(n["role"] == "requester" and n.get("jobId") == "MNT-2026-0057"
+              and n["kind"] == "remind" for n in st7["notifications"]))
+    j7["resolvedAt"] = "2020-01-01T00:00:00.000Z"
+    engine.world_tick(st7)
+    check("the maintenance reminder loop runs", len(j7["reminders"]) == 2, j7["reminders"])
+
     # An incomplete maintenance is never successful (D10, node N71)
     st5 = fresh()
     j5 = engine.get_job(st5, "MNT-2026-0061")
@@ -266,10 +295,24 @@ def test_engine_maintenance():
 
     # Office requester owns availability / agree-new-date (Requester lane, SOP 9)
     st3 = fresh()
+    r = engine.call(st3, "technician", "recordChecklistItem",
+                    ["MNT-2026-0062", 0, {"result": "Passed", "finding": "early"}])
+    check("checklist blocked before the visit is coordinated", not r.get("ok"), r)
     r = engine.call(st3, "requester", "confirmAvailability", ["MNT-2026-0062", True])
     check("requester confirmAvailability ok", r.get("ok"), r)
-    check("requester availability -> submitted",
-          engine.get_job(st3, "MNT-2026-0062")["status"] == "submitted")
+    check("requester availability -> assigned",
+          engine.get_job(st3, "MNT-2026-0062")["status"] == "assigned")
+    r = engine.call(st3, "technician", "recordChecklistItem",
+                    ["MNT-2026-0062", 0, {"result": "Passed", "finding": "firmware current"}])
+    check("checklist opens once the visit is assigned", r.get("ok"), r)
+    check("checklist starts the visit",
+          engine.get_job(st3, "MNT-2026-0062")["status"] == "in_progress")
+    r = engine.call(st3, "coordinator", "reassignJob", ["MNT-2026-0062", "M. Uy"])
+    check("coordinator reassigns the maintenance visit", r.get("ok"), r)
+    check("maintenance reassignment keeps the owner",
+          engine.get_job(st3, "MNT-2026-0062")["technician"] == "M. Uy")
+    r = engine.call(st3, "technician", "reassignJob", ["MNT-2026-0062", "J. Tan"])
+    check("technician cannot reassign the maintenance visit", not r.get("ok"), r)
     r = engine.call(st3, "requester", "rescheduleJob", ["MNT-2026-0062", "2026-12-15T09:00:00.000Z", "office exam week"])
     check("requester rescheduleJob ok", r.get("ok"), r)
     check("requester reschedule recorded with actor",
@@ -685,6 +728,13 @@ def test_http_records(httpd):
     check("reports are office-scoped for requesters",
           s == 200 and rrep["tickets_total"] < rep["tickets_total"]
           and set(rrep["by_office"].keys()) <= set(rep["by_office"].keys()), rrep["tickets_total"])
+    s, jrep = c.request("GET", "/api/reports?technician=J.%20Tan", token=tok)
+    check("reports filter maintenance jobs by technician",
+          s == 200 and jrep["jobs_total"] < rep["jobs_total"]
+          and jrep["tickets_total"] <= rep["tickets_total"], jrep)
+    s, crep = c.request("GET", "/api/reports?office=Records%20Office", token=tok)
+    check("reports filter maintenance jobs by office",
+          s == 200 and crep["jobs_total"] < rep["jobs_total"], crep["jobs_total"])
 
 
 def test_http_outbox(httpd):
@@ -940,6 +990,39 @@ def test_requester_scope_includes_own_requests():
           [n["id"] for n in out["notifications"]] == [1], out["notifications"])
 
 
+def test_technician_notification_scope():
+    """A technician only receives notices for their own ticket and visits."""
+
+    class Dummy:
+        pass
+
+    snap = {
+        "tickets": [
+            {"id": "T-1", "technician": "M. Uy"},
+            {"id": "T-2", "technician": "J. Tan"},
+        ],
+        "schedules": [],
+        "jobs": [
+            {"id": "J-1", "technician": "M. Uy", "scheduleId": "S-1"},
+            {"id": "J-2", "technician": "J. Tan", "scheduleId": "S-2"},
+        ],
+        "audit": [],
+        "notifications": [
+            {"id": 1, "role": "technician", "ticketId": "T-1"},
+            {"id": 2, "role": "technician", "ticketId": "T-2"},
+            {"id": 3, "role": "technician", "jobId": "J-1"},
+            {"id": 4, "role": "technician", "jobId": "J-2"},
+            {"id": 5, "role": "technician", "to": "M. Uy"},
+            {"id": 6, "role": "technician", "to": "J. Tan"},
+            {"id": 7, "role": "any"},
+        ],
+    }
+    user = {"role": "technician", "name": "M. Uy"}
+    out = appmod.ItcHandler._scoped_technician(Dummy(), snap, user)
+    check("technician scope keeps only their notices",
+          [n["id"] for n in out["notifications"]] == [1, 3, 5, 7], out["notifications"])
+
+
 # ------------------------------------------------------------- intake fields
 def test_intake_priority():
     st = fresh()
@@ -987,6 +1070,49 @@ def test_intake_priority():
     check("intake defaults to Medium when no priority is given",
           engine.get_ticket(st, plain["id"])["priority"] == "medium",
           engine.get_ticket(st, plain["id"])["priority"])
+
+    # The intake source is one of the controlled reference values.
+    src = engine.call(st, "coordinator", "createTicket", [{
+        "office": "Records Office", "requester": "A. Delos Reyes",
+        "category": "Hardware Repair", "issue": "Source label probe.", "source": "Walk-in",
+    }], user=coord)
+    check("intake normalises a source label",
+          src.get("ok") and engine.get_ticket(st, src["id"])["source"] == "walk-in", src)
+    bad_src = engine.call(st, "coordinator", "createTicket", [{
+        "office": "Records Office", "requester": "A. Delos Reyes",
+        "category": "Hardware Repair", "issue": "Spam source probe.", "source": "chat spam 42",
+    }], user=coord)
+    check("intake rejects a free-text source", not bad_src.get("ok"), bad_src)
+
+    # A previous record must be a real ticket in the same office.
+    prev_ok = engine.call(st, "requester", "createTicket", [{
+        "office": "Records Office", "requester": "A. Delos Reyes",
+        "category": "Hardware Repair", "issue": "Same fault returned.",
+        "previousRecord": "IT-2026-000142",
+    }], user=req)
+    check("intake links a previous record",
+          prev_ok.get("ok") and engine.get_ticket(st, prev_ok["id"])["previousRecord"] == "IT-2026-000142", prev_ok)
+    prev_missing = engine.call(st, "requester", "createTicket", [{
+        "office": "Records Office", "requester": "A. Delos Reyes",
+        "category": "Hardware Repair", "issue": "Bad link.", "previousRecord": "IT-2000-999999",
+    }], user=req)
+    check("intake rejects an unknown previous record", not prev_missing.get("ok"), prev_missing)
+    prev_other = engine.call(st, "requester", "createTicket", [{
+        "office": "Records Office", "requester": "A. Delos Reyes",
+        "category": "Hardware Repair", "issue": "Cross-office link.", "previousRecord": "IT-2026-000130",
+    }], user=req)
+    check("intake rejects a previous record from another office", not prev_other.get("ok"), prev_other)
+    foreign = engine.call(st, "coordinator", "createTicket", [{
+        "office": "Records Office", "requester": "J. Cruz",
+        "category": "Hardware Repair", "issue": "Raised at the counter.",
+    }], user=coord)
+    prev_foreign = engine.call(st, "requester", "createTicket", [{
+        "office": "Records Office", "requester": "A. Delos Reyes",
+        "category": "Hardware Repair", "issue": "Someone else's link.",
+        "previousRecord": foreign["id"],
+    }], user=req)
+    check("intake rejects another requester's record as the previous record",
+          not prev_foreign.get("ok"), prev_foreign)
 
 
 # ------------------------------------------------- conversation + intake edits
@@ -1411,6 +1537,7 @@ def main():
     test_world_tick()
     test_tenancy()
     test_requester_scope_includes_own_requests()
+    test_technician_notification_scope()
     test_intake_priority()
     test_conversation()
     test_notifications_read()

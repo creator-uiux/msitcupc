@@ -356,9 +356,16 @@ class ItcHandler(BaseHTTPRequestHandler):
             a for a in snap.get("audit", [])
             if (a.get("subjectType") == "ticket" and a.get("subjectId") in mine)
             or (a.get("subjectType") == "job" and a.get("subjectId") in job_ids)]
+        # A technician only receives the notices about their own records, or
+        # notices addressed to them by name (28.2).  A colleague's ticket or
+        # job notice is never delivered.
         snap["notifications"] = [
             n for n in snap.get("notifications", [])
-            if n.get("role") == "any" or n.get("role") == "technician"]
+            if n.get("role") == "any"
+            or (n.get("role") == "technician"
+                and (n.get("to") == name
+                     or (n.get("ticketId") and n.get("ticketId") in mine)
+                     or (n.get("jobId") and n.get("jobId") in job_ids)))]
         snap["scope"] = name
         return snap
 
@@ -1033,9 +1040,35 @@ class ItcHandler(BaseHTTPRequestHandler):
             "jobs": data.get("jobs", []),
         }, user)
         tickets = scoped.get("tickets", [])
-        summary = query_mod.summarize(tickets)
         schedules = scoped.get("schedules", [])
         jobs = scoped.get("jobs", [])
+        # The report filters apply server-side too, so an export or an API
+        # client sees exactly the same slice as the reports screen.
+        qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        flt = {k: (qs.get(k) or [""])[0] for k in
+               ("office", "category", "cat", "technician", "tech", "status", "from", "to")}
+        flt["category"] = flt["category"] or flt["cat"]
+        flt["technician"] = flt["technician"] or flt["tech"]
+
+        def keep(r):
+            if flt["office"] and r.get("office") != flt["office"]:
+                return False
+            if flt["category"] and r.get("category") != flt["category"]:
+                return False
+            if flt["technician"] and r.get("technician") != flt["technician"]:
+                return False
+            if flt["status"] and r.get("status") != flt["status"]:
+                return False
+            day = str(r.get("createdAt") or "")[:10]
+            if flt["from"] and day and day < flt["from"]:
+                return False
+            if flt["to"] and day and day > flt["to"]:
+                return False
+            return True
+
+        tickets = [t for t in tickets if keep(t)]
+        jobs = [j for j in jobs if keep(j)]
+        summary = query_mod.summarize(tickets)
         jobs_due = sum(1 for j in jobs if j.get("status") != "closed")
         jobs_completed = sum(1 for j in jobs if j.get("status") == "closed" and j.get("outcome") == "success")
         prev_compliance = round(jobs_completed / jobs_due * 100, 1) if jobs_due else 0

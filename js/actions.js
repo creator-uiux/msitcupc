@@ -305,7 +305,7 @@
           U.field('What is the problem?', U.textarea('issue', 'Describe the issue in your own words', t.issue, 3, true, 10)) +
           '<div class="grid grid-form mt">' +
           U.field('Category', U.select('category', (S.db.settings.categories || []), t.category, true)) +
-          U.field('Source', U.select('source', (S.db.settings.sources || []), t.source, true)) +
+          U.field('Source', U.select('source', (S.db.settings.sources || []).map(function (v) { return [v, U.sourceLabel(v)]; }), t.source, true)) +
           U.field('Asset tag', U.input('asset', 'e.g. PC-REC-014', t.asset || '')) +
           '</div>',
           '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Save changes</button>');

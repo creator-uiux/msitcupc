@@ -194,6 +194,9 @@
       "coordinator",
       "requester"
     ],
+    "reassign_job": [
+      "coordinator"
+    ],
     "confirm_availability": [
       "coordinator",
       "requester"

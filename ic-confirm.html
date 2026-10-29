@@ -265,8 +265,14 @@ function jobAct(a, jobId) {
       UI.closeModal(); UI.toast(r.msg, r.ok ? 'ok' : 'err'); if (r.ok) UI.renderBell(); render();
     };
   } else if (a === 'confNo') {
-    r = Maint.jobConfirmation(jobId, 'rejected', j.office);
-    UI.toast(r.msg, r.ok ? 'ok' : 'err'); render();
+    UI.openModal('Reject the maintenance result  --  feedback for the technician',
+      UI.field('Office feedback', UI.textarea('feedback', 'e.g. The second unit still shows the same fault.', '', 3, true)) +
+      '<div class="note mt"><span>' + UI.icon('info') + '</span><div>The visit returns to In Progress so the technician can address the feedback. The feedback stays on the record.</div></div>',
+      '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-danger-soft" id="mGo">Reject with feedback</button>');
+    document.getElementById('mGo').onclick = function () {
+      var rr = Maint.jobConfirmation(jobId, 'rejected', j.office, UI.modalValue('feedback'));
+      UI.closeModal(); UI.toast(rr.msg, rr.ok ? 'ok' : 'err'); if (rr.ok) UI.renderBell(); render();
+    };
   } else if (a === 'confClose') {
     UI.openModal('Authorized closure  --  the office has not confirmed',
       UI.field('Reason for authorized closure', UI.textarea('reason', 'e.g. Office head authorised closure by email; requester on leave.', '', 3, true)),

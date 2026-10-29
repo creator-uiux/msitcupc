@@ -456,7 +456,7 @@
     notify: function (role, text, kind, extra) {
       db.seq.notif++;
       var n = { id: db.seq.notif, at: NOW(), role: role, kind: kind || 'info', text: text, read: false, readBy: [] };
-      if (extra) { if (extra.ticketId) n.ticketId = extra.ticketId; if (extra.office) n.office = extra.office; if (extra.jobId) n.jobId = extra.jobId; }
+      if (extra) { if (extra.ticketId) n.ticketId = extra.ticketId; if (extra.office) n.office = extra.office; if (extra.jobId) n.jobId = extra.jobId; if (extra.to) n.to = extra.to; }
       db.notifications.unshift(n);
       if (db.notifications.length > 120) db.notifications.length = 120;
       return n;

@@ -216,7 +216,7 @@ function fillFilters() {
   fill('fOffice', 'All offices', Object.keys(offices).sort(), F.office);
   fill('fCategory', 'All categories', Object.keys(cats).sort(), F.category);
   fill('fTech', 'All technicians', Object.keys(techs).sort(), F.tech);
-  fill('fSource', 'All sources', Object.keys(src).sort(), F.source);
+  fill('fSource', 'All sources', Object.keys(src).sort(), F.source, UI.sourceLabel);
   fill('fStatus', 'All statuses', Query.ALL_STATES, F.status, function (s) { return UI.STATUS[s] ? UI.STATUS[s][0] : s; });
   fill('fPriority', 'All priorities', ['low', 'medium', 'high', 'critical'], F.priority, function (p) {
     return p.charAt(0).toUpperCase() + p.slice(1);

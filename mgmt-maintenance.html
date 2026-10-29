@@ -484,6 +484,7 @@ function render() {
     var canRun = j.status !== 'submitted' && j.status !== 'on_hold';
     var canAvail = UI.canAct('confirmAvailability');
     var canOutcome = UI.canAct('recordOutcome');
+    var canReassign = UI.canAct('reassignJob') && ['submitted', 'assigned', 'in_progress', 'on_hold'].indexOf(j.status) > -1;
     var status = {
       submitted: 'Visit not yet coordinated', assigned: 'Visit coordinated', on_hold: 'Rescheduled  --  waiting agreed date',
       in_progress: 'Checklist in progress', resolved: 'Completed  --  confirmation pending',
@@ -503,6 +504,7 @@ function render() {
       '<div><div class="k">Technician</div><div class="v">' + UI.esc(j.technician) + '</div></div>' +
       '<div><div class="k">Visit date</div><div class="v">' + (j.visitDate ? UI.dateOnly(j.visitDate) : 'not set') + '</div></div>' +
       '<div><div class="k">Additional fault?</div><div class="v">' + UI.esc(j.additionalFault) + '</div></div>' +
+      (canReassign ? '<div><div class="k">Assignment</div><div class="v"><button class="btn btn-sm btn-ghost" data-m="reassign">Reassign technician</button></div></div>' : '') +
       '<div><div class="k">Next due date</div><div class="v">' + (j.nextDue || (sc ? UI.dateOnly(sc.dueDate) + ' (schedule)' : ' -- ')) + '</div></div>' +
       '</div>' +
       (j.reschedules.length ? '<ul class="list list-divided mt">' +
@@ -696,6 +698,17 @@ function mAct(a, jobId) {
       '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Save reschedule</button>');
     document.getElementById('mGo').onclick = function () {
       var r = Maint.rescheduleJob(jobId, UI.modalValue('date'), UI.modalValue('reason'));
+      UI.closeModal(); UI.toast(r.msg, r.ok ? 'ok' : 'err'); if (r.ok) UI.renderBell(); render();
+    };
+  } else if (a === 'reassign') {
+    var techs = technicianOptions();
+    if (!techs.length) { UI.toast('No technician in the register yet.', 'err'); return; }
+    UI.openModal('Reassign maintenance visit  --  ' + jobId,
+      UI.field('Technician', UI.select('tech', techs, j.technician, true)) +
+      '<div class="note mt"><span>' + UI.icon('info') + '</span><div>The visit status and the agreed date stay the same. Both the previous and the new technician are notified.</div></div>',
+      '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Reassign</button>');
+    document.getElementById('mGo').onclick = function () {
+      var r = Maint.reassignJob(jobId, UI.modalValue('tech'));
       UI.closeModal(); UI.toast(r.msg, r.ok ? 'ok' : 'err'); if (r.ok) UI.renderBell(); render();
     };
   } else if (a === 'success' || a === 'incomplete' || a === 'cancelled') {

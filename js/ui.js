@@ -33,6 +33,16 @@
     var m = map[p] || [' -- ', 'p-low'];
     return '<span class="prio ' + m[1] + '">' + icon(PRIO_ICON[p] || 'chevronRight') + m[0] + '</span>';
   }
+  /* One display style for the configured intake sources: "walk-in" reads
+     "Walk-in", "online portal" reads "Online portal".  The stored value stays
+     the canonical lower-case reference value. */
+  function sourceLabel(v) {
+    var s = String(v == null ? '' : v).trim();
+    if (!s) return ' -- ';
+    return s.toLowerCase().replace(/(^|[\s\-])([a-z])/g, function (m, sep, ch) {
+      return sep + ch.toUpperCase();
+    });
+  }
   /* Every displayed timestamp is rendered in Asia/Manila (js/time.js), never
      in the browser's own timezone. */
   function timeAgo(iso) { return (window.Time && window.Time.ago) ? window.Time.ago(iso) : ' -- '; }
@@ -197,7 +207,7 @@
   /* The maintenance job steps use the same three owners. */
   var NEXT_OWNER_JOB = {
     submitted: { role: 'coordinator', label: 'IT Coordinator' },
-    assigned: { role: 'coordinator', label: 'IT Coordinator' },
+    assigned: { role: 'technician', label: 'IT Technician' },
     in_progress: { role: 'technician', label: 'IT Technician' },
     on_hold: { role: 'requester', label: 'Office Requester' },
     resolved: { role: 'requester', label: 'Office Requester' },
@@ -2120,7 +2130,7 @@
   }
 
   window.UI = {
-    esc: esc, attr: attr, feature: feature, badge: badge, prio: prio, timeAgo: timeAgo, clock: clock, dateOnly: dateOnly,
+    esc: esc, attr: attr, feature: feature, badge: badge, prio: prio, sourceLabel: sourceLabel, timeAgo: timeAgo, clock: clock, dateOnly: dateOnly,
     workCard: workCard, categoryIcon: categoryIcon, sparkline: sparkline, gauge: gauge,
     openPalette: openPalette, closePalette: closePalette, paletteResults: cmCommandResults,
     toast: toast, openModal: openModal, closeModal: closeModal, field: field, input: input,

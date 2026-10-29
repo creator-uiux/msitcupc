@@ -72,13 +72,16 @@
               <div class="help" id="fPriorityHelp">Your office's view of urgency. The IT Coordinator confirms it during assessment.</div>
             </div>
             <div class="field"><label for="fSource">Request source</label>
-              <select name="source" id="fSource">
-                <option value="telephone">Telephone</option>
-                <option value="email">Email</option>
-                <option value="walk-in">Walk-in</option>
-                <option value="on-site">On-site</option>
-                <option value="online portal">Online Portal</option>
+              <select name="source" id="fSource" required>
+                <option value=""> --  Select Source  -- </option>
               </select>
+              <div class="help">How the request reached the IT Office. The list is managed in the reference data.</div>
+            </div>
+            <div class="field"><label for="fPrevious">Previous record (optional)</label>
+              <select name="previousRecord" id="fPrevious">
+                <option value="">No previous record</option>
+              </select>
+              <div class="help">Link a request that continues an earlier one. The new ticket is still its own record.</div>
             </div>
             <div class="field span-2"><label for="fIssue">Issue / what do you need?</label>
               <textarea name="issue" id="fIssue" rows="4" placeholder="Describe the problem, where it happens, and when it started  --  complete details avoid the Needs Information loop." required minlength="10"></textarea>
@@ -166,6 +169,23 @@ function fillOffices() {
 }
 fillOffices();
 
+/* The intake sources are reference data, not markup: the five controlled
+   values come from the register, so a renamed or retired source is reflected
+   here and nothing free text can be posted into the reports. */
+function fillSources() {
+  var sel = document.getElementById('fSource');
+  if (!sel) return;
+  var list = (Store.db.settings && Store.db.settings.sources) || [];
+  var current = sel.value;
+  sel.innerHTML = '<option value=""> --  Select Source  -- </option>' + list.map(function (v) {
+    return '<option value="' + UI.attr(v) + '">' + UI.esc(UI.sourceLabel(v)) + '</option>';
+  }).join('');
+  if (list.indexOf(current) > -1) { sel.value = current; return; }
+  var preferred = Store.db.role === 'requester' ? 'online portal' : 'telephone';
+  sel.value = list.indexOf(preferred) > -1 ? preferred : (list[0] || '');
+}
+fillSources();
+
 /* Initialize required selects with default values for validation */
 function initFormValidation() {
   var form = document.getElementById('reqForm');
@@ -200,12 +220,37 @@ var form = document.getElementById('reqForm');
 UI.bindFormValidation(form);   /* live blur/input feedback + submit gate */
 function F(name) { return form.elements.namedItem(name); }
 
+/* A new request may continue an earlier one.  The options are real tickets
+   the requester may see: their own records in the selected office.  The
+   choice is never free text, and the server validates it again. */
+function fillPrevious() {
+  var sel = document.getElementById('fPrevious');
+  if (!sel) return;
+  var office = F('office').value;
+  var me = UI.viewerName();
+  var list = (Store.db.tickets || []).filter(function (t) {
+    if (Store.db.role !== 'requester') return true;
+    if (office && t.office !== office) return false;
+    return !me || t.requester === me;
+  }).slice(0, 60);
+  var sig = office + ':' + list.map(function (t) { return t.id; }).join(',');
+  if (sel.dataset.sig === sig) return;
+  sel.dataset.sig = sig;
+  var current = sel.value;
+  sel.innerHTML = '<option value="">No previous record</option>' + list.map(function (t) {
+    return '<option value="' + UI.attr(t.id) + '">' + UI.esc(t.id + '  --  ' + String(t.issue || '').slice(0, 48)) + '</option>';
+  }).join('');
+  if (current && list.some(function (t) { return t.id === current; })) sel.value = current;
+}
+fillPrevious();
+F('office').addEventListener('change', fillPrevious);
+
 /* ---------- draft kept while typing ----------
    A request can be interrupted, and losing a finished description is the
    fastest way to make someone give up.  The answers are kept per browser
    and restored on the next visit; submitting or discarding clears them. */
 var DRAFT_KEY = 'itc_draft_request';
-var DRAFT_FIELDS = ['office', 'category', 'priority', 'source', 'issue', 'asset'];
+var DRAFT_FIELDS = ['office', 'category', 'priority', 'source', 'previousRecord', 'issue', 'asset'];
 function draftNote(show) {
   var n = document.getElementById('draftNote');
   if (n) n.hidden = !show;
@@ -311,8 +356,12 @@ function setMode() {
     document.getElementById('fReqHelp').textContent = 'Carried over from the original ticket.';
     document.getElementById('fOfficeHelp').textContent = 'Carried over from the original ticket.';
     document.getElementById('fPriorityHelp').textContent = 'Carried over from the original ticket.';
+    /* The reply updates the same ticket, so it cannot link a new one. */
+    F('previousRecord').value = '';
+    F('previousRecord').disabled = true;
   } else {
     note.hidden = true;
+    if (F('previousRecord')) F('previousRecord').disabled = false;
     if (respondId && t) document.getElementById('formHint').innerHTML = 'Ticket <span class="mono">' + UI.esc(t.id) + '</span> is <b>' + UI.STATUS[t.status][0] + '</b>  --  no information is outstanding.';
   }
 }
@@ -368,6 +417,7 @@ form.addEventListener('submit', function (e) {
   var d = {
     office: F('office').value, requester: F('requester').value, category: F('category').value,
     priority: F('priority').value, source: F('source').value,
+    previousRecord: F('previousRecord').value,
     issue: F('issue').value.trim(), asset: F('asset').value.trim(),
     dateReported: F('dateReported').value, idempotencyKey: F('idempotencyKey').value.trim(),
     attachments: files
@@ -386,8 +436,13 @@ form.addEventListener('submit', function (e) {
   }
 });
 
+function resetControlled() {
+  fillSources();
+  fillOffices();
+  fillPrevious();
+}
 document.getElementById('btnReset').addEventListener('click', function () {
-  form.reset(); clearDraft(); applyRequesterLock(); setDateDefault();
+  form.reset(); clearDraft(); applyRequesterLock(); setDateDefault(); resetControlled();
 });
 document.getElementById('sucAgain').addEventListener('click', function () {
   form.reset();
@@ -395,6 +450,7 @@ document.getElementById('sucAgain').addEventListener('click', function () {
   setDateDefault();
   if (Store.db.role === 'requester') applyRequesterLock();
   else F('requester').value = window.ROLES[Store.db.role].name;
+  resetControlled();
   document.getElementById('successBox').hidden = true;
   document.getElementById('btnSubmit').disabled = false;
   F('issue').focus();
@@ -402,10 +458,12 @@ document.getElementById('sucAgain').addEventListener('click', function () {
 
 Store.subscribe(function () {
   if (lockedFor !== Store.db.role) applyRequesterLock();
+  fillPrevious();
   renderSide();
 });
 applyRequesterLock();
 restoreDraft();
+fillPrevious();
 setMode(); renderSide(); Live.start();
 </script>
 <script src="js/pwa.js"></script>

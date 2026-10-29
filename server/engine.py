@@ -326,7 +326,7 @@ def next_id(state, kind):
     return str(s["notif"])
 
 
-def notify(state, role, text, kind="info", extra=None):
+def notify(state, role, text, kind="info", extra=None, to=None):
     state["seq"]["notif"] += 1
     n = {"id": state["seq"]["notif"], "at": now_iso(), "role": role,
          "kind": kind or "info", "text": text, "read": False, "readBy": []}
@@ -334,6 +334,10 @@ def notify(state, role, text, kind="info", extra=None):
         for k in ("ticketId", "office", "jobId"):
             if extra.get(k):
                 n[k] = extra[k]
+    # A technician notification is addressed to one person; the scoped view
+    # for a technician only returns notices addressed to them (28.2).
+    if to:
+        n["to"] = to
     state["notifications"].insert(0, n)
     if len(state["notifications"]) > 120:
         del state["notifications"][120:]
@@ -399,6 +403,34 @@ def _record_ticket(state, d, created_by=None, created_by_role="requester"):
     return tid
 
 
+def _source_values(state):
+    """The configured intake sources, in register order."""
+    cfg = _settings(state).get("sources")
+    if isinstance(cfg, (list, tuple)) and cfg:
+        return [str(s) for s in cfg]
+    return ["telephone", "email", "walk-in", "on-site", "online portal"]
+
+
+def _normalize_source(state, value):
+    """Map a posted source onto the configured reference value.
+
+    Accepts the stored value or its display form ("Walk-in"), so a client that
+    sends a human label is stored canonically.  Returns None when the value is
+    not one of the configured sources.
+    """
+    allowed = _source_values(state)
+    text = str(value or "").strip()
+    for src in allowed:
+        if text.lower() in (src.lower(), src.lower().replace("-", "-")):
+            return src
+        pretty = src.replace("-", " ").title() if " " not in src else src.title()
+        if text.lower() == pretty.lower():
+            return src
+        if text.lower() == src.lower().replace("-", " "):
+            return src
+    return None
+
+
 def create_ticket(state, role, d):
     state["role"] = role
     g = _guard(state, ["requester", "coordinator"])
@@ -422,12 +454,12 @@ def create_ticket(state, role, d):
     d["priority"] = prio
     # Intake source must be one of the configured reference values, so free
     # text from a crafted request can never enter reports by_source.
-    src = str(d.get("source") or "email").strip()
-    cfg_src = _settings(state).get("sources")
-    allowed_src = [str(s) for s in cfg_src] if isinstance(cfg_src, (list, tuple)) and cfg_src else \
-        ["telephone", "email", "walk-in", "on-site"]
-    if src not in allowed_src:
-        return {"ok": False, "msg": "Unknown intake source (%s). Choose one of: %s." % (src, ", ".join(allowed_src))}
+    allowed_src = _source_values(state)
+    src = _normalize_source(state, d.get("source") or ("email" if "email" in allowed_src else allowed_src[0]))
+    if src is None:
+        return {"ok": False, "msg": "Unknown intake source (%s). Choose one of: %s." % (d.get("source"), ", ".join(allowed_src))}
+    d = dict(d)
+    d["source"] = src
     # Idempotency: a retried submit with the same key returns the first ticket
     # instead of creating a duplicate (double click, network retry).
     key = (d.get("idempotencyKey") or "").strip()
@@ -439,8 +471,16 @@ def create_ticket(state, role, d):
         d = dict(d)
         d["idempotencyKey"] = key
     prev = (d.get("previousRecord") or "").strip()
-    if prev and not get_ticket(state, prev):
-        return {"ok": False, "msg": "Previous record %s was not found. Choose an existing ticket." % prev}
+    if prev:
+        pt = get_ticket(state, prev)
+        if not pt:
+            return {"ok": False, "msg": "Previous record %s was not found. Choose an existing ticket." % prev}
+        # An office requester may only continue their own record, in the same office.
+        if role == "requester":
+            if pt.get("office") != d.get("office"):
+                return {"ok": False, "msg": "Previous record %s belongs to %s, not %s." % (prev, pt.get("office"), d.get("office"))}
+            if pt.get("requester") != _who(state)["by"]:
+                return {"ok": False, "msg": "Previous record %s belongs to another requester." % prev}
     tid = _record_ticket(state, d, created_by=_who(state)["by"], created_by_role=role)
     _audit(state, "ticket", tid, "create",
            "Ticket recorded for %s (%s) - Status: Submitted." % (d["requester"], d["office"]), "Submitted")
@@ -1216,7 +1256,8 @@ def _run_schedule_check(state, silent=False):
                "Maintenance job generated from schedule %s (%s) - occurrence %s, technician %s."
                % (sc["id"], sc["office"], occ[:10] if occ else "-", sc["technician"]),
                "Submitted", actor=SYSTEM)
-        notify(state, "technician", "%s generated from %s (%s) - coordinate the visit." % (jid, sc["id"], sc["office"]), "job", {"jobId": jid, "office": sc["office"]})
+        notify(state, "technician", "%s generated from %s (%s) - coordinate the visit." % (jid, sc["id"], sc["office"]), "job",
+               {"jobId": jid, "office": sc["office"]}, to=sc.get("technician"))
         notify(state, "coordinator", "%s generated from %s - maintenance due." % (jid, sc["id"]), "job", {"jobId": jid})
         events.append({"kind": "gen", "id": sc["id"], "jobId": jid, "msg": "%s due - generated linked maintenance job %s." % (sc["id"], jid)})
     if events:
@@ -1276,6 +1317,30 @@ def world_tick(state):
                    "remind", {"ticketId": t["id"], "office": t["office"]})
             events.append("Reminder loop: %s still Resolved - follow-up reminder sent." % t["id"])
 
+    for j in state["jobs"]:
+        cf = j.get("confirmation") or {}
+        if j["status"] != "resolved" or cf.get("state") not in ("pending", "no_response"):
+            continue
+        base = _parse_ms(j.get("resolvedAt") or j.get("updatedAt") or j.get("createdAt"))
+        st = _settings(state)
+        if st.get("reminderMode", "minutes") == "business" and state["settings"].get("reminderMinutes", 2) >= 1:
+            sent = len(j.get("reminders", []))
+            every_days = int(st.get("reminderBusinessDays", 3)) if sent == 0 else int(st.get("reminderRepeatDays", 7))
+            due = base + every_days * 24 * 60 * 60 * 1000
+        else:
+            every = max(int(float(st.get("reminderMinutes", 2)) * 60000), 1)
+            due = base + (len(j.get("reminders", [])) + 1) * every
+        if now_ms < due:
+            continue
+        j.setdefault("reminders", []).append(now_iso())
+        _audit(state, "job", j["id"], "remind",
+               "Follow-up reminder %d sent to the office - job still Resolved." % len(j["reminders"]),
+               _label(j["status"]), actor=SYSTEM)
+        notify(state, "requester",
+               "Follow-up reminder: please confirm the result of maintenance %s (%s)." % (j["id"], j["office"]),
+               "remind", {"jobId": j["id"], "office": j["office"]})
+        events.append("Reminder loop: maintenance %s still Resolved - follow-up sent." % j["id"])
+
     for t in state["tickets"]:
         dep = t.get("dependency")
         if t["status"] != "on_hold" or not dep or dep.get("state") != "pending":
@@ -1295,10 +1360,10 @@ def world_tick(state):
             j["status"] = "assigned"
             _audit(state, "job", j["id"], "sched",
                    "Agreed reschedule date reached - visit may proceed, job returned to coordination.",
-                   "Coord Visit", actor=SYSTEM)
+                   _label(j["status"]), actor=SYSTEM)
             notify(state, "technician",
                    "Agreed date reached for %s - continue the maintenance visit." % j["id"],
-                   "sched", {"jobId": j["id"]})
+                   "sched", {"jobId": j["id"], "office": j["office"]}, to=j.get("technician"))
             events.append("On agreed date: %s visit can proceed." % j["id"])
 
     if len(state["notifications"]) > 120:
@@ -1341,12 +1406,53 @@ def reschedule_job(state, role, job_id, new_date, reason):
     # Do NOT advance the schedule's due date on a one-off reschedule
     # (prevents the duplicate-job bug where run_schedule_check sees a new due
     # and generates another job). The schedule keeps its original cadence anchor.
-    notify(state, "technician", "Job %s rescheduled to %s (record reschedule)." % (j["id"], new_date[:10]), "sched", {"jobId": j["id"]})
+    notify(state, "technician", "Job %s rescheduled to %s (record reschedule)." % (j["id"], new_date[:10]), "sched",
+           {"jobId": j["id"], "office": j["office"]}, to=j.get("technician"))
     notify(state, "requester", "Maintenance for %s rescheduled to %s." % (j["office"], new_date[:10]), "sched", {"jobId": j["id"], "office": j["office"]})
     _audit(state, "job", j["id"], "sched",
            "Rescheduled to %s - reason: %s." % (new_date[:10], reason or "Office unavailable"), "Rescheduled")
     _touch(state)
     return {"ok": True, "msg": "Reschedule recorded - %s." % new_date[:10]}
+
+
+def reassign_job(state, role, job_id, tech):
+    """Coordinator moves a maintenance visit to a different technician.
+
+    Section 10 step 7: the IT Coordinator assigns the maintenance technician.
+    A visit already generated by the schedule carries the schedule's technician;
+    this action changes the owner without touching the visit status or the
+    agreed date.  Both the previous and the new technician are notified.
+    """
+    state["role"] = role
+    g = _guard(state, ["coordinator"])
+    if not g["ok"]:
+        return g
+    j = get_job(state, job_id)
+    if not j:
+        return {"ok": False, "msg": "Job not found."}
+    ob = _office_block(state, j.get("office"))
+    if ob:
+        return ob
+    if j["status"] not in ("submitted", "assigned", "in_progress", "on_hold"):
+        return {"ok": False, "msg": "Only an open visit can be reassigned (%s is %s)." % (job_id, _label(j["status"]))}
+    if not tech:
+        return {"ok": False, "msg": "Choose a technician."}
+    if tech == j.get("technician"):
+        return {"ok": False, "msg": "Already assigned to %s." % tech}
+    old = j.get("technician")
+    j["technician"] = tech
+    w = _who(state)
+    _audit(state, "job", job_id, "assign",
+           "Reassigned from %s to %s." % (old or "unassigned", tech), _label(j["status"]))
+    if old:
+        notify(state, "technician", "%s was reassigned to %s; it is no longer yours." % (j["id"], tech),
+               "assign", {"jobId": j["id"], "office": j["office"]}, to=old)
+    notify(state, "technician", "%s reassigned to you (%s, visit %s)." % (j["id"], j["office"], (j.get("visitDate") or "-")[:10]),
+           "assign", {"jobId": j["id"], "office": j["office"]}, to=tech)
+    notify(state, "coordinator", "%s reassigned from %s to %s by %s." % (j["id"], old or "unassigned", tech, w["by"]),
+           "assign", {"jobId": j["id"], "office": j["office"]})
+    _touch(state)
+    return {"ok": True, "msg": "Reassigned to %s." % tech}
 
 
 def confirm_availability(state, role, job_id, yes):
@@ -1366,16 +1472,33 @@ def confirm_availability(state, role, job_id, yes):
     ob = _office_block(state, j.get("office"))
     if ob:
         return ob
+    if j["status"] not in ("submitted", "on_hold"):
+        return {"ok": False, "msg": "Availability is recorded while the visit is being coordinated (%s is %s)." % (job_id, _label(j["status"]))}
     if yes:
+        from datetime import datetime, timezone
+        prev = j["status"]
         j["availability"] = "yes"
         j["visitDate"] = j.get("visitDate") or now_iso()
-        # Keep status as submitted when confirming availability; technician
-        # coordination will transition to assigned when they start work.
-        notify(state, "technician", "Office available for %s - visit confirmed for %s." % (j["id"], (j.get("visitDate") or "")[:10]), "sched", {"jobId": j["id"]})
+        # The office answered the availability question, so coordination is
+        # done: Submitted -> Assigned releases the technician checklist.  A
+        # rescheduled (On Hold) visit only returns once its agreed date arrives.
+        if prev == "submitted":
+            j["status"] = "assigned"
+        elif prev == "on_hold" and _parse_ms(j.get("visitDate")) <= datetime.now(timezone.utc).timestamp() * 1000:
+            j["status"] = "assigned"
+        visit = (j.get("visitDate") or "")[:10]
+        if j["status"] == "assigned":
+            notify(state, "technician", "Office available for %s - visit confirmed for %s; the job is Assigned." % (j["id"], visit),
+                   "sched", {"jobId": j["id"], "office": j["office"]}, to=j.get("technician"))
+            notify(state, "coordinator", "%s: office available for %s - job Assigned to %s." % (j["id"], visit, j.get("technician")),
+                   "sched", {"jobId": j["id"], "office": j["office"]})
+        else:
+            notify(state, "technician", "Office available for %s - visit remains On Hold until %s." % (j["id"], visit),
+                   "sched", {"jobId": j["id"], "office": j["office"]}, to=j.get("technician"))
         _audit(state, "job", j["id"], "sched",
-               "Office available - visit confirmed for %s." % (j.get("visitDate") or "")[:10], "Submitted")
+               "Office available - visit confirmed for %s." % visit, _label(j["status"]))
         _touch(state)
-        return {"ok": True, "msg": "Office available - visit coordinated."}
+        return {"ok": True, "msg": "Office available - visit coordinated (%s)." % _label(j["status"])}
     return {"ok": False, "msg": "Record the reschedule instead (Office available? No)."}
 
 
@@ -1389,6 +1512,8 @@ def record_checklist_item(state, role, job_id, idx, data):
         return {"ok": False, "msg": "Job not found."}
     if not _assigned_to_actor(state, j):
         return {"ok": False, "msg": "Only the assigned technician can record the checklist."}
+    if j["status"] not in ("assigned", "in_progress"):
+        return {"ok": False, "msg": "The checklist opens once the visit is Assigned (%s is %s)." % (job_id, _label(j["status"]))}
     if idx < 0 or idx >= len(j["items"]):
         return {"ok": False, "msg": "Checklist item not found."}
     if not data.get("result"):
@@ -1523,6 +1648,8 @@ def record_outcome(state, role, job_id, outcome, notes):
     if j["status"] == "closed":
         return {"ok": False, "msg": "Job already closed."}
     if outcome == "success":
+        if j["status"] not in ("assigned", "in_progress"):
+            return {"ok": False, "msg": "The visit must be Assigned before it can be completed (%s is %s)." % (job_id, _label(j["status"]))}
         all_done = _checklist_complete(j)
         if not all_done:
             pending = len([i for i in (j.get("items") or []) if not i.get("done")])
@@ -1535,7 +1662,9 @@ def record_outcome(state, role, job_id, outcome, notes):
         j["workComplete"] = True
         j["outcome"] = None
         j["outcomeNotes"] = notes or ""
-        j["confirmation"] = {"state": "pending", "person": "", "date": None}
+        j["resolvedAt"] = now_iso()
+        j["reminders"] = []
+        j["confirmation"] = {"state": "pending", "person": "", "date": None, "feedback": ""}
         _audit(state, "job", j["id"], "outcome",
                "Maintenance work completed - checklist complete, handed to the office for Section 3 confirmation%s."
                % ((" - " + notes) if notes else ""), "Resolved")
@@ -1631,12 +1760,16 @@ def close_job(state, role, job_id, reason):
     return {"ok": True, "msg": "Maintenance job closed by authorized closure."}
 
 
-def job_confirmation(state, role, job_id, decision, person):
+def job_confirmation(state, role, job_id, decision, person, feedback=""):
     """Section 3 confirmation and closure of a maintenance visit.
 
     The office decides (Accepted, Rejected, No response).  The IT Coordinator
     cannot answer on the office's behalf; the coordinator closes an unanswered
     job through the audited authorized closure instead (Section 4A.2, D4).
+
+    A rejection must carry the office feedback that is returned to the
+    technician.  A no response keeps the job Resolved, records a reminder and
+    sends the follow-up to the office (Section 10 step 10).
     """
     state["role"] = role
     g = _guard(state, ["requester"])
@@ -1653,30 +1786,43 @@ def job_confirmation(state, role, job_id, decision, person):
     if decision == "accepted":
         if not person:
             return {"ok": False, "msg": "Record the confirming person."}
-        j["confirmation"] = {"state": "accepted", "person": person, "date": now_iso()}
+        j["confirmation"] = {"state": "accepted", "person": person, "date": now_iso(), "feedback": feedback or ""}
         j["status"] = "closed"
         sc = get_schedule(state, j["scheduleId"])
         if sc:
             sc["lastCheck"] = now_iso()
         _finalize_job_outcome(state, j, {"by": person, "role": "requester"})
         notify(state, "coordinator", "Maintenance %s confirmed by %s - Section 3 closure recorded." % (j["id"], person), "confirm", {"jobId": j["id"]})
+        notify(state, "technician", "Maintenance %s confirmed by the office and closed." % j["id"], "confirm",
+               {"jobId": j["id"], "office": j["office"]}, to=j.get("technician"))
         _audit(state, "job", j["id"], "confirm",
                "Office confirmed maintenance - confirming person: %s. Section 3 closure recorded." % person, "Closed")
         _touch(state)
         return {"ok": True, "msg": "Maintenance confirmed and closed (Section 3)."}
     if decision == "rejected":
-        j["confirmation"] = {"state": "rejected", "person": person or j["office"], "date": now_iso()}
+        if not feedback:
+            return {"ok": False, "msg": "Record the office feedback before rejecting the maintenance."}
+        j["confirmation"] = {"state": "rejected", "person": person or j["office"], "date": now_iso(), "feedback": feedback}
         j["status"] = "in_progress"; j["outcome"] = None; j["workComplete"] = False
-        notify(state, "technician", "Maintenance %s rejected by office - continue maintenance verification." % j["id"], "confirm", {"jobId": j["id"]})
+        j["resolvedAt"] = None
+        j["reminders"] = []
+        notify(state, "technician", 'Maintenance %s rejected by office - return to verification. Feedback: "%s"' % (j["id"], feedback),
+               "confirm", {"jobId": j["id"], "office": j["office"]}, to=j.get("technician"))
+        notify(state, "coordinator", '%s returned to verification on office feedback: "%s"' % (j["id"], feedback),
+               "confirm", {"jobId": j["id"], "office": j["office"]})
         _audit(state, "job", j["id"], "confirm",
-               "Office rejected the maintenance result - returned to verification.", "In Progress")
+               'Office rejected the maintenance result - feedback: "%s". Returned to verification.' % feedback, "In Progress")
         _touch(state)
-        return {"ok": True, "msg": "Rejected - job returned to verification."}
+        return {"ok": True, "msg": "Feedback recorded - job returned to verification."}
     j["confirmation"]["state"] = "no_response"
+    j.setdefault("reminders", []).append(now_iso())
     _audit(state, "job", j["id"], "confirm",
-           "No response from office - job kept pending confirmation.", j["status"].replace("_", " ").title())
+           "No response from office - job kept Resolved; follow-up reminder %d sent to the office." % len(j["reminders"]),
+           _label(j["status"]))
+    notify(state, "requester", "Follow-up reminder: please confirm the result of maintenance %s (%s)." % (j["id"], j["office"]),
+           "remind", {"jobId": j["id"], "office": j["office"]})
     _touch(state)
-    return {"ok": True, "msg": "No response recorded - status kept pending, reminder scheduled."}
+    return {"ok": True, "msg": "No response recorded - job stays Resolved, reminder %d sent." % len(j["reminders"])}
 
 
 # --------------------------------------------------------------------------
@@ -1750,13 +1896,13 @@ def update_ticket(state, role, tid, d):
         t["asset"] = str(d["asset"]).strip(); changed.append("asset")
     for key in ("category", "source", "priority"):
         if d.get(key) and d[key] != t.get(key):
+            value = d[key]
             if key == "source":
-                cfg_src = _settings(state).get("sources")
-                allowed_src = [str(s) for s in cfg_src] if isinstance(cfg_src, (list, tuple)) and cfg_src else \
-                    ["telephone", "email", "walk-in", "on-site"]
-                if str(d[key]).strip() not in allowed_src:
+                allowed_src = _source_values(state)
+                value = _normalize_source(state, value)
+                if value is None:
                     return {"ok": False, "msg": "Unknown intake source (%s). Choose one of: %s." % (d[key], ", ".join(allowed_src))}
-            t[key] = d[key]; changed.append(key)
+            t[key] = value; changed.append(key)
     if not changed:
         return {"ok": False, "msg": "Nothing to update."}
     t.setdefault("history", []).append(
@@ -2238,13 +2384,14 @@ METHODS = {
     "createSchedule": (create_schedule, ["d"]),
     "runScheduleCheck": (run_schedule_check, ["silent"]),
     "rescheduleJob": (reschedule_job, ["jobId", "newDate", "reason"]),
+    "reassignJob": (reassign_job, ["jobId", "tech"]),
     "confirmAvailability": (confirm_availability, ["jobId", "yes"]),
     "recordChecklistItem": (record_checklist_item, ["jobId", "idx", "data"]),
     "createFaultTicket": (create_fault_ticket, ["jobId"]),
     "flagAdditionalFault": (flag_additional_fault, ["jobId", "value"]),
     "recordOutcome": (record_outcome, ["jobId", "outcome", "notes"]),
     "closeJob": (close_job, ["jobId", "reason"]),
-    "jobConfirmation": (job_confirmation, ["jobId", "decision", "person"]),
+    "jobConfirmation": (job_confirmation, ["jobId", "decision", "person", "feedback"]),
     "addComment": (add_comment, ["id", "d"]),
     "updateTicket": (update_ticket, ["id", "d"]),
     "markNotificationsRead": (mark_notifications_read, ["ids"]),
@@ -2266,8 +2413,8 @@ NAMESPACE = {
     "resolveDependency": "Flow", "cancelFromDependency": "Flow", "startWork": "Flow",
     "diagnose": "Flow", "recordRepair": "Flow", "placeHold": "Flow", "recordTest": "Flow", "close": "Flow",
     "sendReminder": "Flow",
-    "createSchedule": "Maint", "rescheduleJob": "Maint", "confirmAvailability": "Maint",
-    "runScheduleCheck": "Maint",
+    "createSchedule": "Maint", "rescheduleJob": "Maint", "reassignJob": "Maint",
+    "confirmAvailability": "Maint", "runScheduleCheck": "Maint",
     "recordChecklistItem": "Maint", "createFaultTicket": "Maint", "flagAdditionalFault": "Maint",
     "recordOutcome": "Maint",
     "closeJob": "Maint",

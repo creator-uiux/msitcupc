@@ -71,14 +71,32 @@
         }
       });
 
+      // 16: Resolved maintenance awaiting confirmation -> follow-up reminder
+      db.jobs.forEach(function (j) {
+        if (j.status !== 'resolved' || !j.confirmation) return;
+        if (j.confirmation.state !== 'pending' && j.confirmation.state !== 'no_response') return;
+        var base = new Date(j.resolvedAt || j.createdAt || Date.now()).getTime();
+        var every = db.settings.reminderMinutes * 60000;
+        var reminders = j.reminders || (j.reminders = []);
+        if (now < base + (reminders.length + 1) * every) return;
+        reminders.push(new Date(Date.now()).toISOString());
+        db.seq.notif++;
+        db.notifications.unshift({
+          id: db.seq.notif, at: new Date(Date.now()).toISOString(), role: 'requester', kind: 'remind',
+          jobId: j.id, office: j.office, read: false,
+          text: 'Follow-up reminder: please confirm the result of maintenance ' + j.id + ' (' + j.office + ').'
+        });
+        events.push('Reminder loop: maintenance ' + j.id + ' still Resolved  --  follow-up sent.');
+      });
+
       // Rescheduled job whose agreed date arrived -> work can continue
       db.jobs.forEach(function (j) {
         if (j.status === 'on_hold' && j.visitDate && new Date(j.visitDate).getTime() <= now) {
-          j.status = 'in_progress';
+          j.status = 'assigned';
           db.seq.notif++;
           db.notifications.unshift({
-            id: db.seq.notif, at: new Date(Date.now()).toISOString(), role: 'technician', kind: 'sched',
-            jobId: j.id, read: false, text: 'Agreed date reached for ' + j.id + '  --  continue the maintenance visit.'
+            id: db.seq.notif, at: new Date(Date.now()).toISOString(), role: 'technician', kind: 'sched', to: j.technician,
+            jobId: j.id, office: j.office, read: false, text: 'Agreed date reached for ' + j.id + '  --  continue the maintenance visit.'
           });
           events.push('On agreed date: ' + j.id + ' visit can proceed.');
         }
@@ -96,10 +114,12 @@
           { office: 'Records Office', requester: 'A. Delos Reyes', category: 'Software Support', issue: 'Scanning app crashes when handling batches over 50 pages.', asset: '' }
         ];
         var pick = pool[Math.floor(Math.random() * pool.length)];
+        var sources = (db.settings.sources && db.settings.sources.length)
+          ? db.settings.sources : ['telephone', 'email', 'walk-in', 'on-site', 'online portal'];
         var id = 'IT-' + new Date(Date.now()).getFullYear() + '-' + String(++db.seq.ticket).padStart(6, '0');
         db.tickets.unshift({
           v: 3, id: id, office: pick.office, requester: pick.requester, category: pick.category,
-          source: ['telephone', 'email', 'walk-in', 'on-site', 'online portal'][Math.floor(Math.random() * 5)],
+          source: sources[Math.floor(Math.random() * sources.length)],
           issue: pick.issue, asset: pick.asset, attachments: [],
           status: 'submitted', impact: null, urgency: null, priority: 'medium', target: null,
           technician: null, createdAt: new Date(Date.now()).toISOString(), updatedAt: new Date(Date.now()).toISOString(),

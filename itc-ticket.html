@@ -280,7 +280,7 @@ function render() {
     '<div class="info mt">' +
     '<div><div class="k">Office</div><div class="v">' + UI.esc(t.office) + '</div></div>' +
     '<div><div class="k">Requester</div><div class="v">' + UI.esc(t.requester) + UI.personLinks(t.requester) + '</div></div>' +
-    '<div><div class="k">Category / source</div><div class="v">' + UI.esc(t.category) + ' · ' + UI.esc(t.source) + '</div></div>' +
+    '<div><div class="k">Category / source</div><div class="v">' + UI.esc(t.category) + ' · ' + UI.esc(UI.sourceLabel(t.source)) + '</div></div>' +
     '<div><div class="k">Asset</div><div class="v mono">' + UI.esc(t.asset || ' -- ') + '</div></div>' +
     (role === 'requester' ? '' :
       '<div><div class="k">Impact / urgency</div><div class="v">' + UI.esc(t.impact || ' -- ') + ' / ' + UI.esc(t.urgency || ' -- ') + '</div></div>') +

@@ -177,7 +177,7 @@ function render() {
     '<h3 class="record-subject">' + UI.esc(t.issue) + '</h3>' +
     '<div class="info mt">' +
     '<div><div class="k">Office / requester</div><div class="v">' + UI.esc(t.office) + ' · ' + UI.esc(t.requester) + '</div></div>' +
-    '<div><div class="k">Category / source</div><div class="v">' + UI.esc(t.category) + ' · ' + UI.esc(t.source) + '</div></div>' +
+    '<div><div class="k">Category / source</div><div class="v">' + UI.esc(t.category) + ' · ' + UI.esc(UI.sourceLabel(t.source)) + '</div></div>' +
     '<div><div class="k">Asset</div><div class="v mono">' + UI.esc(t.asset || ' -- ') + '</div></div>' +
     '<div><div class="k">Impact / urgency</div><div class="v">' + UI.esc(t.impact || ' -- ') + ' / ' + UI.esc(t.urgency || ' -- ') + '</div></div>' +
     '<div><div class="k">Target completion</div><div class="v">' + (t.target ? UI.dateOnly(t.target) : ' -- ') + '</div></div>' +
