@@ -1,0 +1,37 @@
+{
+  "dataset": {
+    "tickets": 9,
+    "rev": 1
+  },
+  "requester_scope": {
+    "office": "Records Office",
+    "visible": 2,
+    "offices_seen": [
+      "Records Office"
+    ],
+    "all_offices": [
+      "Accounting",
+      "HR",
+      "Library",
+      "Records Office",
+      "Registrar",
+      "SDG"
+    ]
+  },
+  "requester_foreign_write": {
+    "ticket": "IT-2026-000143",
+    "office": "Library",
+    "http": 200,
+    "ok": false,
+    "msg": "Blocked by office-based access (28.2)."
+  },
+  "requester_users_api": {
+    "http": 403,
+    "ok": false
+  },
+  "technician_scope": {
+    "name": "J. Tan",
+    "visible": 7,
+    "assigned_to_others": []
+  }
+}

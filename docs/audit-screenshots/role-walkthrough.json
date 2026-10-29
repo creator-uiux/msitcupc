@@ -1,0 +1,512 @@
+{
+  "requester": {
+    "user": {
+      "id": 1,
+      "username": "areyes",
+      "name": "A. Delos Reyes",
+      "role": "requester",
+      "office": "Records Office",
+      "email": "a.delosreyes@upcebu.edu.ph",
+      "phone": "+63 917 000 0001"
+    },
+    "scopeTickets": 2,
+    "nav": [
+      {
+        "text": "Dashboard",
+        "href": "or-dashboard.html"
+      },
+      {
+        "text": "My Requests 0",
+        "href": "or-tickets.html?queue=mine"
+      },
+      {
+        "text": "New Request",
+        "href": "or-request.html"
+      },
+      {
+        "text": "Confirmation",
+        "href": "or-confirm.html"
+      },
+      {
+        "text": "Office Register",
+        "href": "or-register.html"
+      },
+      {
+        "text": "Maintenance Visits",
+        "href": "or-visits.html"
+      },
+      {
+        "text": "Reports",
+        "href": "or-reports.html"
+      },
+      {
+        "text": "Notifications 0",
+        "href": "or-notifications.html"
+      },
+      {
+        "text": "Profile and Account",
+        "href": "or-profile.html"
+      }
+    ],
+    "dashboardHeadings": [
+      "My service dashboard",
+      "Ticket activity",
+      "Status breakdown",
+      "Needs your action",
+      "Recent updates",
+      "Active ticket queue",
+      "Service breakdown"
+    ],
+    "ticketActions": {
+      "in_progress": {
+        "ticket": "IT-2026-000142",
+        "actionCard": "Where this is actioned Office Requester Read-only for your role. This step is actioned by IT Technician. Waiting on: IT Technician Who must act next on this record.",
+        "transitions": []
+      },
+      "closed": {
+        "ticket": "IT-2026-000125",
+        "actionCard": "Where this is actioned Office Requester Open in Confirmation & Closure Office confirmation, closure and recurrence Waiting on: Nobody Who must act next on this record.",
+        "transitions": []
+      }
+    },
+    "forbidden": {
+      "url": "mgmt-users.html",
+      "heading": "Users & roles",
+      "bodyHasNeutral": false
+    },
+    "apiProbes": {
+      "assign": {
+        "status": 200,
+        "ok": false,
+        "msg": "Blocked by role-based access (28.2)."
+      },
+      "officeDecision": {
+        "status": 200,
+        "ok": false,
+        "msg": "Blocked by role-based access (28.2)."
+      },
+      "diagnose": {
+        "status": 200,
+        "ok": false,
+        "msg": "Blocked by role-based access (28.2)."
+      },
+      "saveSettings": {
+        "status": 200,
+        "ok": false,
+        "msg": "Nothing to update."
+      }
+    }
+  },
+  "technician": {
+    "user": {
+      "id": 3,
+      "username": "jtan",
+      "name": "J. Tan",
+      "role": "technician",
+      "office": "IT Office",
+      "email": "j.tan@upcebu.edu.ph",
+      "phone": "+63 917 000 0003"
+    },
+    "scopeTickets": 7,
+    "nav": [
+      {
+        "text": "Dashboard",
+        "href": "itc-dashboard.html"
+      },
+      {
+        "text": "My Tickets 3",
+        "href": "itc-technician.html"
+      },
+      {
+        "text": "My Maintenance Jobs 4",
+        "href": "itc-maintenance.html"
+      },
+      {
+        "text": "Office Register",
+        "href": "itc-register.html"
+      },
+      {
+        "text": "Reports",
+        "href": "itc-reports.html"
+      },
+      {
+        "text": "Notifications 0",
+        "href": "itc-notifications.html"
+      },
+      {
+        "text": "Profile and Account",
+        "href": "itc-profile.html"
+      }
+    ],
+    "dashboardHeadings": [
+      "Technician dashboard",
+      "Ticket activity",
+      "Status breakdown",
+      "Coming up",
+      "Needs your action",
+      "Recent updates",
+      "Active ticket queue",
+      "Service costs, recurring issues and preventive maintenance",
+      "Service breakdown"
+    ],
+    "ticketActions": {
+      "assigned": {
+        "ticket": "IT-2026-000130",
+        "actionCard": "Where this is actioned IT Technician Read-only for your role. This step is actioned by IT Technician. Change status Choose the next step\u2026 Return to work Place on hold for a dependency Only the moves your role may make are listed. Each one opens the screen that records it with the fields it needs. Waiting on: IT Technician Who must act next on this record.",
+        "transitions": [
+          "Return to work",
+          "Place on hold for a dependency"
+        ]
+      },
+      "resolved": {
+        "ticket": "IT-2026-000141",
+        "actionCard": "Where this is actioned IT Technician Read-only for your role. This step is actioned by Office Requester. Waiting on: Office Requester Who must act next on this record.",
+        "transitions": []
+      },
+      "in_progress": {
+        "ticket": "IT-2026-000142",
+        "actionCard": "Where this is actioned IT Technician Open in My Work Diagnosis, parts and testing Change status Choose the next step\u2026 Place on hold for a dependency Record the test result Only the moves your role may make are listed. Each one opens the screen that records it with the fields it needs. Waiting on: IT Technician Who must act next on this record.",
+        "transitions": [
+          "Place on hold for a dependency",
+          "Record the test result"
+        ]
+      },
+      "on_hold": {
+        "ticket": "IT-2026-000139",
+        "actionCard": "Where this is actioned IT Technician Read-only for your role. This step is actioned by IT Coordinator. Waiting on: IT Coordinator Who must act next on this record.",
+        "transitions": []
+      },
+      "cancelled": {
+        "ticket": "IT-2026-000128",
+        "actionCard": "Where this is actioned IT Technician Cancelled requests are closed for action. The record and its history are retained. Waiting on: Nobody Who must act next on this record.",
+        "transitions": []
+      },
+      "closed": {
+        "ticket": "IT-2026-000125",
+        "actionCard": "Where this is actioned IT Technician Read-only for your role. This step is actioned by Nobody. Waiting on: Nobody Who must act next on this record.",
+        "transitions": []
+      }
+    },
+    "forbidden": {
+      "url": "ic-review.html",
+      "heading": "Review & Assign",
+      "bodyHasNeutral": false
+    },
+    "apiProbes": {
+      "assign": {
+        "status": 200,
+        "ok": false,
+        "msg": "Complete review and assessment first (Details complete?)."
+      },
+      "officeDecision": {
+        "status": 200,
+        "ok": false,
+        "msg": "Blocked by role-based access (28.2)."
+      },
+      "diagnose": {
+        "status": 200,
+        "ok": false,
+        "msg": "Blocked by role-based access (28.2)."
+      },
+      "saveSettings": {
+        "status": 200,
+        "ok": false,
+        "msg": "Blocked by role-based access (28.2)."
+      }
+    }
+  },
+  "coordinator": {
+    "user": {
+      "id": 2,
+      "username": "kramos",
+      "name": "K. Ramos",
+      "role": "coordinator",
+      "office": "IT Office",
+      "email": "k.ramos@upcebu.edu.ph",
+      "phone": "+63 917 000 0002"
+    },
+    "scopeTickets": 9,
+    "nav": [
+      {
+        "text": "Dashboard",
+        "href": "ic-dashboard.html"
+      },
+      {
+        "text": "Tickets 7",
+        "href": "ic-tickets.html"
+      },
+      {
+        "text": "New Request",
+        "href": "ic-request.html"
+      },
+      {
+        "text": "Review and Assign",
+        "href": "ic-review.html"
+      },
+      {
+        "text": "Confirmation",
+        "href": "ic-confirm.html"
+      },
+      {
+        "text": "Maintenance 5",
+        "href": "ic-maintenance.html"
+      },
+      {
+        "text": "Office Register",
+        "href": "ic-register.html"
+      },
+      {
+        "text": "Reports",
+        "href": "ic-reports.html"
+      },
+      {
+        "text": "Notifications 0",
+        "href": "ic-notifications.html"
+      },
+      {
+        "text": "Profile and Account",
+        "href": "ic-profile.html"
+      }
+    ],
+    "dashboardHeadings": [
+      "Coordination dashboard",
+      "Ticket activity",
+      "Status breakdown",
+      "Technician workload",
+      "Coming up",
+      "Needs your action",
+      "On hold \u00b7 dependency",
+      "Recent updates",
+      "Active ticket queue",
+      "Service costs, recurring issues and preventive maintenance",
+      "Service breakdown"
+    ],
+    "ticketActions": {
+      "submitted": {
+        "ticket": "IT-2026-000143",
+        "actionCard": "Where this is actioned IT Coordinator Open in Review & Assign Coordinator review, assessment and assignment Change status Choose the next step\u2026 Request missing details Assign a technician Record the cancellation reason Only the moves your role may make are listed. Each one opens the screen that records it with the fields it needs. Waiting on: IT Coordinator Who must act next on this record.",
+        "transitions": [
+          "Request missing details",
+          "Assign a technician",
+          "Record the cancellation reason"
+        ]
+      },
+      "needs_info": {
+        "ticket": "IT-2026-000137",
+        "actionCard": "Where this is actioned IT Coordinator Open in Review & Assign Coordinator review, assessment and assignment Change status Choose the next step\u2026 Supply the missing information Record the cancellation reason Only the moves your role may make are listed. Each one opens the screen that records it with the fields it needs. Waiting on: Office Requester Who must act next on this record.",
+        "transitions": [
+          "Supply the missing information",
+          "Record the cancellation reason"
+        ]
+      },
+      "assigned": {
+        "ticket": "IT-2026-000130",
+        "actionCard": "Where this is actioned IT Coordinator Open in Review & Assign Coordinator review, assessment and assignment Change status Choose the next step\u2026 Record the cancellation reason Only the moves your role may make are listed. Each one opens the screen that records it with the fields it needs. Waiting on: IT Technician Who must act next on this record.",
+        "transitions": [
+          "Record the cancellation reason"
+        ]
+      },
+      "resolved": {
+        "ticket": "IT-2026-000141",
+        "actionCard": "Where this is actioned IT Coordinator Open in Confirmation & Closure Office confirmation, closure and recurrence Change status Choose the next step\u2026 Record the cancellation reason Only the moves your role may make are listed. Each one opens the screen that records it with the fields it needs. Waiting on: Office Requester Who must act next on this record.",
+        "transitions": [
+          "Record the cancellation reason"
+        ]
+      },
+      "in_progress": {
+        "ticket": "IT-2026-000142",
+        "actionCard": "Where this is actioned IT Coordinator Open in Review & Assign Coordinator monitoring Change status Choose the next step\u2026 Record the cancellation reason Only the moves your role may make are listed. Each one opens the screen that records it with the fields it needs. Waiting on: IT Technician Who must act next on this record.",
+        "transitions": [
+          "Record the cancellation reason"
+        ]
+      },
+      "on_hold": {
+        "ticket": "IT-2026-000139",
+        "actionCard": "Where this is actioned IT Coordinator Open in Review & Assign Coordinator review, assessment and assignment Change status Choose the next step\u2026 Return to work Record the cancellation reason Only the moves your role may make are listed. Each one opens the screen that records it with the fields it needs. Waiting on: IT Coordinator Who must act next on this record.",
+        "transitions": [
+          "Return to work",
+          "Record the cancellation reason"
+        ]
+      },
+      "cancelled": {
+        "ticket": "IT-2026-000128",
+        "actionCard": "Where this is actioned IT Coordinator Cancelled requests are closed for action. The record and its history are retained. Waiting on: Nobody Who must act next on this record.",
+        "transitions": []
+      },
+      "closed": {
+        "ticket": "IT-2026-000125",
+        "actionCard": "Where this is actioned IT Coordinator Open in Confirmation & Closure Office confirmation, closure and recurrence Waiting on: Nobody Who must act next on this record.",
+        "transitions": []
+      }
+    },
+    "forbidden": {
+      "url": "mgmt-users.html",
+      "heading": "Users & roles",
+      "bodyHasNeutral": false
+    },
+    "apiProbes": {
+      "assign": {
+        "status": 200,
+        "ok": false,
+        "msg": "Blocked by role-based access (28.2)."
+      },
+      "officeDecision": {
+        "status": 200,
+        "ok": false,
+        "msg": "Blocked by role-based access (28.2)."
+      },
+      "diagnose": {
+        "status": 200,
+        "ok": false,
+        "msg": "Blocked by role-based access (28.2)."
+      },
+      "saveSettings": {
+        "status": 200,
+        "ok": false,
+        "msg": "Nothing to update."
+      }
+    }
+  },
+  "management": {
+    "user": {
+      "id": 4,
+      "username": "mreyes",
+      "name": "M. Reyes",
+      "role": "management",
+      "office": "Office of the Director",
+      "email": "m.reyes@upcebu.edu.ph",
+      "phone": "+63 917 000 0004"
+    },
+    "scopeTickets": 9,
+    "nav": [
+      {
+        "text": "Dashboard",
+        "href": "mgmt-dashboard.html"
+      },
+      {
+        "text": "Service Records 7",
+        "href": "mgmt-tickets.html"
+      },
+      {
+        "text": "Maintenance 5",
+        "href": "mgmt-maintenance.html"
+      },
+      {
+        "text": "Office Register",
+        "href": "mgmt-register.html"
+      },
+      {
+        "text": "Reports",
+        "href": "mgmt-reports.html"
+      },
+      {
+        "text": "Users",
+        "href": "mgmt-users.html"
+      },
+      {
+        "text": "Offices",
+        "href": "mgmt-offices.html"
+      },
+      {
+        "text": "Configuration",
+        "href": "mgmt-settings.html"
+      },
+      {
+        "text": "Audit Log",
+        "href": "mgmt-audit.html"
+      },
+      {
+        "text": "Notifications 0",
+        "href": "mgmt-notifications.html"
+      },
+      {
+        "text": "Profile and Account",
+        "href": "mgmt-profile.html"
+      }
+    ],
+    "dashboardHeadings": [
+      "Oversight dashboard",
+      "Ticket activity",
+      "Status breakdown",
+      "Technician workload",
+      "Coming up",
+      "Recent updates",
+      "Active ticket queue",
+      "Service costs, recurring issues and preventive maintenance",
+      "Service breakdown"
+    ],
+    "ticketActions": {
+      "submitted": {
+        "ticket": "IT-2026-000143",
+        "actionCard": "Where this is actioned System Administrator Read-only for your role. This step is actioned by IT Coordinator. Waiting on: IT Coordinator Who must act next on this record.",
+        "transitions": []
+      },
+      "needs_info": {
+        "ticket": "IT-2026-000137",
+        "actionCard": "Where this is actioned System Administrator Read-only for your role. This step is actioned by Office Requester. Waiting on: Office Requester Who must act next on this record.",
+        "transitions": []
+      },
+      "assigned": {
+        "ticket": "IT-2026-000130",
+        "actionCard": "Where this is actioned System Administrator Read-only for your role. This step is actioned by IT Technician. Waiting on: IT Technician Who must act next on this record.",
+        "transitions": []
+      },
+      "resolved": {
+        "ticket": "IT-2026-000141",
+        "actionCard": "Where this is actioned System Administrator Read-only for your role. This step is actioned by Office Requester. Waiting on: Office Requester Who must act next on this record.",
+        "transitions": []
+      },
+      "in_progress": {
+        "ticket": "IT-2026-000142",
+        "actionCard": "Where this is actioned System Administrator Read-only for your role. This step is actioned by IT Technician. Waiting on: IT Technician Who must act next on this record.",
+        "transitions": []
+      },
+      "on_hold": {
+        "ticket": "IT-2026-000139",
+        "actionCard": "Where this is actioned System Administrator Read-only for your role. This step is actioned by IT Coordinator. Waiting on: IT Coordinator Who must act next on this record.",
+        "transitions": []
+      },
+      "cancelled": {
+        "ticket": "IT-2026-000128",
+        "actionCard": "Where this is actioned System Administrator Cancelled requests are closed for action. The record and its history are retained. Waiting on: Nobody Who must act next on this record.",
+        "transitions": []
+      },
+      "closed": {
+        "ticket": "IT-2026-000125",
+        "actionCard": "Where this is actioned System Administrator Read-only for your role. This step is actioned by Nobody. Waiting on: Nobody Who must act next on this record.",
+        "transitions": []
+      }
+    },
+    "forbidden": {
+      "url": "or-request.html",
+      "heading": "Submit an IT service request",
+      "bodyHasNeutral": false
+    },
+    "apiProbes": {
+      "assign": {
+        "status": 200,
+        "ok": false,
+        "msg": "Blocked by role-based access (28.2)."
+      },
+      "officeDecision": {
+        "status": 200,
+        "ok": false,
+        "msg": "Blocked by office-based access (28.2)."
+      },
+      "diagnose": {
+        "status": 200,
+        "ok": false,
+        "msg": "Blocked by role-based access (28.2)."
+      },
+      "saveSettings": {
+        "status": 200,
+        "ok": false,
+        "msg": "Blocked by role-based access (28.2)."
+      }
+    }
+  },
+  "stateMergeProbe": {
+    "status": 200,
+    "ok": true
+  }
+}

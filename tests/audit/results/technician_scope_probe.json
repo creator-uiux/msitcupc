@@ -1,0 +1,17 @@
+{
+  "reassign": {"http": 200, "ok": true, "msg": "Reassigned to M. Uy."},
+  "technician_foreign_startWork": {
+    "ticket": "IT-2026-000130",
+    "http": 200,
+    "ok": false,
+    "msg": "Only the assigned technician can start this ticket."
+  },
+  "technician_visible_after_reassign": [
+    ["IT-2026-000142", "J. Tan"],
+    ["IT-2026-000139", "J. Tan"],
+    ["IT-2026-000141", "J. Tan"],
+    ["IT-2026-000134", "J. Tan"],
+    ["IT-2026-000128", "J. Tan"],
+    ["IT-2026-000125", "J. Tan"]
+  ]
+}

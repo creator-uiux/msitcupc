@@ -1,0 +1,110 @@
+{
+  "requester": {
+    "signedIn": {
+      "landed": "/or-dashboard.html",
+      "auth": null,
+      "storeRole": "requester",
+      "hasToken": true
+    },
+    "forbidden": {
+      "landed": "/or-users.html",
+      "heading": null,
+      "neutral": false,
+      "storeRole": null,
+      "rows": 0,
+      "body": null,
+      "apiUsers": {
+        "status": 403,
+        "body": "{\"ok\": false, \"msg\": \"Blocked by role-based access (28.2).\"}"
+      }
+    },
+    "bare": {
+      "landed": "/users.html",
+      "heading": "Users & roles",
+      "neutral": true,
+      "storeRole": "requester",
+      "rows": 10
+    }
+  },
+  "technician": {
+    "signedIn": {
+      "landed": "/itc-dashboard.html",
+      "auth": null,
+      "storeRole": "technician",
+      "hasToken": true
+    },
+    "forbidden": {
+      "landed": "/or-review.html",
+      "heading": null,
+      "neutral": false,
+      "storeRole": null,
+      "rows": 0,
+      "body": null,
+      "apiUsers": {
+        "status": 403,
+        "body": "{\"ok\": false, \"msg\": \"Blocked by role-based access (28.2).\"}"
+      }
+    },
+    "bare": {
+      "landed": "/review.html",
+      "heading": "Review & Assign",
+      "neutral": true,
+      "storeRole": "technician",
+      "rows": 0
+    }
+  },
+  "coordinator": {
+    "signedIn": {
+      "landed": "/ic-dashboard.html",
+      "auth": null,
+      "storeRole": "coordinator",
+      "hasToken": true
+    },
+    "forbidden": {
+      "landed": "/or-settings.html",
+      "heading": null,
+      "neutral": false,
+      "storeRole": null,
+      "rows": 0,
+      "body": null,
+      "apiUsers": {
+        "status": 200,
+        "body": "{\"ok\": true, \"users\": [{\"id\": 1, \"username\": \"areyes\", \"name\": \"A. Delos Reyes\", \"role\": \"requester\", \"office\": \"Records Office\", \"email\": \"a.delosreyes@upcebu."
+      }
+    },
+    "bare": {
+      "landed": "/settings.html",
+      "heading": "Settings & reference data",
+      "neutral": true,
+      "storeRole": "coordinator",
+      "rows": 5
+    }
+  },
+  "management": {
+    "signedIn": {
+      "landed": "/mgmt-dashboard.html",
+      "auth": null,
+      "storeRole": "management",
+      "hasToken": true
+    },
+    "forbidden": {
+      "landed": "/or-request.html",
+      "heading": null,
+      "neutral": null,
+      "storeRole": null,
+      "rows": 0,
+      "body": null,
+      "apiUsers": {
+        "status": 200,
+        "body": "{\"ok\": true, \"users\": [{\"id\": 1, \"username\": \"areyes\", \"name\": \"A. Delos Reyes\", \"role\": \"requester\", \"office\": \"Records Office\", \"email\": \"a.delosreyes@upcebu."
+      }
+    },
+    "bare": {
+      "landed": "/request.html",
+      "heading": "Submit an IT service request",
+      "neutral": true,
+      "storeRole": "management",
+      "rows": 0
+    }
+  }
+}
