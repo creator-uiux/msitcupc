@@ -18,7 +18,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#1E3A5F">
-<script>(function(){var P="ic",R="coordinator",F="profile.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+<script>(function(){var P="ic",R="coordinator",F="profile.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];var HOME={"requester": "or-dashboard.html", "technician": "itc-dashboard.html", "coordinator": "ic-dashboard.html", "management": "mgmt-users.html"};try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace(ALLOW.indexOf(o)>-1?(o+"-"+F):(HOME[a]||("or-"+F)));return;}window.ITC_URL_ROLE=P;})();</script>
 </head>
 <body>
 <div class="app">
@@ -112,7 +112,7 @@ function render() {
     '<div class="chip-row mt-xs"><span class="chip">' + UI.esc(r.title) + '</span>' +
     '<span class="chip">' + UI.esc(a.office || r.office) + '</span></div></div></div>' +
     '<div class="info mt">' +
-    '<div><div class="k">Username</div><div class="v mono">' + UI.esc((m.rec && m.rec.username) || ' -- ') + '</div></div>' +
+    '<div><div class="k">Username</div><div class="v mono">' + UI.esc((m.rec && m.rec.username) || 'Not set') + '</div></div>' +
     '<div><div class="k">Role</div><div class="v">' + UI.esc(r.title) + '</div></div>' +
     '<div><div class="k">Session</div><div class="v">' + UI.esc(a.demo ? 'demo (not signed in)' : 'signed in') + '</div></div>' +
     '<div><div class="k">Theme</div><div class="v">' + UI.esc(UI.theme()) + '</div></div>' +

@@ -8,15 +8,19 @@ Covers the workflow engine, RBAC guards, SQLite persistence, the HTTP API,
 Server-Sent Events and the background world clock.
 """
 import base64
+import copy
 import http.client
+import io
 import json
 import math
 import os
 import random
+import re
 import sys
 import tempfile
 import threading
 import time
+import zipfile
 import urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -506,6 +510,492 @@ def test_http_import(httpd):
         check("blob import persisted", True)
 
 
+def test_http_integrity(httpd):
+    host, port = httpd.server_address[:2]
+    c = Client(host, port)
+    s, login = c.request("POST", "/api/login", {"role": "coordinator"})
+    tok = login["token"]
+    s, st = c.request("GET", "/api/state", token=tok)
+    prior = len(st["tickets"])
+
+    # A crafted merge can never create an advanced record.
+    forged = {"tickets": [{
+        "id": "IT-2099-999999", "office": "Records Office", "requester": "A. Delos Reyes",
+        "category": "Hardware Repair", "issue": "forged", "status": "closed"}]}
+    s, r = c.request("POST", "/api/state", {"state": forged}, token=tok)
+    check("state merge refuses an advanced new ticket", s == 400 and not r.get("ok"), r)
+
+    # A new record that says Submitted in another shape is still Submitted: an
+    # omitted status or the display label must not reject the whole snapshot.
+    # Ticket numbers belong to the server, so the merged records are found by
+    # what is new in the register, not by the id the browser invented.
+    s, before = c.request("GET", "/api/state", token=tok)
+    known = {t["id"] for t in before["tickets"]}
+    for n, variant in enumerate((None, "Submitted", "SUBMITTED")):
+        s, r = c.request("POST", "/api/state", {"state": {"tickets": [{
+            "id": "IT-2099-9900%02d" % n, "office": "Records Office", "requester": "A. Delos Reyes",
+            "category": "Hardware Repair", "issue": "drafted offline", "status": variant}]}},
+            token=tok)
+        check("state merge accepts status %r" % (variant,), s == 200 and r.get("ok"), (s, r))
+    s, after = c.request("GET", "/api/state", token=tok)
+    fresh = [t for t in after["tickets"]
+             if t["id"] not in known and t.get("issue") == "drafted offline"]
+    check("each merged record entered at Submitted",
+          len(fresh) == 3 and all(t["status"] == "submitted" for t in fresh),
+          [t["status"] for t in fresh])
+    check("the server wrote the creation history, not the client",
+          all(len(t.get("history") or []) == 1 and
+              t["history"][0]["text"].endswith("Status: Submitted.") for t in fresh),
+          [t.get("history") for t in fresh])
+
+    # Evidence names belong to the upload endpoint: a merge cannot list bytes
+    # the server has never held.
+    s, r = c.request("POST", "/api/state", {"state": {"tickets": [{
+        "id": "IT-2099-990100", "office": "Records Office", "requester": "A. Delos Reyes",
+        "category": "Hardware Repair", "issue": "draft with claimed evidence",
+        "attachments": ["forged-scan.pdf"]}]}}, token=tok)
+    s, after = c.request("GET", "/api/state", token=tok)
+    claimed = next((t for t in after["tickets"]
+                    if t.get("issue") == "draft with claimed evidence"), None)
+    check("a merged record cannot invent evidence names",
+          bool(claimed) and not claimed.get("attachments"), (s, r, claimed))
+    prior = len(after["tickets"])  # the merged drafts are part of the register now
+
+    # Omitting live tickets cannot delete them.
+    s, r = c.request("POST", "/api/state", {"state": {"tickets": st["tickets"][:1]}}, token=tok)
+    check("state merge accepts a partial snapshot", s == 200 and r.get("ok"), r)
+    s, after = c.request("GET", "/api/state", token=tok)
+    check("state merge never deletes an omitted ticket", len(after["tickets"]) == prior,
+          (prior, len(after["tickets"])))
+
+    # Management import restores content but cannot move a live record.
+    s, mlogin = c.request("POST", "/api/login", {"role": "management"})
+    mtok = mlogin["token"]
+    s, mst = c.request("GET", "/api/state", token=mtok)
+    # Role scope 5: the administrator lane is Administration plus the read-only
+    # audit viewer, so no operational record ever enters its snapshot.
+    check("management snapshot carries no tickets", mst.get("tickets") == [],
+          len(mst.get("tickets") or []))
+    check("management snapshot carries no maintenance records",
+          mst.get("jobs") == [] and mst.get("schedules") == [],
+          (len(mst.get("jobs") or []), len(mst.get("schedules") or [])))
+    check("management snapshot keeps the administration data",
+          bool(mst.get("offices")) and bool(mst.get("people")) and bool(mst.get("audit")),
+          sorted(mst.keys()))
+    # A notice is addressed by role, so the lane reads only its own traffic.
+    check("management snapshot carries no other lane's notices",
+          all((n.get("role") or "") in ("any", "management")
+              for n in mst.get("notifications") or []),
+          sorted({str(n.get("role")) for n in mst.get("notifications") or []}))
+    # The administrator is refused the record reads its screens no longer hold.
+    for path_only in ("/api/tickets", "/api/reports", "/api/export"):
+        s, r = c.request("GET", path_only, token=mtok)
+        check("management is refused " + path_only, s == 403, s)
+    s, cst = c.request("GET", "/api/state", token=tok)
+    live = next(t for t in cst["tickets"] if t.get("status") != "closed")
+    live["status"] = "closed"
+    s, r = c.request("POST", "/api/import", {"state": cst}, token=mtok)
+    check("import refuses a live status change", s == 400 and not r.get("ok"), r)
+
+    s, mst = c.request("GET", "/api/state", token=mtok)
+    if mst.get("audit"):
+        mst["audit"][0]["text"] = "rewritten"
+        s, r = c.request("POST", "/api/import", {"state": mst}, token=mtok)
+        check("import refuses to rewrite the audit trail", s == 400 and not r.get("ok"), r)
+
+    # The technician snapshot carries no priority (D29) and no foreign files.
+    s, tlogin = c.request("POST", "/api/login", {"role": "technician"})
+    ttok = tlogin["token"]
+    s, tsnap = c.request("GET", "/api/state", token=ttok)
+    check("technician snapshot strips priority",
+          all("priority" not in t and "impact" not in t and "urgency" not in t
+              for t in tsnap["tickets"]), [t.get("priority") for t in tsnap["tickets"]])
+    visible_jobs = set(j.get("id") for j in tsnap["jobs"])
+    check("technician file metadata follows the record scope",
+          all(f.get("ticketId") in set(t["id"] for t in tsnap["tickets"])
+              or f.get("jobId") in visible_jobs for f in tsnap.get("files", [])),
+          tsnap.get("files"))
+
+    # The 30-minute idle limit expires a session, the absolute limit stays 24h.
+    from datetime import datetime, timedelta, timezone
+    old = (datetime.now(timezone.utc) - timedelta(minutes=31)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    httpd.state.conn.execute("UPDATE sessions SET last_seen = ? WHERE token = ?", (old, ttok))
+    httpd.state.conn.commit()
+    s, expired = c.request("GET", "/api/state", token=ttok)
+    check("idle sessions expire after 30 minutes", s == 401, (s, expired))
+
+    # The idle clock moves about once a minute, not on every single request,
+    # because each move is a write on the connection the state save shares.
+    def seen_of(tok):
+        return httpd.state.conn.execute(
+            "SELECT last_seen s FROM sessions WHERE token = ?", (tok,)).fetchone()["s"]
+
+    s, fresh = c.request("POST", "/api/login", {"role": "coordinator"})
+    ftok = fresh["token"]
+    c.request("GET", "/api/state", token=ftok)
+    first = seen_of(ftok)
+    c.request("GET", "/api/state", token=ftok)
+    check("a request inside the touch window leaves last_seen alone", seen_of(ftok) == first,
+          (first, seen_of(ftok)))
+    back = (datetime.now(timezone.utc) - timedelta(minutes=2)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    httpd.state.conn.execute("UPDATE sessions SET last_seen = ? WHERE token = ?", (back, ftok))
+    httpd.state.conn.commit()
+    s, _ = c.request("GET", "/api/state", token=ftok)
+    check("a stale session is touched on the next request", s == 200 and seen_of(ftok) > back,
+          (s, back, seen_of(ftok)))
+
+
+def test_http_concurrency(httpd):
+    """Every writer shares one connection, so nothing may commit a partial save.
+
+    Reads and world ticks run side by side; a torn commit would surface as a
+    refused request, an empty register, or a database that no longer matches
+    the dataset in memory.
+    """
+    host, port = httpd.server_address[:2]
+    errors = []
+
+    def reader(n):
+        c = Client(host, port)
+        s, login = c.request("POST", "/api/login", {"role": "coordinator"})
+        if s != 200:
+            errors.append("login %s" % s)
+            return
+        tok = login["token"]
+        for _ in range(n):
+            s, snap = c.request("GET", "/api/state", token=tok)
+            if s != 200 or not isinstance(snap, dict) or not snap.get("tickets"):
+                errors.append("state %s %s" % (s, str(snap)[:60]))
+            s, res = c.request("GET", "/api/tickets", token=tok)
+            if s != 200 or not isinstance(res, dict):
+                errors.append("list %s" % s)
+
+    def ticker(n):
+        c = Client(host, port)
+        s, login = c.request("POST", "/api/login", {"role": "coordinator"})
+        if s != 200:
+            errors.append("login %s" % s)
+            return
+        tok = login["token"]
+        for _ in range(n):
+            s, res = c.request("POST", "/api/tick", {}, token=tok)
+            if s != 200 or not isinstance(res, dict):
+                errors.append("tick %s" % s)
+
+    threads = ([threading.Thread(target=reader, args=(14,)) for _ in range(4)] +
+               [threading.Thread(target=ticker, args=(6,)) for _ in range(2)])
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(60)
+    check("concurrent reads and ticks all succeed", not errors, errors[:4])
+    with httpd.state.lock:
+        live = len(httpd.state.data.get("tickets", []))
+        stored = httpd.state.conn.execute("SELECT COUNT(*) c FROM tickets").fetchone()["c"]
+    check("the database matches the dataset after the run", live == stored, (live, stored))
+    with httpd.state.lock:
+        hist = httpd.state.conn.execute("SELECT COUNT(*) c FROM ticket_history").fetchone()["c"]
+        mem = sum(len(t.get("history") or []) for t in httpd.state.data.get("tickets", []))
+    check("no history row is lost to a half-written save", hist == mem, (hist, mem))
+
+
+MATRIX_ROLES = ("requester", "technician", "coordinator", "management")
+
+
+def _move_attempt(frm, to, role, tid):
+    """The canonical guarded call that would carry a ticket from `frm` to `to`."""
+    if to == "needs_info":
+        return "requestInfo", [tid, "serial number"]
+    if to == "submitted":
+        return "submitInfo", [tid, {"issue": "Updated the description.", "note": "serial supplied"}]
+    if to == "assigned":
+        return "assign", [tid, "M. Uy"]
+    if to == "in_progress":
+        if frm == "on_hold":
+            return "resolveDependency", [tid, "the vendor delivered the part"]
+        if frm == "resolved":
+            return "officeDecision", [tid, "rejected", {"feedback": "the unit is still slow"}]
+        return "startWork", [tid, "visit agreed with the office head"]
+    if to == "on_hold":
+        return "placeHold", [tid, {"reason": "Part on order", "responsible": "Supplier",
+                                   "nextAction": "Deliver the part"}]
+    if to == "resolved":
+        return "recordTest", [tid, "pass", "tested at the console and verified"]
+    if to == "closed":
+        if role == "requester":
+            return "officeDecision", [tid, "accepted", {"person": "A. Delos Reyes"}]
+        return "close", [tid, "authorized", "authorized closure probe"]
+    return "cancel", [tid, "cancelled by the matrix probe"]
+
+
+def _matrix_prep(httpd, tid, status):
+    """Reset the probe ticket to `status` with every precondition the guarded
+    methods need, so a refusal can only come from the whitelist or an RBAC
+    guard and a permission can only fail if the matrix really allows it."""
+    with httpd.state.lock:
+        for i, t in enumerate(httpd.state.data["tickets"]):
+            if t["id"] != tid:
+                continue
+            nt = copy.deepcopy(t)
+            nt.update({
+                "status": status, "reviewed": True, "technician": "J. Tan",
+                "impact": "Medium", "urgency": "Medium", "priority": "medium",
+                "target": "2026-11-05",
+                "diagnosis": {"findings": "Failed power supply", "actions": "Replaced the unit",
+                              "parts": "PSU", "cost": 0.0, "labor": 0.0,
+                              "startDate": "2026-10-01", "endDate": "2026-10-02",
+                              "evidence": []},
+                "confirmation": {"state": "pending", "person": "", "date": None, "feedback": ""},
+                "tests": [], "reminders": [],
+                "approval": {"state": "approved", "by": "K. Ramos", "role": "coordinator",
+                             "at": engine.now_iso(), "note": "matrix probe"},
+            })
+            if status == "on_hold":
+                nt["dependency"] = {"reason": "Waiting on the vendor", "responsible": "Supplier",
+                                    "nextAction": "Call the vendor", "state": "pending",
+                                    "dueAt": "2026-11-01T00:00:00Z", "updates": []}
+                nt["holdReturn"] = "in_progress"
+            else:
+                nt["dependency"] = None
+                nt["holdReturn"] = None
+            httpd.state.data["tickets"][i] = nt
+            return
+
+
+def test_http_transition_matrix(httpd):
+    """Audit W15 and test 48: every from-to pair over the eight statuses is
+    exercised through the HTTP API for all four roles.  Only the shipped
+    whitelist may move a ticket, and every whitelisted move must succeed."""
+    host, port = httpd.server_address[:2]
+    c = Client(host, port)
+    tid = "IT-2026-000142"
+    tokens = {}
+    for role in MATRIX_ROLES:
+        s, login = c.request("POST", "/api/login", {"role": role})
+        tokens[role] = login["token"]
+
+    perm_path = os.path.join(HERE, "..", "permissions.json")
+    with open(perm_path, encoding="utf-8") as f:
+        perm = json.load(f)["transitions"]
+    same = all(perm.get(frm, {}).get(to, []) == list(roles)
+               for frm in engine.TRANSITIONS
+               for to, roles in engine.TRANSITIONS[frm].items())
+    check("the matrix probe runs against the shipped whitelist", same)
+
+    states = list(engine.TRANSITIONS)
+    mismatches = []
+    refused_breaks = []
+    allowed_total = sum(len(roles) for frm in states
+                        for roles in engine.TRANSITIONS[frm].values())
+    allowed_ok = 0
+    probes = 0
+    for frm in states:
+        for to in states:
+            for role in MATRIX_ROLES:
+                probes += 1
+                _matrix_prep(httpd, tid, frm)
+                m, a = _move_attempt(frm, to, role, tid)
+                s, r = c.request("POST", "/api/call", {"method": m, "args": a}, token=tokens[role])
+                with httpd.state.lock:
+                    now = engine.get_ticket(httpd.state.data, tid)["status"]
+                if engine.can_transition(frm, to, role):
+                    if r.get("ok") and now == to:
+                        allowed_ok += 1
+                    else:
+                        mismatches.append("%s to %s as %s is whitelisted but got ok=%s status=%s (%s)"
+                                          % (frm, to, role, r.get("ok"), now, r.get("msg")))
+                else:
+                    if r.get("ok") or now != frm:
+                        refused_breaks.append("%s to %s as %s is off the whitelist yet got ok=%s status=%s"
+                                              % (frm, to, role, r.get("ok"), now))
+    check("the probe covered all 256 from-to-role combinations", probes == 64 * 4, probes)
+    check("no off-whitelist move changed a ticket over HTTP",
+          not refused_breaks, refused_breaks[:4])
+    check("every whitelisted move succeeded over HTTP", allowed_ok == allowed_total,
+          "%d of %d: %s" % (allowed_ok, allowed_total, mismatches[:4]))
+
+
+def test_http_ticket_ids(httpd):
+    """Audit W3: ticket numbers are minted by the server on every create path,
+    and concurrent submits never collide, reuse or lose a number."""
+    host, port = httpd.server_address[:2]
+    c = Client(host, port)
+    s, login = c.request("POST", "/api/login", {"role": "coordinator"})
+    tok = login["token"]
+    s, st = c.request("GET", "/api/state", token=tok)
+    before = {t["id"] for t in st["tickets"]}
+
+    crafted = {"id": "IT-9999-000099", "office": "Records Office",
+               "requester": "A. Delos Reyes", "category": "Hardware Repair",
+               "issue": "Crafted number probe.", "status": "submitted"}
+    s, r = c.request("POST", "/api/state", {"state": {"tickets": [crafted]}}, token=tok)
+    check("the state merge still admits a new Submitted record", r.get("ok"), r)
+    s, st2 = c.request("GET", "/api/state", token=tok)
+    minted = sorted({t["id"] for t in st2["tickets"]} - before)
+    check("a client-crafted ticket number never enters the register",
+          "IT-9999-000099" not in minted, minted)
+    check("exactly one record was created", len(minted) == 1, minted)
+    if minted:
+        nid = minted[0]
+        check("the server minted IT-YYYY-NNNNNN", re.fullmatch(r"IT-\d{4}-\d{6}", nid) is not None, nid)
+        check("the minted record is Submitted",
+              engine.get_ticket(st2, nid)["status"] == "submitted")
+        s, r = c.request("POST", "/api/state", {"state": {"tickets": [
+            {"id": nid, "office": "Records Office", "requester": "A. Delos Reyes",
+             "category": "Hardware Repair",
+             "history": engine.get_ticket(st2, nid).get("history") or [],
+             "issue": "Edited after the server number was adopted"}]}}, token=tok)
+        s, st3 = c.request("GET", "/api/state", token=tok)
+        grew = {t["id"] for t in st3["tickets"]} - before
+        t3 = engine.get_ticket(st3, nid)
+        check("the record edits under the server number without duplicating",
+              bool(r.get("ok")) and t3 and t3["issue"].startswith("Edited after") and len(grew) == 1,
+              (r, sorted(grew)))
+
+    ids = []
+    errors = []
+    lock = threading.Lock()
+
+    def maker(n):
+        cc = Client(host, port)
+        s2, lg = cc.request("POST", "/api/login", {"role": "coordinator"})
+        tk = lg["token"]
+        for i in range(n):
+            s2, res = cc.request("POST", "/api/call", {"method": "createTicket", "args": [{
+                "office": "Records Office", "requester": "A. Delos Reyes",
+                "category": "Hardware Repair",
+                "issue": "Concurrent submit from thread %s no %d" % (threading.get_ident(), i)}]},
+                token=tk)
+            if not res.get("ok"):
+                errors.append(str(res)[:80])
+            else:
+                with lock:
+                    ids.append(res.get("id"))
+
+    threads = [threading.Thread(target=maker, args=(3,)) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(60)
+    check("all twelve concurrent submits recorded", not errors and len(ids) == 12,
+          (errors[:3], len(ids)))
+    check("concurrent ticket numbers are unique", len(set(ids)) == len(ids), ids[:6])
+    with httpd.state.lock:
+        live = len(httpd.state.data.get("tickets", []))
+        stored = httpd.state.conn.execute("SELECT COUNT(*) c FROM tickets").fetchone()["c"]
+    check("the database holds every concurrently created record", live == stored, (live, stored))
+
+
+def test_register_propagation():
+    """Audit R3: the Office Register is a derived view over tickets, jobs and
+    the audit trail, so close, cancel, recurrence and a maintenance outcome
+    must surface in the records the register reads."""
+    st = fresh()
+    tid = "IT-2026-000143"
+    req = {"role": "requester", "office": "Library", "name": "M. Bataller"}
+    engine.call(st, "coordinator", "assess",
+                [tid, {"impact": "Medium", "urgency": "Medium", "priority": "medium",
+                       "target": "2026-11-05"}])
+    engine.call(st, "coordinator", "assign", [tid, "J. Tan"])
+    engine.call(st, "technician", "startWork", [tid, "visit agreed"])
+    engine.call(st, "technician", "diagnose", [tid, {"findings": "failed NIC"}])
+    engine.call(st, "technician", "recordTest", [tid, "pass", "link verified"])
+    r = engine.call(st, "requester", "officeDecision",
+                    [tid, "accepted", {"person": "M. Bataller"}], user=req)
+    check("the office accepts the result", r.get("ok"), r)
+    t = engine.get_ticket(st, tid)
+    check("closure reaches the register record",
+          t["status"] == "closed" and t["closure"] == "confirmation" and bool(t.get("closedAt")), t["status"])
+    conf = t.get("confirmation") or {}
+    check("the register carries the confirming person and date (SOP 15.1)",
+          conf.get("state") == "accepted" and conf.get("person") == "M. Bataller" and bool(conf.get("date")), conf)
+    check("closure reaches the register audit feed",
+          any((e.get("subjectId") == tid) and
+              ("closed" in str(e.get("status") or "").lower() or e.get("kind") == "confirm")
+              for e in st["audit"][-6:]),
+          st["audit"][-3:])
+
+    r = engine.call(st, "coordinator", "createLinkedTicket", [tid, {"issue": "the link dropped again"}])
+    check("recurrence is recorded", r.get("ok"), r)
+    nt = engine.get_ticket(st, r["id"])
+    check("the recurring pair reaches the register together",
+          nt and nt["status"] == "submitted" and nt["linkedTo"] == tid
+          and engine.get_ticket(st, tid)["recurring"] is True, nt)
+
+    r = engine.call(st, "coordinator", "cancel", ["IT-2026-000130", "the office fixed it locally"])
+    check("the cancellation is recorded", r.get("ok"), r)
+    ct = engine.get_ticket(st, "IT-2026-000130")
+    check("cancellation reaches the register record",
+          ct["status"] == "cancelled" and ct["cancelReason"] == "the office fixed it locally")
+    check("cancellation reaches the register audit feed",
+          any(e.get("subjectId") == "IT-2026-000130" and e.get("kind") == "cancel"
+              for e in st["audit"][-5:]), st["audit"][-3:])
+    check("the cancellation reaches the requester notice (SOP 7)",
+          any(n.get("kind") == "cancel" and n.get("ticketId") == "IT-2026-000130"
+              and n.get("role") == "requester" for n in st["notifications"][:8]),
+          [n.get("kind") for n in st["notifications"][:4]])
+
+    jid = "MNT-2026-0061"
+    job = engine.get_job(st, jid)
+    check("the seeded visit is in the register pool", job is not None, jid)
+    if job:
+        job["technician"] = "J. Tan"
+        for i in range(len(job["items"])):
+            if not job["items"][i]["done"]:
+                engine.call(st, "technician", "recordChecklistItem",
+                            [jid, i, {"result": "Passed", "finding": "ok"}])
+        engine.call(st, "technician", "flagAdditionalFault", [jid, "no"])
+        engine.call(st, "technician", "recordOutcome", [jid, "success", "all good"])
+        r = engine.call(st, "requester", "jobConfirmation", [jid, "accepted", "A. Delos Reyes"])
+        check("the office confirms the visit", r.get("ok"), r)
+        j = engine.get_job(st, jid)
+        check("the outcome reaches the register maintenance tab",
+              j["status"] == "closed" and j["outcome"] == "success", (j["status"], j["outcome"]))
+        jconf = j.get("confirmation") or {}
+        check("the maintenance visit carries its confirming person and date (SOP 27)",
+              jconf.get("state") == "accepted" and jconf.get("person") == "A. Delos Reyes"
+              and bool(jconf.get("date")), jconf)
+        check("the confirmed visit is audited",
+              any(e.get("subjectId") == jid for e in st["audit"][-8:]), st["audit"][-3:])
+    ids = [t["id"] for t in st["tickets"]]
+    check("no register record is duplicated by the propagation", len(ids) == len(set(ids)))
+
+
+def test_action_rollback(tmp):
+    """An engine action that dies partway must not stay in memory unsaved."""
+    path = os.path.join(tmp, "rollback.sqlite3")
+    st = database.State(path=path, seed_fn=seed_mod.seed)
+    handler = appmod.ItcHandler.__new__(appmod.ItcHandler)
+    first = st.data["tickets"][0]["id"]
+    before = st.data["tickets"][0]["issue"]
+
+    def half_applied_then_crash(*a, **k):
+        next(t for t in st.data["tickets"] if t["id"] == first)["issue"] = "half applied"
+        st.data["rev"] = st.data.get("rev", 0) + 1
+        raise RuntimeError("probe")
+
+    original = appmod.engine.call
+    appmod.engine.call = half_applied_then_crash
+    real_err, noise = sys.stderr, io.StringIO()
+    sys.stderr = noise                       # the rollback prints its traceback
+    try:
+        res = handler._engine_call(st, "coordinator", "updateTicket", [first, {}],
+                                   {"role": "coordinator", "name": "K. Ramos", "office": "IT Office"})
+    finally:
+        sys.stderr = real_err
+        appmod.engine.call = original
+    check("a crashed action is refused", res.get("ok") is False, res)
+    check("the message names the failure type only",
+          "probe" not in (res.get("msg") or "") and "RuntimeError" in (res.get("msg") or ""), res)
+    check("the traceback went to the log, not the client", "probe" in noise.getvalue(), noise.getvalue()[:60])
+    after = next(t for t in st.data["tickets"] if t["id"] == first)
+    check("the half-applied edit is gone from the dataset", after["issue"] == before,
+          (before, after["issue"]))
+    stored = database.load_state(st.conn)
+    check("the saved copy still matches memory",
+          [t["id"] for t in stored["tickets"]] == [t["id"] for t in st.data["tickets"]])
+
+
 def test_http_tenancy(httpd):
     host, port = httpd.server_address[:2]
     c = Client(host, port)
@@ -573,8 +1063,11 @@ def test_http_records(httpd):
     tok = c.request("POST", "/api/login", {"role": "coordinator"})[1]["token"]
     s, allres = c.request("GET", "/api/tickets", token=tok)
     check("ticket list ok", s == 200 and allres.get("ok"), allres)
-    check("ticket list returns every ticket", allres["total"] == 9 and len(allres["items"]) == 9,
-          allres["total"])
+    s, whole = c.request("GET", "/api/state", token=tok)
+    check("ticket list returns every ticket",
+          allres["total"] == len(whole["tickets"])
+          and len(allres["items"]) == min(allres["total"], allres["size"]),
+          (allres["total"], len(whole["tickets"])))
     check("list rows carry derived fields",
           all("overdue" in t and "turnaroundHours" in t for t in allres["items"]), allres["items"][:1])
 
@@ -665,6 +1158,53 @@ def test_http_records(httpd):
 
     payload = base64.b64encode(b"ITC attachment probe").decode()
     own_ticket = mine["items"][0]["id"]
+    png = (b"\x89PNG\r\n\x1a\n" + b"\x00" * 24)
+    s, _ = c.request("POST", "/api/upload",
+                     {"name": "screen.png", "mime": "image/png",
+                      "data": base64.b64encode(png).decode(), "ticketId": own_ticket}, token=tok)
+    check("a real png is accepted", s == 200, s)
+    s, _ = c.request("POST", "/api/upload",
+                     {"name": "fake.png", "mime": "image/png",
+                      "data": base64.b64encode(b"renamed executable").decode(),
+                      "ticketId": own_ticket}, token=tok)
+    check("bytes that are not the claimed type are refused", s == 400, s)
+    docx = io.BytesIO()
+    with zipfile.ZipFile(docx, "w") as zf:
+        zf.writestr("[Content_Types].xml", "<Types/>")
+        zf.writestr("word/document.xml", "<w:document/>")
+    s, _ = c.request("POST", "/api/upload",
+                     {"name": "report.docx", "mime": "application/octet-stream",
+                      "data": base64.b64encode(docx.getvalue()).decode(),
+                      "ticketId": own_ticket}, token=tok)
+    check("a real docx is accepted from its extension", s == 200, s)
+    s, _ = c.request("POST", "/api/upload",
+                     {"name": "not-really.xlsx",
+                      "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                      "data": base64.b64encode(docx.getvalue()).decode(),
+                      "ticketId": own_ticket}, token=tok)
+    check("a docx body is refused as a spreadsheet", s == 400, s)
+    s, _ = c.request("POST", "/api/upload",
+                     {"name": "notes.txt", "mime": "text/plain",
+                      "data": base64.b64encode(b"line one\x00line two").decode(),
+                      "ticketId": own_ticket}, token=tok)
+    check("binary content filed as text is refused", s == 400, s)
+    s, _ = c.request("POST", "/api/upload",
+                     {"name": "sheet.xls", "mime": "application/vnd.ms-excel",
+                      "data": base64.b64encode(b"\xd0\xcf\x11\xe0" + b"\x00" * 32).decode(),
+                      "ticketId": own_ticket}, token=tok)
+    check("an office type outside the allowlist is refused", s == 400, s)
+    # The same legacy workbook body filed under an allowed name must be caught
+    # by the content check, not the allowlist.
+    s, _ = c.request("POST", "/api/upload",
+                     {"name": "sheet.xlsx", "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                      "data": base64.b64encode(b"\xd0\xcf\x11\xe0" + b"\x00" * 32).decode(),
+                      "ticketId": own_ticket}, token=tok)
+    check("a legacy workbook body filed as xlsx is refused by its bytes", s == 400, s)
+    s, _ = c.request("POST", "/api/upload",
+                     {"name": "export.csv", "mime": "text/csv",
+                      "data": base64.b64encode("Office\r\nRecords\t2026".encode("utf-16")).decode(),
+                      "ticketId": own_ticket}, token=tok)
+    check("a UTF-16 export is accepted as text", s == 200, s)
     s, up = c.request("POST", "/api/upload",
                       {"name": "photo.txt", "mime": "text/plain", "data": payload,
                        "ticketId": own_ticket}, token=rtok)
@@ -1267,6 +1807,33 @@ def test_admin_engine():
     r = engine.call(st, "coordinator", "setScheduleActive", ["SCH-2026-024", False])
     check("schedule paused", r.get("ok") and not sc["active"], r)
 
+    # A Custom cadence stores a real day count that is later added to a date,
+    # so anything outside the supported range is refused before it is stored.
+    def sched(interval):
+        return engine.call(st, "coordinator", "createSchedule", [{
+            "office": "Records Office", "category": "Hardware", "frequency": "custom",
+            "intervalDays": interval, "technician": "J. Tan",
+            "dueDate": "2020-01-01", "checklist": ["a"]}])
+
+    for bad in (0, -5, "45.7", 45.7, "45abc", "abc", None, 3651, 4000, 5000000, True):
+        r = sched(bad)
+        check("custom interval %r refused" % (bad,), not r.get("ok"), r)
+    r = sched(3650)
+    check("a 3650 day custom cadence is accepted", r.get("ok"), r)
+    wide = engine.get_schedule(st, r.get("id"))
+    check("the stored interval is the day count", wide["intervalDays"] == 3650, wide)
+    check("a plain interval is accepted", bool(sched(45).get("ok")))
+    wide["intervalDays"] = 99999999  # a record written before the bound existed
+    check("a runaway stored interval falls back to the configured value",
+          engine.frequency_days(st, "custom", wide["intervalDays"]) == 30,
+          engine.frequency_days(st, "custom", wide["intervalDays"]))
+    try:
+        engine._advance_next_due(st, {"scheduleId": wide["id"], "occurrence": wide["dueDate"]})
+        crashed = None
+    except Exception as exc:
+        crashed = exc
+    check("the cadence maths never reaches an impossible date", crashed is None, crashed)
+
 
 def test_audit_trail():
     st = fresh()
@@ -1532,6 +2099,7 @@ def main():
     test_engine_guards()
     test_engine_dependency_and_hold()
     test_engine_recurrence()
+    test_register_propagation()
     test_engine_maintenance()
     test_schedule_generation()
     test_world_tick()
@@ -1554,6 +2122,7 @@ def main():
     test_delivery(tmp)
     print("persistence:")
     test_persistence(tmp)
+    test_action_rollback(tmp)
     print("http:")
     db_path = os.path.join(tmp, "http.sqlite3")
     httpd, state, worker = appmod.build_server(host="127.0.0.1", port=0, db_path=db_path, start_worker=False)
@@ -1562,10 +2131,14 @@ def main():
     try:
         test_http(httpd)
         test_http_import(httpd)
+        test_http_integrity(httpd)
+        test_http_concurrency(httpd)
         test_http_tenancy(httpd)
         test_http_records(httpd)
         test_http_outbox(httpd)
         test_sse(httpd)
+        test_http_transition_matrix(httpd)
+        test_http_ticket_ids(httpd)
     finally:
         httpd.shutdown()
         httpd.server_close()

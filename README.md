@@ -73,7 +73,7 @@ which role's workspace you are standing in:
 | `or-dashboard.html`, `or-ticket.html`, … | Office Requester |
 | `itc-dashboard.html`, `itc-technician.html`, … | IT Technician |
 | `ic-dashboard.html`, `ic-review.html`, … | IT Coordinator |
-| `mgmt-dashboard.html`, `mgmt-reports.html`, … | System Administrator |
+| `mgmt-users.html`, `mgmt-offices.html`, … | System Administrator |
 
 These are generated  --  one file per legal page × role  --  by
 `python tools/role_pages.py` from the `ACCESS` map in `js/ui.js`, so a route
@@ -210,14 +210,16 @@ Zero-config checkers under `tools/` (plus the backend suite):
 |---|---|
 | `python tools/ui_check.py` | **the UI house rules** on all 73 pages: the four authenticated stylesheets (three plus `login.css` on the sign-in page) load in order, no inline style survives, the shell placeholders and the page head are always there, every class used in the markup is defined in the stylesheets, and no page carries its own `<style>` block |
 | `python tools/validate.py` | HTML well-formedness, duplicate ids, `label for` → id, dead internal links, `getElementById` targets exist |
-| `node tools/smoke.js` | **60 workflow assertions**  --  the whole SOP engine (`store/ui/flow/live`) in a VM: every branch of the flowchart |
-| `node tools/pagetest.js` | **555 page assertions**  --  serves the pages and drives every screen in jsdom: forms, modals, sign-in, page guard, role-lane separation, filters, schedule check, plus a load+sentinel check for every Phase-C screen in each role and a reply-composer regression guard; fails on any console/window error |
+| `node tools/smoke.js` | **76 workflow assertions**  --  the whole SOP engine (`store/ui/flow/live`) in a VM: every branch of the flowchart |
+| `node tools/pagetest.js` | **700 page assertions**  --  serves the pages and drives every screen in jsdom: forms, modals, sign-in, page guard, role-lane separation, filters, schedule check, plus a load+sentinel check for every Phase-C screen in each role and a reply-composer regression guard; fails on any console/window error |
 | `node tools/rolepages_test.js` | **182 role-URL assertions**  --  every legal role page exists, no forbidden combo does, each page pins its own role and prefixes its nav links, a **sessionless** load renders the URL's role (never login  --  the import/share path), a signed-in wrong-role URL redirects, bare pages still work, role visibility classes are hidden or shown as the permission map says, and a forbidden URL shows the neutral panel |
 | `python tools/responsive.py` | **responsive checks** (73 pages × 37 viewports, 320x480 to 7680x2160, plus 200 percent zoom at 640x360, 683x384 and 960x540)  --  drives headless Chrome over the DevTools Protocol and flags horizontal overflow, elements past the viewport, clipped text and sub-36 px tap targets (content inside an intentional horizontal scroller is exempt) |
-| `python server/tests.py` | **382 backend assertions**  --  engine, RBAC, requester office-tenancy, technician data scope, Google OIDC verification, notification delivery, SQLite persistence, HTTP API, SSE, seed shape, site serving |
+| `python server/tests.py` | **457 backend assertions**  --  engine, RBAC, requester office-tenancy, technician data scope, Google OIDC verification, notification delivery, SQLite persistence, HTTP API, SSE, seed shape, site serving |
 | `python tools/api_check.py` | **17 end-to-end assertions**  --  real Chrome loads the site served by the backend and verifies the UI talks to it (live by default) |
 | `python tools/permission_parity_check.py` | the permission map, the backend guards and the frontend mirror never drift apart |
 | `python tools/appendix_c_check.py` | every node and edge of the Appendix C workflow data is present in the Workflow Guide |
+| `python tools/print_check.py` | the printed copy: drives Chrome under the print media and proves the letterhead and body of a record and of a report are on paper while the sidebar, toolbars, filters and every button are not (2 pages) |
+| `python tools/session_check.py` | session expiry in a real browser: a live register, a session dropped by the server, the landing on the sign-in screen naming the page to return to, the demo sign-in back to the reports page, and a static copy still running offline (11 checks) |
 
 `pagetest.js` needs `jsdom`. If it isn't installed locally it falls back to
 `%TEMP%\opencode\node_modules`, so install it once with:
@@ -258,7 +260,7 @@ Server-Sent Events, and serves the whole site on the same origin:
 ```
 python server/app.py                 # serves http://127.0.0.1:8787/
 python server/app.py --open          # ...and opens your browser
-python server/tests.py               # 382 assertions
+python server/tests.py               # 457 assertions
 ```
 
 Open `http://127.0.0.1:8787/` and every page is live. `js/api.js` wires the

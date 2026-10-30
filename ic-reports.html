@@ -18,7 +18,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#1E3A5F">
-<script>(function(){var P="ic",R="coordinator",F="reports.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+<script>(function(){var P="ic",R="coordinator",F="reports.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic"];var HOME={"requester": "or-dashboard.html", "technician": "itc-dashboard.html", "coordinator": "ic-dashboard.html", "management": "mgmt-users.html"};try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace(ALLOW.indexOf(o)>-1?(o+"-"+F):(HOME[a]||("or-"+F)));return;}window.ITC_URL_ROLE=P;})();</script>
 </head>
 <body>
 <div class="app">
@@ -32,9 +32,10 @@
         <h2>Office IT Service Reports</h2>
         <span class="hint">Generate → filter by office, date range, category, technician, status</span>
       </div>
+      <div class="print-only" id="rPrintDoc"></div>
 
       <!-- filters -->
-      <div class="card">
+      <div class="card no-print">
         <div class="filters">
           <div class="field"><label for="fOffice">Office</label>
             <select id="fOffice"><option value="">All offices</option></select></div>
@@ -48,6 +49,7 @@
             <select id="fStatus"><option value="">All statuses</option></select></div>
           <div class="field filter-action"><button class="btn btn-ghost" id="fReset">Reset filters</button></div>
 <div class="field filter-action"><button class="btn btn-primary" id="fRefresh">Refresh</button></div>
+<div class="field filter-action"><button class="btn btn-ghost" id="fPrint">Print report</button></div>
         </div>
       </div>
 
@@ -58,7 +60,7 @@
         <div class="stack">
           <!-- ticket table -->
           <div class="card">
-            <div class="card-head"><h3>Service history</h3><span class="chip" id="rCount"> -- </span>
+            <div class="card-head"><h3>Service history</h3><span class="chip" id="rCount">0</span>
               <span class="hint">cancelled kept separate from completed totals</span></div>
             <table class="table">
               <thead><tr><th>Ticket</th><th>Office</th><th>Status</th><th>Turnaround</th><th class="cost-col">Cost</th></tr></thead>
@@ -141,6 +143,7 @@ UI.mountChrome({ title: 'Office IT Service Reports', sub: 'Service history, tota
 
 var F_ = { office: '', from: '', to: '', cat: '', tech: '', status: '' };
 var reportPage = 1;
+var printAll = false;
 const REPORTS_PER_PAGE = 15;
 
 function fillFilters() {
@@ -191,6 +194,12 @@ document.getElementById('fReset').addEventListener('click', function () {
 document.getElementById('fRefresh').addEventListener('click', function () {
   render();
 });
+document.getElementById('fPrint').addEventListener('click', function () {
+  /* Print every filtered record, not just the page on screen. */
+  printAll = true; render();
+  window.print();
+  printAll = false; render();
+});
 
 function filtered() {
   return Store.db.tickets.filter(function (t) {
@@ -222,14 +231,31 @@ function jobFiltered() {
 function render() {
   fillFilters();
   var db = Store.db, rows = filtered(), jobsFiltered = jobFiltered();
+  var pd = document.getElementById('rPrintDoc');
+  if (pd) {
+    var bits = ['Office: ' + (F_.office || 'all'),
+                'From: ' + (F_.from || 'earliest'),
+                'To: ' + (F_.to || 'latest')];
+    if (F_.cat) bits.push('Category: ' + F_.cat);
+    if (F_.tech) bits.push('Technician: ' + F_.tech);
+    if (F_.status) bits.push('Status: ' + (UI.STATUS[F_.status] ? UI.STATUS[F_.status][0] : F_.status));
+    bits.push('Records: ' + rows.length);
+    pd.innerHTML =
+      '<div class="print-head"><div class="print-brand">University of the Philippines Cebu</div>' +
+      '<div class="print-sub">IT Service and Maintenance Management System</div>' +
+      '<h1>Office IT Service Reports</h1></div>' +
+      '<div class="print-meta">' + UI.esc(bits.join(' | ')) +
+      '<br>Printed ' + UI.esc(new Date().toLocaleString()) + '</div>';
+  }
   var showCost = UI.roleKey() !== 'requester';
   var completed = rows.filter(function (t) { return t.status === 'closed'; });
   var cancelled = rows.filter(function (t) { return t.status === 'cancelled'; });
   var active = rows.filter(function (t) { return ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved'].indexOf(t.status) > -1; });
-  var overdue = active.filter(function (t) { return t.target && String(t.target).slice(0, 10) < Store.NOW().slice(0, 10); });
-  var turns = completed.filter(function (t) { return t.closedAt; }).map(function (t) {
-    return (new Date(t.closedAt) - new Date(t.createdAt)) / 864e5;
-  });
+  var overdue = active.filter(function (t) { return Query.isOverdue(t); });
+  var turns = rows.map(function (t) {
+    var h = Query.turnaroundHours(t);
+    return h == null ? null : h / 24;
+  }).filter(function (d) { return d != null; });
   var avgTurn = turns.length ? (turns.reduce(function (a, b) { return a + b; }, 0) / turns.length) : 0;
   var costs = rows.reduce(function (a, t) { return a + (t.diagnosis.cost || 0); }, 0);
   var labor = rows.reduce(function (a, t) { return a + (t.diagnosis.labor || 0); }, 0);
@@ -238,7 +264,7 @@ function render() {
     kpi('Completed (closed)', completed.length, 'confirmed or authorized closure', 'k-ok', UI.icon('checkCircle')) +
     kpi('Cancelled', cancelled.length, 'separate from completed totals', 'k-warn', UI.icon('ban')) +
     kpi('Still active', active.length, 'submitted → resolved', 'k-brand', UI.icon('ticket')) +
-    kpi('Overdue vs target', overdue.length, 'past target completion date', 'k-hold', UI.icon('clock'));
+    kpi('Overdue vs target', overdue.length, 'past target, or intake + 5 days', 'k-hold', UI.icon('clock'));
   function kpi(l, v, d, c, dot) {
     return '<div class="card kpi ' + c + '"><div class="dot">' + dot + '</div><div class="label">' + l +
       '</div><div class="value">' + v + '</div><div class="delta">' + d + '</div></div>';
@@ -248,9 +274,11 @@ function render() {
   document.getElementById('rCount').textContent = rows.length + ' of ' + db.tickets.length;
   document.getElementById('rEmpty').hidden = rows.length > 0;
 
-  var pg = UI.paginate(rows, reportPage, REPORTS_PER_PAGE);
+  var pg = UI.paginate(rows, printAll ? 1 : reportPage,
+    printAll ? Math.max(rows.length, 1) : REPORTS_PER_PAGE);
   document.getElementById('rBody').innerHTML = pg.items.map(function (t, i) {
-    var days = t.closedAt ? ((new Date(t.closedAt) - new Date(t.createdAt)) / 864e5).toFixed(1) + 'd' : 'ongoing';
+    var hrs = Query.turnaroundHours(t);
+    var days = hrs == null ? 'ongoing' : (hrs / 24).toFixed(1) + 'd';
     return '<tr style="--row-index:' + i + '"' + (t.status === 'cancelled' ? ' class="row-cancelled"' : '') + '>' +
       '<td class="td-main" data-label="Ticket"><div class="t-id">' + UI.esc(t.id) + '</div>' +
       '<div class="t-title">' + UI.esc(t.issue.slice(0, 44)) + '</div>' +
@@ -345,11 +373,11 @@ function render() {
   /* turnaround & costs */
   var jobDone = jobsFiltered.filter(function (j) { return j.status === 'closed'; }).length;
   document.getElementById('rTurn').innerHTML =
-    '<div><div class="k">Avg turnaround (closed)</div><div class="v">' + avgTurn.toFixed(1) + ' days</div></div>' +
+    '<div><div class="k">Avg turnaround (resolved)</div><div class="v">' + avgTurn.toFixed(1) + ' days</div></div>' +
     (showCost ? '<div><div class="k">Total recorded cost</div><div class="v">₱' + costs.toFixed(2) + '</div></div>' +
       '<div><div class="k">Total labor</div><div class="v">' + labor.toFixed(1) + ' h</div></div>' : '') +
     '<div><div class="k">Maintenance jobs closed</div><div class="v">' + jobDone + ' / ' + jobsFiltered.length + '</div></div>' +
-    '<div><div class="k">Compliance  --  confirmations</div><div class="v">' +
+    '<div><div class="k">Compliance: confirmations</div><div class="v">' +
     (completed.filter(function (t) { return t.closure === 'confirmation'; }).length + ' of ' + completed.length + ' closed by confirmation') + '</div></div>' +
     '<div><div class="k">Audit history</div><div class="v">preserved on ' + rows.length + ' record(s)</div></div>';
 
@@ -374,18 +402,18 @@ function renderCatalogue(rows, jobsFiltered) {
   });
   function top(o) {
     var k = Object.keys(o).sort(function (a, b) { return o[b] - o[a]; })[0];
-    return k ? (UI.esc(k) + ' (' + o[k] + ')') : ' -- ';
+    return k ? (UI.esc(k) + ' (' + o[k] + ')') : 'None';
   }
   function topSource(o) {
     var k = Object.keys(o).sort(function (a, b) { return o[b] - o[a]; })[0];
-    return k ? (UI.esc(UI.sourceLabel(k)) + ' (' + o[k] + ')') : ' -- ';
+    return k ? (UI.esc(UI.sourceLabel(k)) + ' (' + o[k] + ')') : 'None';
   }
 
   function topTurnaroundByCategory(rows) {
     var byCat = {};
     rows.forEach(function (t) {
-      if (t.status === 'closed' && t.resolvedAt && t.category) {
-        var h = (new Date(t.resolvedAt) - new Date(t.createdAt)) / 3600000;
+      if (t.category && Query.turnaroundHours(t) != null) {
+        var h = Query.turnaroundHours(t);
         byCat[t.category] = byCat[t.category] || { sum: 0, count: 0 };
         byCat[t.category].sum += h;
         byCat[t.category].count += 1;
@@ -396,7 +424,7 @@ function renderCatalogue(rows, jobsFiltered) {
       var avg = byCat[cat].sum / byCat[cat].count;
       if (avg > bestAvg) { bestAvg = avg; best = cat; }
     });
-    return best ? (UI.esc(best) + ' (' + bestAvg.toFixed(1) + ' h avg)') : ' -- ';
+    return best ? (UI.esc(best) + ' (' + bestAvg.toFixed(1) + ' h avg)') : 'None';
   }
 
   function topStatus(rows) {
@@ -405,14 +433,14 @@ function renderCatalogue(rows, jobsFiltered) {
     rows.forEach(function (t) { sc[t.status] = (sc[t.status] || 0) + 1; });
     var best = null, bestCount = -1;
     order.forEach(function (s) { if (sc[s] > bestCount) { bestCount = sc[s]; best = s; } });
-    return best ? (UI.STATUS[best][0] + ' (' + bestCount + ')') : ' -- ';
+    return best ? (UI.STATUS[best][0] + ' (' + bestCount + ')') : 'None';
   }
 
   function topPriority(rows) {
     var pr = {}; rows.forEach(function (t) { if (t.priority) pr[t.priority] = (pr[t.priority] || 0) + 1; });
     var best = null, bestCount = -1;
     Object.keys(pr).forEach(function (p) { if (pr[p] > bestCount) { bestCount = pr[p]; best = p; } });
-    return best ? (best + ' (' + bestCount + ')') : ' -- ';
+    return best ? (best + ' (' + bestCount + ')') : 'None';
   }
 
   var jobsClosed = jobsFiltered.filter(function (j) { return j.status === 'closed'; }).length;
@@ -468,7 +496,7 @@ function techLine(byTech, jobs) {
   Object.keys(byTech).forEach(function (k) { t[k] = byTech[k]; });
   jobs.forEach(function (j) { t[j.technician] = (t[j.technician] || 0) + 1; });
   var k = Object.keys(t).sort(function (a, b) { return t[b] - t[a]; })[0];
-  return k ? UI.esc(k) + ' (' + t[k] + ')' : ' -- ';
+  return k ? UI.esc(k) + ' (' + t[k] + ')' : 'None';
 }
 function exportReport(idx, reports, rows, jobs, byOffice, byCat, byTech, bySource) {
   var out = [[reports[idx][0]], ['definition', reports[idx][1]], ['result', reports[idx][2]], []];

@@ -18,7 +18,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#1E3A5F">
-<script>(function(){var P="itc",R="technician",F="tickets.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+<script>(function(){var P="itc",R="technician",F="tickets.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic"];var HOME={"requester": "or-dashboard.html", "technician": "itc-dashboard.html", "coordinator": "ic-dashboard.html", "management": "mgmt-users.html"};try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace(ALLOW.indexOf(o)>-1?(o+"-"+F):(HOME[a]||("or-"+F)));return;}window.ITC_URL_ROLE=P;})();</script>
 </head>
 <body>
 <div class="app">
@@ -92,7 +92,7 @@
       <div class="card mt">
         <div class="card-head">
           <h3>Results</h3>
-          <span class="chip" id="tkTotal"> -- </span>
+          <span class="chip" id="tkTotal">0</span>
           <span class="hint" id="tkScopeNote"></span>
           <div class="seg seg-view" id="tkView" role="group" aria-label="Result layout">
             <button type="button" data-view="list">List</button>
@@ -133,7 +133,7 @@
 <script src="js/actions.js"></script>
 <script src="js/live.js"></script>
 <script>
-UI.mountChrome({ title: 'Service Tickets', sub: 'The ticket register  --  filter, sort, page and drill in' });
+UI.mountChrome({ title: 'Service Tickets', sub: 'The ticket register: filter, sort, page and drill in' });
 
 var PER_PAGE = 20;
 var CHIPS = [
@@ -283,8 +283,8 @@ function rowHTML(t, i) {
     '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div><div class="t-sub">' + UI.esc(t.requester) + '</div></td>' +
     '<td data-label="Status">' + UI.badge(t.status) + (overdue ? ' <span class="badge b-needs-info">overdue</span>' : '') + UI.waitingOn(t.status) + '</td>' +
     '<td class="lead-only" data-label="Priority">' + UI.prio(t.priority) + '</td>' +
-    '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : (overdue ? 'past due' : ' -- ')) + '</td>' +
-    '<td class="staff-only" data-label="Technician"><div class="t-title">' + UI.esc(t.technician || ' -- ') + '</div></td>' +
+    '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : (overdue ? 'past due' : 'Not set')) + '</td>' +
+    '<td class="staff-only" data-label="Technician"><div class="t-title">' + UI.esc(t.technician || 'Unassigned') + '</div></td>' +
     '<td data-label="Updated">' + UI.timeAgo(t.updatedAt || t.createdAt) + '</td></tr>';
 }
 
@@ -299,7 +299,7 @@ function render() {
 
   document.getElementById('tkTotal').textContent = last.total + ' of ' + lastScopeTotal;
   document.getElementById('tkScopeNote').textContent = UI.roleKey() === 'requester'
-    ? 'office tenancy applied  --  you see your office records and the requests you raised'
+    ? 'Office tenancy applied. You see your office records and the requests you raised.'
     : 'the register you are authorized to view';
   document.getElementById('tkEmpty').hidden = last.total > 0;
 
@@ -388,7 +388,7 @@ function renderBoard() {
   var archiveCount = (counts.closed || 0) + (counts.cancelled || 0);
   var open = chip === 'closed' || chip === 'cancelled' || ARCHIVE_STATES.indexOf(F.status) > -1;
   cols.push('<details class="wo-col wo-archive"' + (open ? ' open' : '') + ' data-board-status="archive">' +
-    '<summary class="wo-col-head"><span class="wo-col-name">Archive  --  Closed and Cancelled</span>' +
+    '<summary class="wo-col-head"><span class="wo-col-name">Archive: Closed and Cancelled</span>' +
     '<span class="wo-col-count">' + archiveCount + '</span></summary>' +
     '<div class="wo-col-body">' + (archived.length ? archived.map(boardCard).join('') : '<p class="wo-col-empty">No closed or cancelled tickets</p>') +
     '</div></details>');
@@ -541,8 +541,8 @@ document.getElementById('fReset').addEventListener('click', function () {
 document.getElementById('tkBulkAssign').addEventListener('click', function () {
   var ids = Object.keys(selected);
   if (!ids.length) return;
-  UI.openModal('Bulk assign ' + ids.length + ' ticket(s)  --  Status: Assigned',
-    UI.field('Technician', UI.select('tech', [['J. Tan', 'J. Tan  --  hardware / network'], ['M. Uy', 'M. Uy  --  printers / UPS'], ['K. Villanueva', 'K. Villanueva  --  systems']], 'J. Tan', true)) +
+  UI.openModal('Bulk assign ' + ids.length + ' ticket(s), status Assigned',
+    UI.field('Technician', UI.select('tech', [['J. Tan', 'J. Tan (hardware / network)'], ['M. Uy', 'M. Uy (printers / UPS)'], ['K. Villanueva', 'K. Villanueva (systems)']], 'J. Tan', true)) +
     '<div class="note mt"><span>' + UI.icon('info') + '</span><div>Only tickets currently <b>Submitted</b> can be assigned; others are skipped and reported.</div></div>',
     '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Assign selected</button>');
   document.getElementById('mGo').onclick = function () {

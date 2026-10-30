@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Maintenance  --  ITC Maintenance System</title>
+<title>Maintenance | ITC Maintenance System</title>
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/green.css">
 <link rel="stylesheet" href="css/kit.css">
@@ -38,7 +38,7 @@
       <section class="card mt" id="plannerCard" hidden>
         <div class="card-head">
           <h3>Maintenance planner</h3>
-          <span class="hint" id="plannerRange"> -- </span>
+          <span class="hint" id="plannerRange">Not set</span>
           <div class="seg seg-view" id="plannerView" role="group" aria-label="Planner view">
             <button type="button" data-pview="month">Month</button>
             <button type="button" data-pview="week">Week</button>
@@ -92,18 +92,18 @@
            because a 363px rail left half the jobs table's height blank -->
       <section class="mt">
         <div class="card">
-          <div class="card-head"><h3>Maintenance jobs</h3><span class="hint" id="jCount"> -- </span></div>
+          <div class="card-head"><h3>Maintenance jobs</h3><span class="hint" id="jCount">0</span></div>
           <table class="table">
             <thead><tr><th>Job</th><th>Schedule / office</th><th>Status</th><th>Checklist</th><th>Detail</th></tr></thead>
             <tbody id="jBody"></tbody>
           </table>
           <div id="jPagination"></div>
-          <div class="empty" id="jEmpty" hidden><img src="img/empty-maintenance.svg" alt="" width="120" height="90" loading="lazy">No jobs  --  they appear when a schedule falls due.</div>
+          <div class="empty" id="jEmpty" hidden><img src="img/empty-maintenance.svg" alt="" width="120" height="90" loading="lazy">No jobs yet. They appear when a schedule falls due.</div>
         </div>
 
         <div id="jobPanel" class="mt"></div>
 
-        <div class="note mt"><span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span><div><b>Job already exists?</b> The system checks the schedule occurrence first and reuses the existing job  --  duplicate maintenance jobs are never generated.</div></div>
+        <div class="note mt"><span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span><div><b>Job already exists?</b> The system checks the schedule occurrence first and reuses the existing job. Duplicate maintenance jobs are never generated.</div></div>
       </section>
     </main>
 
@@ -411,7 +411,7 @@ function render() {
       '<div class="t-sub">' + UI.esc(s.category) + ' · ' + s.checklist.length + ' checklist item(s)</div>' +
       (job ? '<div class="t-sub mono">job ' + UI.esc(job.id) + '</div>' : '') + '</td>' +
       '<td data-label="Office"><div class="t-title">' + UI.esc(s.office) + '</div><div class="t-sub">' + UI.esc(s.assets.join(', ') || 'no assets') + '</div></td>' +
-      '<td data-label="Frequency">' + UI.esc(s.frequency) + '</td>' +
+      '<td data-label="Frequency">' + UI.esc(freqLabel(s)) + '</td>' +
       '<td data-label="Next due"><b class="nowrap ' + (overdue ? 'text-warn' : '') + '">' + UI.dateOnly(s.dueDate) + '</b>' +
       (overdue ? '<div class="t-sub nowrap">overdue</div>' : '') + '</td>' +
       '<td data-label="Technician"><div class="t-title">' + UI.esc(s.technician) + '</div></td>' +
@@ -485,8 +485,8 @@ function render() {
     var canOutcome = UI.canAct('recordOutcome');
     var canReassign = UI.canAct('reassignJob') && ['submitted', 'assigned', 'in_progress', 'on_hold'].indexOf(j.status) > -1;
     var status = {
-      submitted: 'Visit not yet coordinated', assigned: 'Visit coordinated', on_hold: 'Rescheduled  --  waiting agreed date',
-      in_progress: 'Checklist in progress', resolved: 'Completed  --  confirmation pending',
+      submitted: 'Visit not yet coordinated', assigned: 'Visit coordinated', on_hold: 'Rescheduled, waiting agreed date',
+      in_progress: 'Checklist in progress', resolved: 'Completed, confirmation pending',
       closed: 'Closed', cancelled: 'Cancelled'
     }[j.status] || j.status;
 
@@ -501,10 +501,10 @@ function render() {
       '<div><div class="k">Schedule</div><div class="v mono">' + UI.esc(j.scheduleId) + '</div></div>' +
       '<div><div class="k">Office / assets</div><div class="v">' + UI.esc(j.office) + ' · ' + UI.esc(j.assets.join(', ')) + '</div></div>' +
       '<div><div class="k">Technician</div><div class="v">' + UI.esc(j.technician) + '</div></div>' +
-      '<div><div class="k">Visit date</div><div class="v">' + (j.visitDate ? UI.dateOnly(j.visitDate) : 'not set') + '</div></div>' +
+      '<div><div class="k">Visit date</div><div class="v">' + (j.visitDate ? UI.dateOnly(j.visitDate) : 'Not set') + '</div></div>' +
       '<div><div class="k">Additional fault?</div><div class="v">' + UI.esc(j.additionalFault) + '</div></div>' +
       (canReassign ? '<div><div class="k">Assignment</div><div class="v"><button class="btn btn-sm btn-ghost" data-m="reassign">Reassign technician</button></div></div>' : '') +
-      '<div><div class="k">Next due date</div><div class="v">' + (j.nextDue || (sc ? UI.dateOnly(sc.dueDate) + ' (schedule)' : ' -- ')) + '</div></div>' +
+      '<div><div class="k">Next due date</div><div class="v">' + (j.nextDue || (sc ? UI.dateOnly(sc.dueDate) + ' (schedule)' : 'Not set')) + '</div></div>' +
       '</div>' +
       (j.reschedules.length ? '<ul class="list list-divided mt">' +
         j.reschedules.slice().reverse().map(function (r) {
@@ -518,24 +518,24 @@ function render() {
       (canAvail
         ? '<div class="row mt">' +
           '<span class="chip">Office available?</span>' +
-          '<button class="btn btn-sm btn-primary" data-m="avail">Yes  --  coordinate visit</button>' +
-          '<button class="btn btn-sm btn-ghost" data-m="resched">No  --  record reschedule</button>' +
+          '<button class="btn btn-sm btn-primary" data-m="avail">Yes, coordinate visit</button>' +
+          '<button class="btn btn-sm btn-ghost" data-m="resched">No, record reschedule</button>' +
           '</div>'
         : '') +
       (canOutcome
         ? '<div class="row mt">' +
           '<span class="chip">Maintenance outcome</span>' +
-          '<button class="btn btn-sm btn-primary" data-m="success">Complete the visit  --  request confirmation</button>' +
+          '<button class="btn btn-sm btn-primary" data-m="success">Complete the visit, request confirmation</button>' +
           (role === 'coordinator'
             ? '<button class="btn btn-sm btn-ghost" data-m="incomplete">Incomplete</button>' +
               '<button class="btn btn-sm btn-ghost" data-m="cancelled">Cancelled</button>' : '') +
           '</div>'
         : '') +
       (!canAvail && !canOutcome
-        ? '<div class="note mt"><span>' + UI.icon('eye') + '</span><div>Read-only oversight  --  the visit date is confirmed by the office and the outcome is recorded by the assigned technician or the IT Coordinator.</div></div>'
+        ? '<div class="note mt"><span>' + UI.icon('eye') + '</span><div>Read-only oversight. The visit date is confirmed by the office and the outcome is recorded by the assigned technician or the IT Coordinator.</div></div>'
         : '') +
 
-      /* confirmation & closure  --  handled on the Confirmation screen */
+      /* Confirmation and closure: handled on the Confirmation screen */
       (j.status === 'resolved' || j.status === 'closed'
         ? '<div class="note mt"><span>' + UI.icon('checkCircle') + '</span><div><b>Confirmation.</b> State: <b>' + UI.esc(j.confirmation.state) + '</b>' +
           (j.confirmation.person ? ' by ' + UI.esc(j.confirmation.person) + ' on ' + UI.clock(j.confirmation.date) : '') + '</div></div>' +
@@ -557,7 +557,7 @@ function render() {
           (it.done ? '<small>' + UI.esc(it.result) + (it.finding ? ' · ' + UI.esc(it.finding) : '') + ' · ' + UI.esc(it.tech || '') + '</small>' : '<small>pending</small>') +
           '</div></div>';
       }).join('') + '</div></div>' +
-      /* additional fault  --  a linked corrective ticket, raised by the
+      /* Additional fault: a linked corrective ticket, raised by the
          assigned technician and created by the system */
       faultPanel(j);
 
@@ -588,10 +588,10 @@ function render() {
     if (linked) {
       body += '<div class="note ok mt"><span>' + UI.icon('checkCircle') + '</span><div>' +
         'A corrective ticket has been created: <a class="t-id" href="ticket.html?id=' + encodeURIComponent(linked.id) + '">' +
-        UI.esc(linked.id) + '</a>  --  Status: ' + UI.esc((UI.STATUS[linked.status] || [linked.status])[0]) + '.</div></div>';
+        UI.esc(linked.id) + '</a>. Status: ' + UI.esc((UI.STATUS[linked.status] || [linked.status])[0]) + '.</div></div>';
     } else if (isTech && j.status !== 'closed' && j.status !== 'cancelled') {
       body += '<div class="row mt">' +
-        '<button class="btn btn-sm btn-danger-soft" data-fault="yes">Yes  --  raise a corrective ticket</button>' +
+        '<button class="btn btn-sm btn-danger-soft" data-fault="yes">Yes, raise a corrective ticket</button>' +
         '<button class="btn btn-sm btn-ghost" data-fault="no">No additional fault</button></div>';
     } else {
       body += '<div class="note mt"><span>' + UI.icon('info') + '</span><div>The assigned technician answers this question during the visit.</div></div>';
@@ -624,7 +624,20 @@ function render() {
 /* ---- schedule edit / activate-deactivate (coordinator + administrator) ---- */
 function freqOptions() {
   var freqs = (Store.db.settings && Store.db.settings.frequencies) || [['weekly', 'Weekly', 7]];
-  return freqs.map(function (f) { return [f[0], f[1] + ' (every ' + f[2] + ' days)']; });
+  return freqs.map(function (f) {
+    if (f[0] === 'custom') return [f[0], f[1] + ' (choose the interval)'];
+    return [f[0], f[1] + ' (every ' + f[2] + (f[2] === 1 ? ' day' : ' days') + ')'];
+  });
+}
+function freqLabel(s) {
+  if (s.frequency === 'custom') {
+    var set = Flow.intervalDays(s.intervalDays);
+    if (set) return 'Custom (every ' + set + ' days)';
+    return 'Custom (no interval set, every ' + Flow.frequencyDays('custom') + ' days)';
+  }
+  var rows = (Store.db.settings && Store.db.settings.frequencies) || [];
+  for (var i = 0; i < rows.length; i++) { if (rows[i][0] === s.frequency) return rows[i][1]; }
+  return s.frequency;
 }
 function officeOptions() {
   var names = {}, out = [];
@@ -649,12 +662,13 @@ function editSchedule(id) {
   if (catOpts.indexOf(s.category) === -1) catOpts.push(s.category);
   var freq = freqOptions();
   if (!freq.some(function (f) { return f[0] === s.frequency; })) freq.push([s.frequency, s.frequency]);
-  UI.openModal('Edit maintenance schedule  --  ' + s.id,
+  UI.openModal('Edit maintenance schedule: ' + s.id,
     '<div class="grid grid-form">' +
     UI.field('Office', UI.select('office', officeOptions(), s.office, true)) +
     UI.field('Assets (comma separated)', UI.input('assets', 'e.g. PC-OF-118, PC-OF-119', (s.assets || []).join(', '))) +
     UI.field('Category', UI.select('category', catOpts, s.category, true)) +
     UI.field('Frequency', UI.select('frequency', freq, s.frequency, true)) +
+    UI.field('Custom interval (days)', UI.input('intervalDays', 'Only for Custom, 1 to 3650 days, e.g. 45', s.intervalDays || '')) +
     UI.field('Next due date', UI.dateInput('dueDate', Time.inputValue(s.dueDate), { required: true })) +
     UI.field('Technician', UI.select('technician', technicianOptions(), s.technician, true)) +
     '</div>' +
@@ -676,6 +690,7 @@ function editSchedule(id) {
       office: UI.modalValue('office'),
       assets: UI.modalValue('assets').split(',').map(function (x) { return x.trim(); }).filter(Boolean),
       category: UI.modalValue('category'), frequency: UI.modalValue('frequency'),
+      intervalDays: UI.modalValue('intervalDays'),
       dueDate: new Date(UI.modalValue('dueDate') + 'T17:00:00').toISOString(),
       technician: UI.modalValue('technician'), checklist: items
     });
@@ -702,7 +717,7 @@ function mAct(a, jobId) {
   } else if (a === 'reassign') {
     var techs = technicianOptions();
     if (!techs.length) { UI.toast('No technician in the register yet.', 'err'); return; }
-    UI.openModal('Reassign maintenance visit  --  ' + jobId,
+    UI.openModal('Reassign maintenance visit: ' + jobId,
       UI.field('Technician', UI.select('tech', techs, j.technician, true)) +
       '<div class="note mt"><span>' + UI.icon('info') + '</span><div>The visit status and the agreed date stay the same. Both the previous and the new technician are notified.</div></div>',
       '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Reassign</button>');
@@ -711,7 +726,7 @@ function mAct(a, jobId) {
       UI.closeModal(); UI.toast(r.msg, r.ok ? 'ok' : 'err'); if (r.ok) UI.renderBell(); render();
     };
   } else if (a === 'success' || a === 'incomplete' || a === 'cancelled') {
-    var outcomeLabel = a === 'success' ? 'Complete the maintenance visit' : 'Record the maintenance outcome  --  ' + a;
+    var outcomeLabel = a === 'success' ? 'Complete the maintenance visit' : 'Record the maintenance outcome: ' + a;
     UI.openModal(outcomeLabel,
       UI.field('Notes', UI.textarea('notes', 'e.g. All five assets serviced; filters replaced.')) +
       (a === 'success'
@@ -731,9 +746,9 @@ document.getElementById('btnCheck').addEventListener('click', function () {
   /* the offline engine returns the event list, the backend returns an object
      with the same list in `events` */
   var ev = Array.isArray(res) ? res : ((res && res.events) || []);
-  if (!ev.length) ev = [{ kind: 'wait', msg: 'All schedules checked  --  nothing due at this moment.' }];
+  if (!ev.length) ev = [{ kind: 'wait', msg: 'All schedules checked. Nothing due at this moment.' }];
   ev.forEach(function (e) { e.at = Store.NOW(); checkLog.unshift(e); });
-  UI.toast((res && res.msg) ? res.msg : ('Schedule check finished  --  ' + ev.length + ' result(s).'), 'ok');
+  UI.toast((res && res.msg) ? res.msg : ('Schedule check finished: ' + ev.length + ' result(s).'), 'ok');
   UI.renderBell(); render();
 });
 document.getElementById('clearLog').addEventListener('click', function () { checkLog = []; render(); });
@@ -746,6 +761,7 @@ document.getElementById('btnNewSched').addEventListener('click', function () {
     UI.field('Assets (comma separated)', UI.input('assets', 'e.g. PC-OF-118, PC-OF-119')) +
     UI.field('Category', UI.select('category', (Store.db.settings.categories || ['Hardware', 'Network', 'Software', 'Printer']), 'Hardware', true)) +
     UI.field('Frequency', UI.select('frequency', freqOptions(), 'quarterly', true)) +
+    UI.field('Custom interval (days)', UI.input('intervalDays', 'Only for Custom, 1 to 3650 days, e.g. 45')) +
     UI.field('Next due date', UI.dateInput('dueDate', Time.todayPlus(7), { required: true })) +
     UI.field('Technician', UI.select('technician', technicianOptions(), 'J. Tan', true)) +
     '</div>' +
@@ -760,6 +776,7 @@ document.getElementById('btnNewSched').addEventListener('click', function () {
       office: UI.modalValue('office'),
       assets: UI.modalValue('assets').split(',').map(function (s) { return s.trim(); }).filter(Boolean),
       category: UI.modalValue('category'), frequency: UI.modalValue('frequency'),
+      intervalDays: UI.modalValue('intervalDays'),
       dueDate: new Date(UI.modalValue('dueDate') + 'T17:00:00').toISOString(),
       technician: UI.modalValue('technician'), checklist: items
     });

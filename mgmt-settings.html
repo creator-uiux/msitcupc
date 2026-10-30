@@ -18,7 +18,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#1E3A5F">
-<script>(function(){var P="mgmt",R="management",F="settings.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+<script>(function(){var P="mgmt",R="management",F="settings.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["mgmt"];var HOME={"requester": "or-dashboard.html", "technician": "itc-dashboard.html", "coordinator": "ic-dashboard.html", "management": "mgmt-users.html"};try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace(ALLOW.indexOf(o)>-1?(o+"-"+F):(HOME[a]||("or-"+F)));return;}window.ITC_URL_ROLE=P;})();</script>
 </head>
 <body>
 <div class="app">
@@ -210,7 +210,7 @@ function render() {
       return '<tr><td data-label="Frequency">' + UI.esc(row[1]) + '</td><td data-label="Key"><span class="mono">' + UI.esc(row[0]) + '</span></td><td data-label="Days">' + row[2] + '</td></tr>';
     }).join('') + '</tbody></table>' +
     '<div id="freqPagination"></div>' +
-    '<p class="card-sub mt">The next due date is <b>previous due date + days</b>  --  a late visit never drifts the whole plan.</p>';
+    '<p class="card-sub mt">The next due date is <b>previous due date + days</b>. A late visit never drifts the whole plan.</p>';
   UI.renderPagination(document.getElementById('freqPagination'), fr, function (p) { freqPage = p; render(); });
 
   /* bind */

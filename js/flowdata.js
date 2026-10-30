@@ -1,4 +1,4 @@
-/* flowdata.js -- the source process diagram as data.
+/* flowdata.js: the source process diagram as data.
  *
  * This is the single source of truth for the Workflow Guide (flow.html) and for
  * the Appendix C coverage checks.  Node texts are VERBATIM from the PDF

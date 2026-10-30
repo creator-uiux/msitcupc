@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Profile  --  ITC Maintenance System</title>
+<title>Profile | ITC Maintenance System</title>
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/green.css">
 <link rel="stylesheet" href="css/kit.css">
@@ -111,7 +111,7 @@ function render() {
     '<div class="chip-row mt-xs"><span class="chip">' + UI.esc(r.title) + '</span>' +
     '<span class="chip">' + UI.esc(a.office || r.office) + '</span></div></div></div>' +
     '<div class="info mt">' +
-    '<div><div class="k">Username</div><div class="v mono">' + UI.esc((m.rec && m.rec.username) || ' -- ') + '</div></div>' +
+    '<div><div class="k">Username</div><div class="v mono">' + UI.esc((m.rec && m.rec.username) || 'Not set') + '</div></div>' +
     '<div><div class="k">Role</div><div class="v">' + UI.esc(r.title) + '</div></div>' +
     '<div><div class="k">Session</div><div class="v">' + UI.esc(a.demo ? 'demo (not signed in)' : 'signed in') + '</div></div>' +
     '<div><div class="k">Theme</div><div class="v">' + UI.esc(UI.theme()) + '</div></div>' +

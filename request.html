@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>New Request  --  ITC Maintenance System</title>
+<title>New Request | ITC Maintenance System</title>
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/green.css">
 <link rel="stylesheet" href="css/kit.css">
@@ -35,8 +35,8 @@
       <div class="note" id="respondNote" hidden>
         <span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></span>
         <div><b>Office needs information.</b> The coordinator requested missing details for
-        <span class="mono" id="respondId"></span>. Your reply updates the <u>same ticket</u> and returns it to review  -- 
-        no duplicate ticket is created (flowchart: <b>Update existing ticket → Return to review; no new ticket</b>).</div>
+        <span class="mono" id="respondId"></span>. Your reply updates the <u>same ticket</u> and returns it to review.
+        No duplicate ticket is created (flowchart: <b>Update existing ticket → Return to review; no new ticket</b>).</div>
       </div>
 
       <section class="grid grid-2 mt" id="formRow">
@@ -46,7 +46,7 @@
               <input type="date" name="dateReported" id="fDateReported" value=""></div>
             <div class="field"><label for="fOffice">Office</label>
               <select name="office" id="fOffice" required>
-                <option value=""> --  Select Office  -- </option>
+                <option value="">Select office</option>
               </select>
               <div class="help" id="fOfficeHelp"></div>
             </div>
@@ -56,7 +56,7 @@
             </div>
             <div class="field"><label for="fCategory">Category</label>
               <select name="category" id="fCategory" required>
-                <option value=""> --  Select Category  -- </option>
+                <option value="">Select category</option>
                 <option>Hardware Repair</option><option>Software Support</option><option>Network and Connectivity</option>
                 <option>Account Assistance</option><option>Printer and Peripheral</option><option>Installation and Configuration</option><option>Other</option>
               </select>
@@ -72,7 +72,7 @@
             </div>
             <div class="field"><label for="fSource">Request source</label>
               <select name="source" id="fSource" required>
-                <option value=""> --  Select Source  -- </option>
+                <option value="">Select source</option>
               </select>
               <div class="help">How the request reached the IT Office. The list is managed in the reference data.</div>
             </div>
@@ -83,7 +83,7 @@
               <div class="help">Link a request that continues an earlier one. The new ticket is still its own record.</div>
             </div>
             <div class="field span-2"><label for="fIssue">Issue / what do you need?</label>
-              <textarea name="issue" id="fIssue" rows="4" placeholder="Describe the problem, where it happens, and when it started  --  complete details avoid the Needs Information loop." required minlength="10"></textarea>
+              <textarea name="issue" id="fIssue" rows="4" placeholder="Describe the problem, where it happens, and when it started. Complete details avoid the Needs Information loop." required minlength="10"></textarea>
             </div>
             <div class="field" id="fIdempotencyField"><label for="fIdempotency">Duplicate protection key (optional)</label>
               <input type="text" name="idempotencyKey" id="fIdempotency" placeholder="e.g. unique-key-for-double-click-prevention">
@@ -91,7 +91,7 @@
             </div>
             <div class="field"><label for="fAsset">Asset tag (optional)</label>
               <input type="text" name="asset" id="fAsset" placeholder="e.g. PC-OF-118, PRN-REG-02" pattern="[A-Z]{2,4}-[A-Z]{2,4}-\d{2,4}">
-              <div class="help">The asset the request is about  --  written on the service record (format XX-XX-000).</div>
+              <div class="help">The asset the request concerns, written on the service record (format XX-XX-000).</div>
             </div>
             <div class="field span-2"><label for="fFiles">Photos and files</label>
               <input type="file" name="files" multiple id="fFiles" accept="image/jpeg,image/png,image/webp,application/pdf,text/plain,text/csv,.docx,.xlsx" capture="environment">
@@ -113,7 +113,7 @@
 
           <div id="successBox" hidden class="note ok mt">
             <span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></span>
-            <div><b id="sucId"> -- </b> recorded  --  Status: Submitted.<br>
+            <div><b id="sucId">Not set</b> recorded. Status: Submitted.<br>
             <span class="muted" id="sucNext"></span>
             <div class="row mt-sm">
               <a class="btn btn-sm btn-primary" id="sucOpen" href="#">Open ticket</a>
@@ -130,11 +130,11 @@
               <li><span class="ico"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></svg></span><div class="body"><strong>Record service request → Status: Submitted</strong><span>The system captures ticket, office, requester, category, issue, date, asset, attachments, source.</span></div></li>
               <li><span class="ico warn"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20.5 20.5-4.2-4.2"/></svg></span><div class="body"><strong>Review request → Details complete?</strong><span>If anything is missing you get <b>Needs Information</b> and reply on this same page.</span></div></li>
               <li><span class="ico"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m16 16 3-8 3 8a3 3 0 0 1-6 0Z"/><path d="m2 16 3-8 3 8a3 3 0 0 1-6 0Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></span><div class="body"><strong>Assess impact &amp; urgency → priority + target date</strong><span>Coordinator confirms the priority and sets the target completion date.</span></div></li>
-              <li><span class="ico ok"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9Z"/></svg></span><div class="body"><strong>Assign technician → notify you both</strong><span>Status: Assigned  --  technician and requester are notified in real time.</span></div></li>
+              <li><span class="ico ok"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9Z"/></svg></span><div class="body"><strong>Assign technician → notify you both</strong><span>Status: Assigned. Technician and requester are notified in real time.</span></div></li>
             </ul>
           </div>
           <div class="card">
-            <div class="card-head"><h3>Your office's recent tickets</h3><span class="hint" id="myOffice"> -- </span></div>
+            <div class="card-head"><h3>Your office's recent tickets</h3><span class="hint" id="myOffice">Not set</span></div>
             <ul class="list" id="myList"></ul>
           </div>
         </div>
@@ -162,7 +162,7 @@ function fillOffices() {
   var names = (Store.db.offices || []).filter(function (o) { return o.active !== false; })
     .map(function (o) { return o.name; });
   if (!names.length) return;
-  sel.innerHTML = '<option value=""> --  Select Office  -- </option>' +
+  sel.innerHTML = '<option value="">Select office</option>' +
     names.map(function (n) { return '<option>' + UI.esc(n) + '</option>'; }).join('');
   if (names.indexOf(current) > -1) sel.value = current;
 }
@@ -176,7 +176,7 @@ function fillSources() {
   if (!sel) return;
   var list = (Store.db.settings && Store.db.settings.sources) || [];
   var current = sel.value;
-  sel.innerHTML = '<option value=""> --  Select Source  -- </option>' + list.map(function (v) {
+  sel.innerHTML = '<option value="">Select source</option>' + list.map(function (v) {
     return '<option value="' + UI.attr(v) + '">' + UI.esc(UI.sourceLabel(v)) + '</option>';
   }).join('');
   if (list.indexOf(current) > -1) { sel.value = current; return; }
@@ -237,7 +237,7 @@ function fillPrevious() {
   sel.dataset.sig = sig;
   var current = sel.value;
   sel.innerHTML = '<option value="">No previous record</option>' + list.map(function (t) {
-    return '<option value="' + UI.attr(t.id) + '">' + UI.esc(t.id + '  --  ' + String(t.issue || '').slice(0, 48)) + '</option>';
+    return '<option value="' + UI.attr(t.id) + '">' + UI.esc(t.id + ': ' + String(t.issue || '').slice(0, 48)) + '</option>';
   }).join('');
   if (current && list.some(function (t) { return t.id === current; })) sel.value = current;
 }
@@ -249,6 +249,17 @@ F('office').addEventListener('change', fillPrevious);
    fastest way to make someone give up.  The answers are kept per browser
    and restored on the next visit; submitting or discarding clears them. */
 var DRAFT_KEY = 'itc_draft_request';
+
+/* Duplicate protection without a developer-facing field: every open intake
+   carries a key that travels with the request, so a double submit records one
+   ticket.  A new key is minted after a successful submit. */
+function newIdempotencyKey() {
+  try {
+    if (window.crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  } catch (e) { /* older browsers */ }
+  return 'req-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+}
+var idempotencyKey = newIdempotencyKey();
 var DRAFT_FIELDS = ['office', 'category', 'priority', 'source', 'previousRecord', 'issue', 'asset'];
 function draftNote(show) {
   var n = document.getElementById('draftNote');
@@ -314,6 +325,17 @@ function applyRequesterLock() {
   /* Priority is an IT assessment field: the office never sees it. */
   var prioField = document.getElementById('fPriorityField');
   if (prioField) prioField.hidden = Store.db.role === 'requester';
+  /* The intake source is recorded by the coordinator when the request reaches
+     the IT Office.  An online request is filed as "online portal" for the
+     office user, who never sees or edits the field. */
+  var sourceField = document.getElementById('fSource');
+  if (sourceField) {
+    var sourceWrap = sourceField.closest('.field');
+    var hideSource = Store.db.role === 'requester';
+    if (sourceWrap) sourceWrap.hidden = hideSource;
+    sourceField.required = !hideSource;
+    if (hideSource && !sourceField.value) sourceField.value = 'online portal';
+  }
   /* Reply mode owns these fields (see setMode): never reopen them. */
   if (!document.getElementById('respondNote').hidden) return;
   var el = document.getElementById('fReq');
@@ -342,7 +364,7 @@ function setMode() {
   if (t && t.status === 'needs_info') {
     note.hidden = false;
     document.getElementById('respondId').textContent = t.id;
-    document.getElementById('formTitle').textContent = 'Supply missing information  --  ' + t.id;
+    document.getElementById('formTitle').textContent = 'Supply missing information: ' + t.id;
     document.getElementById('formHint').innerHTML = '<b>Supply missing information → update the existing ticket → return to review</b>';
     F('office').value = t.office; F('requester').value = t.requester;
     F('category').value = t.category; F('issue').value = t.issue;
@@ -361,7 +383,7 @@ function setMode() {
   } else {
     note.hidden = true;
     if (F('previousRecord')) F('previousRecord').disabled = false;
-    if (respondId && t) document.getElementById('formHint').innerHTML = 'Ticket <span class="mono">' + UI.esc(t.id) + '</span> is <b>' + UI.STATUS[t.status][0] + '</b>  --  no information is outstanding.';
+    if (respondId && t) document.getElementById('formHint').innerHTML = 'Ticket <span class="mono">' + UI.esc(t.id) + '</span> is <b>' + UI.STATUS[t.status][0] + '</b>. No information is outstanding.';
   }
 }
 
@@ -376,7 +398,7 @@ function renderSide() {
     return '<li><span class="ico">' + (t.status === 'needs_info' ? UI.icon('pen') : UI.icon('ticket')) + '</span>' +
       '<div class="body"><strong><span class="mono">' + UI.esc(t.id) + '</span> · ' + UI.esc(t.office) + '</strong>' +
       '<span>' + UI.esc(t.issue.slice(0, 54)) + '</span>' +
-      (t.withdrawal ? '<div class="hint mt-xs">Withdrawal requested  --  the IT Coordinator will record the cancellation reason.</div>' : '') +
+      (t.withdrawal ? '<div class="hint mt-xs">Withdrawal requested. The IT Coordinator will record the cancellation reason.</div>' : '') +
       (canWithdraw ? '<button class="btn btn-sm btn-danger-soft mt-xs" data-withdraw="' + t.id + '">Request withdrawal</button>' : '') +
       '</div>' +
       '<span class="when">' + UI.badge(t.status) + '</span></li>';
@@ -386,8 +408,19 @@ function renderSide() {
   });
 }
 
+function shipEvidence(id, chosen) {
+  if (!window.ApiMode || !window.Api || !id || !chosen.length) return;
+  var picks = chosen.slice(0, 10);
+  if (chosen.length > picks.length) UI.toast('The first 10 files are attached; a record holds 10.', 'err');
+  Promise.all(picks.map(function (f) {
+    return Api.upload(f, { ticketId: id }).catch(function (err) {
+      UI.toast(f.name + ': ' + err.message, 'err');
+    });
+  })).then(function () { Api.pull(); });
+}
+
 function withdraw(id) {
-  UI.openModal('Request withdrawal  --  ' + id,
+  UI.openModal('Request withdrawal: ' + id,
     '<div class="note mb-sm"><span>' + UI.icon('info') + '</span><div>The IT Coordinator records the cancellation reason, ' +
     'so the request keeps its status until they action it.</div></div>' +
     UI.field('Why is the request no longer needed?', UI.textarea('reason', 'e.g. Issue resolved without IT; request no longer needed.', '', 3, true)),
@@ -402,14 +435,18 @@ form.addEventListener('submit', function (e) {
   e.preventDefault();
   if (!UI.validateForm(form)) return;
   var role = Store.db.role;
-  var files = [];
+  var chosen = [];
   var fi = document.getElementById('fFiles');
-  if (fi.files) for (var i = 0; i < fi.files.length; i++) files.push(fi.files[i].name);
+  if (fi.files) for (var i = 0; i < fi.files.length; i++) chosen.push(fi.files[i]);
+  /* Against the backend the bytes travel after the record exists, so the
+     payload carries no evidence names; the offline demo records names only. */
+  var live = !!window.ApiMode;
+  var files = chosen.map(function (f) { return f.name; });
 
   if (respondId && Store.getTicket(respondId) && Store.getTicket(respondId).status === 'needs_info') {
-    var r = Flow.submitInfo(respondId, { issue: F('issue').value, asset: F('asset').value, attachments: files, note: 'details supplied via office reply' });
+    var r = Flow.submitInfo(respondId, { issue: F('issue').value, asset: F('asset').value, attachments: live ? [] : files, note: 'details supplied via office reply' });
     UI.toast(r.msg, r.ok ? 'ok' : 'err');
-    if (r.ok) { UI.renderBell(); var rid = respondId; respondId = ''; location.href = 'ticket.html?id=' + encodeURIComponent(rid); }
+    if (r.ok) { shipEvidence(respondId, chosen); UI.renderBell(); var rid = respondId; respondId = ''; location.href = 'ticket.html?id=' + encodeURIComponent(rid); }
     return;
   }
 
@@ -418,17 +455,20 @@ form.addEventListener('submit', function (e) {
     priority: F('priority').value, source: F('source').value,
     previousRecord: F('previousRecord').value,
     issue: F('issue').value.trim(), asset: F('asset').value.trim(),
-    dateReported: F('dateReported').value, idempotencyKey: F('idempotencyKey').value.trim(),
-    attachments: files
+    dateReported: F('dateReported').value,
+    idempotencyKey: F('idempotencyKey').value.trim() || idempotencyKey,
+    attachments: live ? [] : files
   };
   var res = Flow.createTicket(d);
   UI.toast(res.msg, res.ok ? 'ok' : 'err');
   if (res.ok) {
+    shipEvidence(res.id, chosen);
+    idempotencyKey = newIdempotencyKey();
     clearDraft();
     document.getElementById('successBox').hidden = false;
     document.getElementById('sucId').textContent = res.id;
     document.getElementById('sucNext').innerHTML =
-      'The IT Coordinator will review it  --  you will be notified here the moment it is assessed, assigned, or if details are missing.';
+      'The IT Coordinator will review it. You will be notified here the moment it is assessed, assigned, or if details are missing.';
     document.getElementById('sucOpen').href = 'ticket.html?id=' + encodeURIComponent(res.id);
     document.getElementById('btnSubmit').disabled = true;
     UI.renderBell(); renderSide();

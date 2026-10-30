@@ -82,10 +82,18 @@ def _user_dict(row):
             "phone": row["phone"]}
 
 
+SESSION_IDLE_MINUTES = 30
+SESSION_MAX_HOURS = 24
+# The idle clock only needs to move about once a minute.  Writing it on every
+# request would take the state lock on every request for no benefit.
+SESSION_TOUCH_SECONDS = 60
+
+
 def _issue(conn, row):
     token = secrets.token_urlsafe(24)
-    conn.execute("INSERT INTO sessions (token, user_id, role, created_at) VALUES (?,?,?,?)",
-                 (token, row["id"], row["role"], now_iso()))
+    now = now_iso()
+    conn.execute("INSERT INTO sessions (token, user_id, role, created_at, last_seen) VALUES (?,?,?,?,?)",
+                 (token, row["id"], row["role"], now, now))
     # housekeeping: drop sessions older than a day (re-login happens per page load)
     from datetime import datetime, timedelta, timezone
     cutoff = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
@@ -140,14 +148,43 @@ def login_google(conn, claims):
     return _issue(conn, row)
 
 
+def _session_time(value):
+    """Parse a stored ISO stamp; None when it is missing or unreadable."""
+    if not value:
+        return None
+    from datetime import datetime, timezone
+    try:
+        return datetime.strptime(str(value)[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
+
 def resolve(conn, token):
+    """Resolve a token, enforcing the absolute and idle session limits (D22)."""
     if not token:
         return None
     row = conn.execute(
-        "SELECT u.id, u.username, u.name, u.role, u.office, u.email, u.phone, u.active FROM sessions s "
+        "SELECT u.id, u.username, u.name, u.role, u.office, u.email, u.phone, u.active, "
+        "s.created_at AS session_created, s.last_seen AS session_seen FROM sessions s "
         "JOIN users u ON u.id = s.user_id WHERE s.token = ?", (token,)).fetchone()
     if not row or _inactive(row):
         return None
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
+    created = _session_time(row["session_created"])
+    seen = _session_time(row["session_seen"]) or created
+    expired = created is None or seen is None
+    if not expired:
+        expired = (now - created) > timedelta(hours=SESSION_MAX_HOURS)
+    if not expired:
+        expired = (now - seen) > timedelta(minutes=SESSION_IDLE_MINUTES)
+    if expired:
+        conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        conn.commit()
+        return None
+    if (now - seen) >= timedelta(seconds=SESSION_TOUCH_SECONDS):
+        conn.execute("UPDATE sessions SET last_seen = ? WHERE token = ?", (now_iso(), token))
+        conn.commit()
     return _user_dict(row)
 
 

@@ -43,19 +43,19 @@ move the map does not allow.
 | Office Requester (Office Representative) | Office Requester or Office Representative | only the offices the user belongs to |
 | IT Technician | IT Technician | tickets and maintenance jobs assigned to them, plus read-only office and asset history for those offices |
 | IT Coordinator | IT Coordinator | all offices |
-| System Administrator | not a swimlane | all offices, read-only oversight: no ticket, maintenance, scheduling or closure work; administration only |
+| System Administrator | not a swimlane | Administration only (role scope 5, `DECISIONS.md` D14): users, roles and office membership, offices, categories, configuration, and the read-only audit trail. No ticket, maintenance, scheduling or closure work, and no operational read surface: the ticket, job and schedule keys of its snapshot are empty and the ticket, report and export routes are refused |
 | System | System lane (automated, no screens) | n/a |
 
 ## Pages
 
 | Page | Requester | Technician | Coordinator | Management |
 |---|---|---|---|---|
-| Dashboard | yes | yes | yes | yes |
-| Tickets | yes | yes | yes | yes |
-| Ticket detail | yes | yes | yes | yes |
-| Office Service Register | yes | yes | yes | yes |
+| Dashboard | yes | yes | yes | no |
+| Tickets | yes | yes | yes | no |
+| Ticket detail | yes | yes | yes | no |
+| Office Service Register | yes | yes | yes | no |
 | Maintenance Visits (read-only) | yes | no | no | no |
-| Reports | yes | yes | yes | yes |
+| Reports | yes | yes | yes | no |
 | Workflow Guide | yes | yes | yes | yes |
 | Roles and Access | yes | yes | yes | yes |
 | Notifications | yes | yes | yes | yes |
@@ -63,21 +63,25 @@ move the map does not allow.
 | New Request | yes | no | yes | no |
 | Review and Assign | no | no | yes | no |
 | My Work | no | yes | no | no |
-| Maintenance | no | yes | yes | yes |
+| Maintenance | no | yes | yes | no |
 | Confirmation and Closure | yes | no | yes | no |
 | Users | no | no | no | yes |
 | Offices | no | no | no | yes |
 | Settings | no | no | no | yes |
 | Audit Log | no | no | no | yes |
 
-The Workflow Guide and Roles and Access rows describe route permission, not
-navigation. Both pages remain reachable at `flow.html` and `roles.html` for
-every role, but neither appears in the sidebar, the top bar or the mobile More
+The Workflow Guide, notifications and the profile are shared by every signed-in
+role and appear in the navigation of all four lanes. Roles and Access describes
+route permission, not navigation: the reference page stays reachable at
+`roles.html` for every role but appears in no sidebar, top bar or mobile More
 sheet.
 
+A page a lane cannot open is not offered to it at any device size: it is absent
+from the sidebar, the top bar and the mobile More sheet, and the generated role
+file for that page and role does not exist, so the URL itself cannot reach it.
 Page access is enforced twice: the pre-paint role guard in the generated role
-pages redirects a wrong-role visitor, and the backend scopes every read and
-write to the signed-in user's role and office.
+pages redirects a wrong-role visitor to that lane's own landing page, and the
+backend scopes every read and write to the signed-in user's role and office.
 
 ## Actions
 
@@ -154,8 +158,12 @@ visit.
 
 The System Administrator administers, it does not operate.  Its actions are
 `saveOffice`, `setOfficeActive`, `savePerson`, `setPersonActive`, `saveRef`
-and `saveSettings`.  It reads the operational screens for oversight but the
-backend refuses every workflow mutation, including state merges and
+and `saveSettings`.  Role scope 5 keeps it out of the operational screens as
+well as out of the workflow: it holds no dashboard, ticket, register, report or
+maintenance page, `/api/tickets`, `/api/reports` and `/api/export` answer 403
+for the lane, and its snapshot carries no ticket, job or schedule record.  It
+reads the audit trail, which is the evidence the administration work needs, and
+the backend refuses every workflow mutation, including state merges and
 attachment uploads.
 
 `recordOutcome` has two halves.  The assigned technician completes a visit
@@ -218,7 +226,8 @@ The queue owner per status, used for the "Needs my action" queue and the
 | Internal notes never reach an office session | `app._scoped` strips `visibility == "internal"` comments for requesters; the audit entry for an internal note is written by the engine, not exposed to the requester view |
 | Completed and cancelled records are never edited, only actioned through an audited path | `engine` exposes no update or delete for a closed ticket, and the audit log is append-only |
 | The audit log cannot be changed by any client | `POST /api/state` ignores the client audit list entirely; the database rejects updates and deletes on the audit table |
-| Reports and exports respect the data scope | `app._api_reports` and `app._api_export` use the same scoped snapshot as the screens: an office user sees its own office and the requests it raised, a technician their own workload, the coordinator and the administrator every office |
+| Reports and exports respect the data scope | `app._api_reports` and `app._api_export` use the same scoped snapshot as the screens: an office user sees its own office and the requests it raised, a technician their own workload, the coordinator every office. The administrator lane is refused both routes, and every report and export command it is given, because it holds no operational read surface (role scope 5) |
+| The administrator holds no operational record | `app._scoped_management` empties the `tickets`, `jobs` and `schedules` keys of its snapshot and `app._api_tickets`, `app._api_reports` and `app._api_export` answer 403 for the role; the audit trail and the administration data stay readable |
 
 ## Verification
 

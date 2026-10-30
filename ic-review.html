@@ -18,7 +18,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#1E3A5F">
-<script>(function(){var P="ic",R="coordinator",F="review.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["ic"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+<script>(function(){var P="ic",R="coordinator",F="review.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["ic"];var HOME={"requester": "or-dashboard.html", "technician": "itc-dashboard.html", "coordinator": "ic-dashboard.html", "management": "mgmt-users.html"};try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace(ALLOW.indexOf(o)>-1?(o+"-"+F):(HOME[a]||("or-"+F)));return;}window.ITC_URL_ROLE=P;})();</script>
 </head>
 <body>
 <div class="app">
@@ -40,7 +40,7 @@
           <div class="card">
             <div class="card-head">
               <h3>Coordinator worklist</h3>
-              <span class="chip" id="rvCount"> -- </span>
+              <span class="chip" id="rvCount">0</span>
             </div>
             <table class="table">
               <thead><tr><th>Ticket</th><th>Office</th><th>Status</th><th>Priority</th><th>Target</th></tr></thead>
@@ -93,12 +93,12 @@ function actionsHTML(t) {
      reason") in this lane, so the coordinator records the reason. */
   if (t.withdrawal) {
     h += '<div class="note warn"><span>' + UI.icon('repeat') + '</span><div><b>Withdrawal requested by the office.</b> ' +
-      UI.esc(t.withdrawal.reason || '') + '  --  record the cancellation reason to close this out.</div></div>';
+      UI.esc(t.withdrawal.reason || '') + '. Record the cancellation reason to close this out.</div></div>';
   }
   if (t.status === 'submitted') {
     if (!t.reviewed) {
       h += btn('Request missing details', 'needsinfo', 'btn-ghost') +
-        btn('Details complete  --  assess', 'assess', 'btn-primary') +
+        btn('Details complete, assess', 'assess', 'btn-primary') +
         btn('Record cancellation', 'cancel', 'btn-danger-soft');
     } else {
       h += btn('Assign technician', 'assign', 'btn-primary') +
@@ -114,9 +114,9 @@ function actionsHTML(t) {
       btn('Record cancellation', 'cancel', 'btn-danger-soft');
   } else if (t.status === 'on_hold') {
     h += btn('Record follow-up update', 'followup', 'btn-ghost') +
-      btn('Dependency resolved  --  resume', 'resolve', 'btn-primary') +
+      btn('Dependency resolved, resume', 'resolve', 'btn-primary') +
       btn('Reassign technician', 'reassign', 'btn-soft') +
-      btn('Cannot proceed  --  cancel', 'cannot', 'btn-danger-soft');
+      btn('Cannot proceed, cancel', 'cannot', 'btn-danger-soft');
   }
   return h;
 }
@@ -128,7 +128,7 @@ function render() {
   document.getElementById('rKpi').innerHTML =
     kpi('Awaiting review', c.submitted, 'Decide if the details are complete', 'k-brand', UI.icon('inbox')) +
     kpi('Needs information', c.needs_info, 'Office reply returns it to review', 'k-warn', UI.icon('pen')) +
-    kpi('Ready to schedule', c.assigned, 'Assigned  --  coordinate the visit', 'k-ok', UI.icon('cal')) +
+    kpi('Ready to schedule', c.assigned, 'Assigned, coordinate the visit', 'k-ok', UI.icon('cal')) +
     kpi('On hold · dependency', c.on_hold, 'Follow up or resume processing', 'k-hold', UI.icon('pause'));
 
   document.getElementById('rvCount').textContent = list.length + ' in review';
@@ -146,7 +146,7 @@ function render() {
       '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div></td>' +
       '<td data-label="Status">' + UI.badge(t.status) + '</td>' +
       '<td data-label="Priority">' + UI.prio(t.priority) + '</td>' +
-      '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : ' -- ') + '</td></tr>';
+      '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : 'Not set') + '</td></tr>';
   }).join('');
   document.querySelectorAll('#rvBody tr[data-id]').forEach(function (tr) {
     tr.addEventListener('click', function () { sel = tr.dataset.id; render(); });
@@ -179,10 +179,10 @@ function render() {
     '<div class="info mt">' +
     '<div><div class="k">Office / requester</div><div class="v">' + UI.esc(t.office) + ' · ' + UI.esc(t.requester) + '</div></div>' +
     '<div><div class="k">Category / source</div><div class="v">' + UI.esc(t.category) + ' · ' + UI.esc(UI.sourceLabel(t.source)) + '</div></div>' +
-    '<div><div class="k">Asset</div><div class="v mono">' + UI.esc(t.asset || ' -- ') + '</div></div>' +
-    '<div><div class="k">Impact / urgency</div><div class="v">' + UI.esc(t.impact || ' -- ') + ' / ' + UI.esc(t.urgency || ' -- ') + '</div></div>' +
-    '<div><div class="k">Target completion</div><div class="v">' + (t.target ? UI.dateOnly(t.target) : ' -- ') + '</div></div>' +
-    '<div><div class="k">Technician</div><div class="v">' + UI.esc(t.technician || ' -- ') + '</div></div>' +
+    '<div><div class="k">Asset</div><div class="v mono">' + UI.esc(t.asset || 'Not set') + '</div></div>' +
+    '<div><div class="k">Impact / urgency</div><div class="v">' + UI.esc(t.impact || 'Not set') + ' / ' + UI.esc(t.urgency || 'Not set') + '</div></div>' +
+    '<div><div class="k">Target completion</div><div class="v">' + (t.target ? UI.dateOnly(t.target) : 'Not set') + '</div></div>' +
+    '<div><div class="k">Technician</div><div class="v">' + UI.esc(t.technician || 'Unassigned') + '</div></div>' +
     '</div>' + dep +
     '<div class="row mt">' + actionsHTML(t) + '</div>' +
     '</div>';

@@ -29,7 +29,7 @@ PAGES = [
     "or-dashboard.html", "or-tickets.html", "or-ticket.html?id=IT-2026-000142",
     "itc-dashboard.html", "itc-technician.html", "itc-ticket.html?id=IT-2026-000142",
     "ic-dashboard.html", "ic-tickets.html", "ic-ticket.html?id=IT-2026-000142",
-    "mgmt-dashboard.html", "mgmt-tickets.html", "mgmt-ticket.html?id=IT-2026-000142",
+    "mgmt-users.html", "mgmt-offices.html", "mgmt-audit.html",
     "login.html",
 ]
 VIEWS = [("1440-light", 1440, 900, "light"), ("1440-dark", 1440, 900, "dark"),

@@ -1,4 +1,4 @@
-/* pwa.js -- installable web app behaviour.
+/* pwa.js: installable web app behaviour.
  *
  * Registers the service worker that caches the static app shell (never record
  * data) and exposes an install prompt for the browser.

@@ -18,7 +18,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#1E3A5F">
-<script>(function(){var P="ic",R="coordinator",F="dashboard.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+<script>(function(){var P="ic",R="coordinator",F="dashboard.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic"];var HOME={"requester": "or-dashboard.html", "technician": "itc-dashboard.html", "coordinator": "ic-dashboard.html", "management": "mgmt-users.html"};try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace(ALLOW.indexOf(o)>-1?(o+"-"+F):(HOME[a]||("or-"+F)));return;}window.ITC_URL_ROLE=P;})();</script>
 </head>
 <body>
 <div class="app">
@@ -49,7 +49,7 @@
               <div class="card">
                 <div class="card-head">
                   <h3>Ticket activity</h3>
-                  <span class="hint" id="actUpdated"> -- </span>
+                  <span class="hint" id="actUpdated">Loading</span>
                 </div>
                 <div class="card-pad">
                   <div class="row row-between">
@@ -130,7 +130,7 @@
           <div class="card actor-only">
             <div class="card-head">
               <h3>Needs your action</h3>
-              <span class="chip" id="mineCount"> -- </span>
+              <span class="chip" id="mineCount">0</span>
               <span class="hint" id="mineHint">the records waiting on your role</span>
             </div>
             <ul class="list" id="mineList"></ul>
@@ -155,7 +155,7 @@
         <div class="card">
           <div class="card-head">
             <h3>Active ticket queue</h3>
-            <span class="chip" id="queueCount"> -- </span>
+            <span class="chip" id="queueCount">0</span>
             <span class="hint">Sorted by target completion date · click a row</span>
           </div>
           <table class="table">
@@ -168,7 +168,7 @@
             <tbody id="queueBody"></tbody>
           </table>
           <div id="queuePagination"></div>
-          <div class="empty" id="queueEmpty" hidden><img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No active tickets  --  every request has reached a terminal state.</div>
+          <div class="empty" id="queueEmpty" hidden><img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No active tickets. Every request has reached a terminal state.</div>
         </div>
       </section>
 
@@ -596,7 +596,7 @@ function render() {
   var minePg = UI.paginate(mine, minePage, MINE_PER_PAGE);
   document.getElementById('mineList').innerHTML = minePg.items.map(function (m) {
     return '<li><span class="ico ok">' + UI.icon(m.kind === 'Ticket' ? 'ticket' : 'toolbox') + '</span>' +
-      '<a class="body" href="' + m.href + '"><strong>' + UI.esc(m.id) + '  --  ' + UI.esc(m.title) + '</strong>' +
+      '<a class="body" href="' + m.href + '"><strong>' + UI.esc(m.id) + ': ' + UI.esc(m.title) + '</strong>' +
       '<span>' + UI.esc(m.kind) + ' · ' + UI.esc(m.where) + ' · ' + statusLabel(m.status) + '</span>' +
       UI.waitingOn(m.status, m.kind === 'Maintenance') + '</a></li>';
   }).join('');
@@ -618,8 +618,8 @@ function render() {
       '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div><div class="t-sub">' + UI.esc(t.requester) + '</div></td>' +
       '<td data-label="Status">' + UI.badge(t.status) + UI.waitingOn(t.status) + '</td>' +
       '<td class="lead-only" data-label="Priority">' + UI.prio(t.priority) + '</td>' +
-      '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : ' -- ') + '</td>' +
-      '<td class="tech-only" data-label="Technician"><div class="t-title">' + UI.esc(t.technician || ' -- ') + '</div></td></tr>';
+      '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : 'Not set') + '</td>' +
+      '<td class="tech-only" data-label="Technician"><div class="t-title">' + UI.esc(t.technician || 'Unassigned') + '</div></td></tr>';
   }).join('');
   document.querySelectorAll('#queueBody tr[data-href]').forEach(function (tr) {
     tr.addEventListener('click', function () { location.href = tr.dataset.href; });
@@ -920,7 +920,7 @@ function avg(list) {
   return sum / list.length;
 }
 function fmtHours(h) {
-  if (h === null) return ' -- ';
+  if (h === null) return 'None';
   if (h < 24) return Math.round(h) + 'h';
   return (h / 24).toFixed(1) + 'd';
 }

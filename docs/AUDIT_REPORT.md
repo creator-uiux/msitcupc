@@ -351,11 +351,17 @@ Audit screenshots in `docs/audit-screenshots/`:
 
 | File | Content |
 |---|---|
-| `requester-dashboard-1440.png`, `requester-dashboard-390.png`, `requester-ticket-1440.png` | Requester role |
-| `technician-dashboard-1440.png`, `technician-dashboard-390.png`, `technician-ticket-1440.png` | Technician role |
-| `coordinator-dashboard-1440.png`, `coordinator-dashboard-390.png`, `coordinator-ticket-1440.png` | Coordinator role |
-| `management-dashboard-1440.png`, `management-dashboard-390.png`, `management-ticket-1440.png` | Management role |
-| `role-walkthrough.json` | Navigation, dashboard headings, action card per status, forbidden URL and API probes |
+| `requester-landing-1440.png`, `requester-landing-390.png`, `requester-ticket-1440.png` | Requester role |
+| `technician-landing-1440.png`, `technician-landing-390.png`, `technician-ticket-1440.png` | Technician role |
+| `coordinator-landing-1440.png`, `coordinator-landing-390.png`, `coordinator-ticket-1440.png` | Coordinator role |
+| `management-landing-1440.png`, `management-landing-390.png` | Management role: the users directory. The lane has no dashboard and no ticket screen (role scope 5), so it has no ticket capture |
+| `role-walkthrough.json` | Navigation, landing headings, action card per status, forbidden URL and API probes |
+
+`tests/audit/role_walkthrough.py` writes the `-landing-` captures of each lane's
+own landing page. The `management-dashboard-*.png` and
+`management-ticket-*.png` files still in the folder were taken before role
+scope 5 narrowed the lane and no longer match the generated pages; they are
+replaced on the next run of that script.
 | `forbidden-probe.json` | Redirects and neutral panel behavior per role |
 
 The repository already contains 124 light and dark screenshots at 390, 768 and 1440 px in `docs/screenshots/` for every major page, captured on 2026-10-29 before this audit. Two were reviewed for this report (requester dashboard and login at 390). The rest were not re-reviewed image by image, which is why test 81 is marked partial.

@@ -44,7 +44,7 @@
     "demoIntakeSimulation": {
       "enabled": false,
       "baseline": "none",
-      "reason": "Demo traffic simulation switch in Configuration. The PDF has no simulated intake; normal intake and reminders stay."
+      "reason": "Demo traffic simulation: the Configuration switch and the records it invents. The PDF has no simulated intake, so with the flag off no ticket is created on its own and normal intake and reminders stay."
     },
     "profilePasswordChange": {
       "enabled": false,

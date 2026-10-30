@@ -64,7 +64,7 @@ the design narrative.
 | `delivery.py` | Notification delivery: outbox / console / SMTP e-mail / SMS webhook |
 | `workers.py` | Background world-clock thread |
 | `app.py` | `ThreadingHTTPServer`: static files + REST + SSE hub + CLI |
-| `tests.py` | 335 assertions: engine, RBAC, tenancy, OIDC, delivery, persistence, HTTP, SSE, seed shape, site serving |
+| `tests.py` | 457 assertions: engine, RBAC, tenancy, OIDC, delivery, persistence, HTTP, SSE, seed shape, site serving |
 
 The engine keeps the prototype's method names (camelCase), status strings, guard
 messages, history `kind`s and notification wording **verbatim**, so the existing
@@ -82,11 +82,11 @@ GET  /api/health                 public            → {ok, rev, googleClientId,
 POST /api/login                  {username,password} | {role} | {credential}
                                                     → {ok, token, user, state}
 POST /api/logout                 bearer            → {ok}
-GET  /api/state                  bearer            → dataset (office-scoped for a requester)
+GET  /api/state                  bearer            → dataset, scoped to the signed-in lane
 POST /api/call                   {method, args}    → {ok, msg, id?, state}
 GET  /api/events?token=          SSE stream        → data: {type, rev, by, method} | {type:'tick', events}
-GET  /api/reports                bearer            → aggregate counts
-GET  /api/tickets                bearer            → server-side paged/filtered/sorted ticket list
+GET  /api/reports                bearer            → aggregate counts (not the administrator lane)
+GET  /api/tickets                bearer            → server-side paged/filtered/sorted ticket list (not the administrator lane)
 GET  /api/users                  bearer (mgmt/coord) → people directory (role/office filters)
 POST /api/users                  bearer (mgmt)     → create/update a person; rename cascades
 POST /api/profile                bearer            → update own e-mail/phone/prefs/password
@@ -128,6 +128,14 @@ A **requester** is additionally scoped to their own office (SOP 28.2): their
 another office's record returns
 `{"ok": false, "msg": "Blocked by office-based access (28.2)."}`. Bulk
 `/api/state` replacement is limited to coordinators/management.
+
+The **System Administrator** is the administration lane, not an oversight
+reader (role scope 5, `docs/DECISIONS.md` D14). Its `/api/state` carries the
+offices, the people, the reference data, the settings and the audit trail, and
+the `tickets`, `jobs` and `schedules` keys come back empty, because the
+workflow lives in the three diagram lanes. `/api/tickets`, `/api/reports` and
+`/api/export` return the 403 message above for that role, and every workflow
+method is refused by the action guards.
 
 Methods mirror `js/flow.js`: `createTicket`, `submitInfo`, `requestInfo`,
 `assess`, `assign`, `coordinate`, `cancel`, `followUp`, `resolveDependency`,
@@ -204,7 +212,7 @@ breaks the workflow.
 ## Tests
 
 ```bash
-python server/tests.py        # 335 assertions (quiet); add -v to list each
+python server/tests.py        # 457 assertions (quiet); add -v to list each
 ```
 
 Covers the full ticket lifecycle and guards, dependency hold/resolve/cancel,
@@ -218,5 +226,5 @@ traversal protection, and the seed shape.
 End-to-end through a real browser:
 
 ```bash
-python tools/api_check.py     # 12 assertions; drives Chrome over CDP (live by default)
+python tools/api_check.py     # 17 assertions; drives Chrome over CDP (live by default)
 ```

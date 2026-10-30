@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Settings  --  ITC Maintenance System</title>
+<title>Settings | ITC Maintenance System</title>
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/green.css">
 <link rel="stylesheet" href="css/kit.css">
@@ -209,7 +209,7 @@ function render() {
       return '<tr><td data-label="Frequency">' + UI.esc(row[1]) + '</td><td data-label="Key"><span class="mono">' + UI.esc(row[0]) + '</span></td><td data-label="Days">' + row[2] + '</td></tr>';
     }).join('') + '</tbody></table>' +
     '<div id="freqPagination"></div>' +
-    '<p class="card-sub mt">The next due date is <b>previous due date + days</b>  --  a late visit never drifts the whole plan.</p>';
+    '<p class="card-sub mt">The next due date is <b>previous due date + days</b>. A late visit never drifts the whole plan.</p>';
   UI.renderPagination(document.getElementById('freqPagination'), fr, function (p) { freqPage = p; render(); });
 
   /* bind */

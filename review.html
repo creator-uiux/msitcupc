@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Review &amp; Assign  --  ITC Maintenance System</title>
+<title>Review &amp; Assign | ITC Maintenance System</title>
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/green.css">
 <link rel="stylesheet" href="css/kit.css">
@@ -39,7 +39,7 @@
           <div class="card">
             <div class="card-head">
               <h3>Coordinator worklist</h3>
-              <span class="chip" id="rvCount"> -- </span>
+              <span class="chip" id="rvCount">0</span>
             </div>
             <table class="table">
               <thead><tr><th>Ticket</th><th>Office</th><th>Status</th><th>Priority</th><th>Target</th></tr></thead>
@@ -92,12 +92,12 @@ function actionsHTML(t) {
      reason") in this lane, so the coordinator records the reason. */
   if (t.withdrawal) {
     h += '<div class="note warn"><span>' + UI.icon('repeat') + '</span><div><b>Withdrawal requested by the office.</b> ' +
-      UI.esc(t.withdrawal.reason || '') + '  --  record the cancellation reason to close this out.</div></div>';
+      UI.esc(t.withdrawal.reason || '') + '. Record the cancellation reason to close this out.</div></div>';
   }
   if (t.status === 'submitted') {
     if (!t.reviewed) {
       h += btn('Request missing details', 'needsinfo', 'btn-ghost') +
-        btn('Details complete  --  assess', 'assess', 'btn-primary') +
+        btn('Details complete, assess', 'assess', 'btn-primary') +
         btn('Record cancellation', 'cancel', 'btn-danger-soft');
     } else {
       h += btn('Assign technician', 'assign', 'btn-primary') +
@@ -113,9 +113,9 @@ function actionsHTML(t) {
       btn('Record cancellation', 'cancel', 'btn-danger-soft');
   } else if (t.status === 'on_hold') {
     h += btn('Record follow-up update', 'followup', 'btn-ghost') +
-      btn('Dependency resolved  --  resume', 'resolve', 'btn-primary') +
+      btn('Dependency resolved, resume', 'resolve', 'btn-primary') +
       btn('Reassign technician', 'reassign', 'btn-soft') +
-      btn('Cannot proceed  --  cancel', 'cannot', 'btn-danger-soft');
+      btn('Cannot proceed, cancel', 'cannot', 'btn-danger-soft');
   }
   return h;
 }
@@ -127,7 +127,7 @@ function render() {
   document.getElementById('rKpi').innerHTML =
     kpi('Awaiting review', c.submitted, 'Decide if the details are complete', 'k-brand', UI.icon('inbox')) +
     kpi('Needs information', c.needs_info, 'Office reply returns it to review', 'k-warn', UI.icon('pen')) +
-    kpi('Ready to schedule', c.assigned, 'Assigned  --  coordinate the visit', 'k-ok', UI.icon('cal')) +
+    kpi('Ready to schedule', c.assigned, 'Assigned, coordinate the visit', 'k-ok', UI.icon('cal')) +
     kpi('On hold · dependency', c.on_hold, 'Follow up or resume processing', 'k-hold', UI.icon('pause'));
 
   document.getElementById('rvCount').textContent = list.length + ' in review';
@@ -145,7 +145,7 @@ function render() {
       '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div></td>' +
       '<td data-label="Status">' + UI.badge(t.status) + '</td>' +
       '<td data-label="Priority">' + UI.prio(t.priority) + '</td>' +
-      '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : ' -- ') + '</td></tr>';
+      '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : 'Not set') + '</td></tr>';
   }).join('');
   document.querySelectorAll('#rvBody tr[data-id]').forEach(function (tr) {
     tr.addEventListener('click', function () { sel = tr.dataset.id; render(); });
@@ -178,10 +178,10 @@ function render() {
     '<div class="info mt">' +
     '<div><div class="k">Office / requester</div><div class="v">' + UI.esc(t.office) + ' · ' + UI.esc(t.requester) + '</div></div>' +
     '<div><div class="k">Category / source</div><div class="v">' + UI.esc(t.category) + ' · ' + UI.esc(UI.sourceLabel(t.source)) + '</div></div>' +
-    '<div><div class="k">Asset</div><div class="v mono">' + UI.esc(t.asset || ' -- ') + '</div></div>' +
-    '<div><div class="k">Impact / urgency</div><div class="v">' + UI.esc(t.impact || ' -- ') + ' / ' + UI.esc(t.urgency || ' -- ') + '</div></div>' +
-    '<div><div class="k">Target completion</div><div class="v">' + (t.target ? UI.dateOnly(t.target) : ' -- ') + '</div></div>' +
-    '<div><div class="k">Technician</div><div class="v">' + UI.esc(t.technician || ' -- ') + '</div></div>' +
+    '<div><div class="k">Asset</div><div class="v mono">' + UI.esc(t.asset || 'Not set') + '</div></div>' +
+    '<div><div class="k">Impact / urgency</div><div class="v">' + UI.esc(t.impact || 'Not set') + ' / ' + UI.esc(t.urgency || 'Not set') + '</div></div>' +
+    '<div><div class="k">Target completion</div><div class="v">' + (t.target ? UI.dateOnly(t.target) : 'Not set') + '</div></div>' +
+    '<div><div class="k">Technician</div><div class="v">' + UI.esc(t.technician || 'Unassigned') + '</div></div>' +
     '</div>' + dep +
     '<div class="row mt">' + actionsHTML(t) + '</div>' +
     '</div>';

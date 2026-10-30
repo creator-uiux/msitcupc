@@ -618,6 +618,31 @@ tests.push(async function technicianPage() {
     ok(card.querySelector('[data-detail]') !== null, 'the dialog stays available as a fallback');
   }
 
+  /* a job the technician cannot work hides its editor, it is not grayed out */
+  var heldJob = p.w.Store.db.jobs.filter(function (j) {
+    return j.technician === p.w.ROLES.technician.name && j.items.length > 0;
+  })[0];
+  if (heldJob) {
+    var heldStatusBefore = heldJob.status;
+    heldJob.status = 'submitted';
+    p.w.render();
+    var held = $('#wJobs [data-jobcard="' + heldJob.id + '"]');
+    ok(held !== null, 'the job card renders for the held job');
+    if (held) {
+      ok(held.querySelector('.chk-seg') === null, 'an uncoordinated visit hides the result segments');
+      ok(held.querySelector('.chk-finding input') === null, 'an uncoordinated visit hides the finding field');
+      ok(held.querySelector('.file-btn') === null, 'an uncoordinated visit hides the photo picker');
+      ok(held.querySelector('[data-detail]') === null, 'an uncoordinated visit hides the record dialog');
+      ok(held.querySelector('[data-save-job],[data-flag-fault],[data-outcome]') === null,
+        'an uncoordinated visit hides save, fault flag and completion');
+      ok(/Waiting on: IT Coordinator/.test(held.querySelector('.chk-foot').textContent),
+        'the job card says who must act next in plain text');
+      heldJob.status = heldStatusBefore;
+      p.w.render();
+    }
+  }
+  ok($$('#wJobs [disabled]').length === 0, 'no grayed-out control is left in the technician checklist');
+
   /* outcome guard: success on incomplete job must fail */
   var job = null;
   p.w.Store.db.jobs.forEach(function (j) {
@@ -746,6 +771,23 @@ tests.push(async function reportsPage() {
   setVal(p, $('#fOffice'), ''); setVal(p, $('#fStatus'), 'cancelled');
   ok($('#rKpi').textContent.indexOf('Cancelled') > -1, 'cancelled totals reported separately');
   ok(p.errors.length === 0, 'no errors after filtering');
+
+  /* the printed copy carries every filtered row, not the page on screen */
+  setVal(p, $('#fStatus'), '');
+  p.w.Store.update(function (db) {
+    for (var k = 0; k < 8; k++) db.tickets.push(JSON.parse(JSON.stringify(db.tickets[0])));
+  });
+  var onScreen = $$('#rBody tr').length;
+  var allRows = p.w.Store.db.tickets.length;
+  var captured = -1;
+  p.w.print = function () { captured = $$('#rBody tr').length; };
+  $('#fPrint').click();
+  ok(onScreen < allRows, 'the screen shows one page of a longer register (' + onScreen + ' of ' + allRows + ')');
+  ok(captured === allRows, 'the printed copy lists every row (' + captured + ')');
+  ok($$('#rBody tr').length === onScreen, 'the screen goes back to its page after printing');
+  ok($('#rPrintDoc').textContent.indexOf('University of the Philippines Cebu') > -1,
+    'the printed copy carries the UP Cebu letterhead');
+  ok(p.errors.length === 0, 'no errors after the print pass');
   close(p);
 });
 
@@ -777,6 +819,15 @@ tests.push(async function flowPage() {
   ok(done === covRows.length, 'coverage proof: every node implemented (' + done + '/' + covRows.length + ')');
   var counter = ($('#covCount').textContent.match(/(\d+)\s*\/\s*(\d+)/) || []);
   ok(counter[1] && counter[1] === counter[2], 'coverage counter reads N / N: ' + $('#covCount').textContent);
+
+  /* the lane filter belongs to a swimlane: no lane means no button, not a grayed one */
+  var mineBtn = $('#laneMine');
+  ok(mineBtn !== null && mineBtn.hidden === false && mineBtn.disabled === false,
+    'a lane role gets a working lane filter');
+  asRole(p, 'management');
+  p.w.render();
+  ok($('#laneMine').hidden === true && $('#laneMine').disabled === false,
+    'the administrator gets no lane filter button (scope 5: no swimlane)');
   close(p);
 });
 
@@ -915,6 +966,30 @@ tests.push(async function scopeConveniences() {
     'the simulation switch returns when its flag is on');
   close(stOn);
 
+  /* The registry gates the behaviour, not only the control: with the flag off,
+     turning the stored switch on must not invent an intake record. */
+  var simOff = await open(BASE + 'dashboard.html');
+  simOff.w.Math.random = function () { return 0; };
+  simOff.w.Store.update(function (db) { db.settings.simulate = true; db.lastSim = 0; });
+  var simN0 = simOff.w.Store.db.tickets.length;
+  for (var simI = 0; simI < 5; simI++) {
+    simOff.w.Store.db.lastSim = 0;
+    simOff.w.Live.runOnce();
+  }
+  ok(simOff.w.Store.db.tickets.length === simN0,
+    'no simulated intake arrives while the registry flag is off');
+  close(simOff);
+
+  var simOn = await openFeatures(BASE + 'dashboard.html', { demoIntakeSimulation: true });
+  simOn.w.Math.random = function () { return 0; };
+  simOn.w.Store.update(function (db) { db.settings.simulate = true; db.lastSim = 0; });
+  var beforeSim = simOn.w.Store.db.tickets.length;
+  simOn.w.Store.db.lastSim = 0;
+  simOn.w.Live.runOnce();
+  ok(simOn.w.Store.db.tickets.length === beforeSim + 1,
+    'the simulated intake works again when its flag is on');
+  close(simOn);
+
   var pfOn = await openFeatures(BASE + 'profile.html', { profilePasswordChange: true });
   ok(pfOn.d.getElementById('passwordCard') !== null, 'the password card returns when its flag is on');
   close(pfOn);
@@ -1035,12 +1110,13 @@ tests.push(async function roleNav() {
   var nav = function () {
     return $$('.side-link[href]').map(function (a) { return a.textContent.replace(/\s+/g, ' ').trim(); });
   };
-  /* Both reference screens are routable but must stay out of the navigation
-     for every role, on the desktop rail and in the phone More sheet. */
+  /* The Workflow Guide is shared by every signed-in lane, so it is listed for
+     all four roles.  The roles and access reference stays behind its registry
+     flag and out of the navigation. */
   ['requester', 'technician', 'coordinator', 'management'].forEach(function (r) {
     asRole(p, r);
     var refs = nav().join('|');
-    ok(refs.indexOf('Workflow Guide') === -1, r + ' does not list the workflow guide');
+    ok(refs.indexOf('Workflow Guide') > -1, r + ' lists the workflow guide');
     ok(refs.indexOf('Roles and Access') === -1, r + ' does not list the roles and access reference');
   });
   asRole(p, 'coordinator');
@@ -1060,8 +1136,17 @@ tests.push(async function roleNav() {
   var m = nav().join('|');
   ok(m.indexOf('New Request') === -1, 'management cannot submit requests');
   ok(m.indexOf('Roles and Access') === -1, 'the reference pages stay out of the sidebar');
-  ok(m.indexOf('Workflow Guide') === -1, 'the workflow guide stays out of the sidebar');
-  ok(m.indexOf('Maintenance') > -1, 'management can still open maintenance');
+  ok(m.indexOf('Workflow Guide') > -1, 'the administrator also sees the workflow guide');
+  /* Role scope 5: Administration plus the read-only audit viewer, nothing else. */
+  ok(m.indexOf('Maintenance') === -1, 'the administrator lane holds no maintenance screen');
+  ok(m.indexOf('Service Records') === -1 && m.indexOf('Tickets') === -1,
+     'the administrator lane holds no ticket screen');
+  ok(m.indexOf('Office Register') === -1, 'the administrator lane holds no register');
+  ok(m.indexOf('Reports') === -1, 'the administrator lane holds no reports');
+  ok(m.indexOf('Dashboard') === -1, 'the administrator lane has no dashboard');
+  ok(m.indexOf('Users') > -1 && m.indexOf('Offices') > -1 &&
+     m.indexOf('Configuration') > -1 && m.indexOf('Audit Log') > -1,
+     'the administrator keeps Administration and the audit viewer (' + m + ')');
   ok(p.errors.length === 0, 'no errors switching roles');
   close(p);
 });
@@ -1260,6 +1345,25 @@ tests.push(async function roleScoping() {
   ok($('#accessPanel') !== null, 'the coordinator is blocked from the audit viewer');
   close(pa);
 
+  /* Role scope 5: the administrator lane is Administration plus the audit
+     viewer, so every operational screen refuses it with the neutral panel. */
+  var ADMIN_DENIED = ['dashboard.html', 'tickets.html', 'register.html',
+                      'reports.html', 'maintenance.html'];
+  for (var adi = 0; adi < ADMIN_DENIED.length; adi++) {
+    var pd = await open(BASE + ADMIN_DENIED[adi]);
+    asRole(pd, 'management');
+    ok($('#accessPanel') !== null,
+       'the administrator is blocked from ' + ADMIN_DENIED[adi]);
+    ok($('#accessPanel').textContent.indexOf('This page is not available') > -1,
+       ADMIN_DENIED[adi] + ' gives the administrator a neutral explanation');
+    close(pd);
+  }
+  var pun = await open(BASE + 'users.html');
+  asRole(pun, 'management');
+  ok($('#accessPanel') === null, 'the administrator still opens the users directory');
+  ok($('#uBody') !== null, 'the users directory renders for the administrator');
+  close(pun);
+
   /* the policy controls live on the administration settings screen */
   var ps = await open(BASE + 'settings.html');
   asRole(ps, 'management');
@@ -1281,8 +1385,7 @@ tests.push(async function roleScoping() {
 tests.push(async function ticketRoleLinks() {
   var p = await open(BASE + 'ticket.html?id=IT-2026-000141');
   asRole(p, 'management');
-  ok($('#tActions a[href^="confirm.html"]') === null, 'management gets no confirmation link on the record');
-  ok(/Read-only for your role/.test($('#tActions').textContent), 'record explains read-only oversight');
+  ok($('#accessPanel') !== null, 'the administrator is blocked from the ticket record (scope 5)');
   asRole(p, 'coordinator');
   ok($('#tActions a[href^="confirm.html"]') !== null, 'coordinator gets the confirmation link');
   asRole(p, 'requester');
@@ -1317,11 +1420,9 @@ var NEW_SCREENS = [
   ['profile.html', 'coordinator', '#pCard'],
   ['profile.html', 'technician', '#pCard'],
   ['register.html', 'requester', '#gBody'],
-  ['register.html', 'management', '#gBody'],
   ['tickets.html', 'coordinator', '#tkBody'],
   ['tickets.html', 'requester', '#tkBody'],
   ['maintenance.html', 'coordinator', '#sBody'],
-  ['maintenance.html', 'management', '#sBody'],
   ['reports.html', 'coordinator', '#rBody']
 ];
 
@@ -1362,9 +1463,10 @@ tests.push(async function mobileNav() {
         'More sheet reaches the notification centre');
       ok(hrefs.some(function (h) { return /profile\.html$/.test(h); }),
         'More sheet reaches the profile');
-      /* the reference screens are not part of the signed-in navigation */
-      ok(!hrefs.some(function (h) { return /flow\.html$/.test(h); }),
-        'More sheet does not list the workflow guide');
+      /* the workflow guide is shared by every signed-in lane; the roles
+         reference stays behind its registry flag */
+      ok(hrefs.some(function (h) { return /flow\.html$/.test(h); }),
+        'More sheet reaches the workflow guide');
       ok(!hrefs.some(function (h) { return /roles\.html$/.test(h); }),
         'More sheet does not list the roles and access reference');
       /* a destination must never be listed twice */
@@ -1504,6 +1606,108 @@ tests.push(async function workOrderCards() {
       'the staff card counts every reply');
   }
   ok(p.errors.length === 0, 'no errors from the card view');
+  close(p);
+});
+
+/* Audit U5 (test 99): the board is a second door to the same guarded workflow.
+   Every move it offers must be on the whitelist, and a move button that the
+   page never rendered - a crafted one - must be refused with the card left in
+   the column it came from.  Rejecting the same call when it is sent straight
+   to the API is covered by the server-side transition matrix. */
+tests.push(async function boardMoveGuard() {
+  var p = await openFeatures(BASE + 'tickets.html', { ticketsBoardView: true });
+  asRole(p, 'coordinator');
+  ok(p.errors.length === 0, 'the board loads for the move guard test');
+  var boardBtn = $$('#tkView [data-view="board"]')[0];
+  ok(boardBtn !== undefined, 'the board layout is chosen');
+  boardBtn.click();
+
+  function columnOf(id) {
+    var card = $('#tkBoard .wo-card[href="ticket.html?id=' + encodeURIComponent(id) + '"]');
+    if (!card) return null;
+    var col = card.closest('[data-board-status]');
+    return col && col.getAttribute('data-board-status');
+  }
+
+  /* 1. The offered targets are exactly the whitelisted ones for each card. */
+  var cells = $$('#tkBoard .wo-cell');
+  ok(cells.length > 0, 'the board renders move menus (' + cells.length + ')');
+  var wrong = [], missing = [];
+  cells.forEach(function (cell) {
+    var card = cell.querySelector('.wo-card');
+    if (!card) return;
+    var id = decodeURIComponent((card.getAttribute('href') || '').split('id=')[1] || '');
+    var t = p.w.Store.getTicket(id);
+    if (!t || p.w.Query.TERMINAL_STATES.indexOf(t.status) > -1) return;
+    var allowed = p.w.Query.ALL_STATES.filter(function (s) { return p.w.Flow.canTransition(t.status, s); });
+    var offered = Array.prototype.slice.call(cell.querySelectorAll('[data-move]'))
+      .map(function (b) { return b.getAttribute('data-move'); });
+    offered.forEach(function (s) { if (allowed.indexOf(s) === -1) wrong.push(id + ' offers ' + s); });
+    allowed.forEach(function (s) { if (offered.indexOf(s) === -1) missing.push(id + ' hides ' + s); });
+  });
+  ok(!wrong.length, 'no card offers a move outside the whitelist' + (wrong.length ? ' -> ' + wrong.slice(0, 3).join(', ') : ''));
+  ok(!missing.length, 'no card hides a move the whitelist allows' + (missing.length ? ' -> ' + missing.slice(0, 3).join(', ') : ''));
+
+  var submittedMoves = $$('#tkBoard [data-board-status="submitted"] [data-move]')
+    .map(function (b) { return b.getAttribute('data-move'); });
+  ok(submittedMoves.length > 0, 'a Submitted card offers its moves (' + submittedMoves.length + ')');
+  ok(submittedMoves.indexOf('resolved') === -1 && submittedMoves.indexOf('closed') === -1,
+    'a Submitted card never offers a closure');
+
+  /* 2. A crafted closure on a Submitted card is refused and the card snaps
+         back: the click handler hands the request to the guarded action, the
+         guard says no, and the board is not re-rendered. */
+  var first = $$('#tkBoard [data-board-status="submitted"] .wo-card')[0];
+  ok(first !== undefined, 'a Submitted card is on the board to probe');
+  if (first) {
+    var sid = decodeURIComponent(first.getAttribute('href').split('id=')[1]);
+    var btn = p.d.createElement('button');
+    btn.setAttribute('data-move', 'closed');
+    btn.setAttribute('data-id', sid);
+    first.parentNode.appendChild(btn);
+    btn.click();
+    var reason = $('.modal-host [name="reason"]');
+    ok(reason !== null, 'the crafted move opens the guarded closure form');
+    if (reason) {
+      reason.value = 'probe: closure attempted from Submitted';
+      $('#mGo').click();
+    }
+    var errs = $$('.toast.err');
+    ok(errs.length > 0, 'the refused move reports the refusal');
+    ok(errs.length > 0 && /not allowed|cannot|Closed/i.test(errs[errs.length - 1].textContent),
+      'the refusal names the illegal status change', errs.length ? errs[errs.length - 1].textContent : '');
+    ok(p.w.Store.getTicket(sid).status === 'submitted', 'the refused move leaves the status alone',
+      p.w.Store.getTicket(sid).status);
+    ok(columnOf(sid) === 'submitted', 'the refused card stays in the Submitted column', columnOf(sid));
+    ok($('.modal-host') === null, 'the refused form closes itself');
+  }
+
+  /* 3. A move the whitelist grants still lands through the same crafted
+         button, and the board repaints the card into its new column. */
+  var ready = p.w.Store.db.tickets.filter(function (t) {
+    return t.status === 'submitted' && columnOf(t.id) === 'submitted';
+  })[0];
+  if (ready) {
+    var host = $('#tkBoard [data-board-status="submitted"] .wo-card[href$="' + encodeURIComponent(ready.id) + '"]').parentNode;
+    var nbtn = p.d.createElement('button');
+    nbtn.setAttribute('data-move', 'needs_info');
+    nbtn.setAttribute('data-id', ready.id);
+    host.appendChild(nbtn);
+    nbtn.click();
+    var missing = $('.modal-host [name="missing"]');
+    ok(missing !== null, 'the allowed move opens its form');
+    if (missing) {
+      missing.value = 'probe: serial number and room number';
+      $('#mGo').click();
+    }
+    var moved = p.w.Store.getTicket(ready.id);
+    ok(moved.status === 'needs_info', 'the allowed move is recorded', moved.status);
+    ok(columnOf(ready.id) === 'needs_info', 'the accepted card moves to its column', columnOf(ready.id));
+    ok($$('.toast.ok').length > 0, 'the accepted move reports its result');
+  } else {
+    ok(false, 'a Submitted ticket is available for the allowed move probe');
+  }
+  ok(p.errors.length === 0, 'no errors from the move guard test', p.errors.join(' | '));
   close(p);
 });
 
@@ -1820,16 +2024,21 @@ tests.push(async function scopeAcrossWidths() {
     ['mgmt', 'management']
   ];
   var expected = {
-    requester: ['confirm.html', 'dashboard.html', 'notifications.html', 'profile.html',
-      'register.html', 'reports.html', 'request.html', 'tickets.html?queue=mine', 'visits.html'],
-    technician: ['dashboard.html', 'maintenance.html', 'notifications.html', 'profile.html',
-      'register.html', 'reports.html', 'technician.html'],
-    coordinator: ['confirm.html', 'dashboard.html', 'maintenance.html', 'notifications.html',
-      'profile.html', 'register.html', 'reports.html', 'request.html', 'review.html', 'tickets.html'],
-    management: ['audit.html', 'dashboard.html', 'maintenance.html', 'notifications.html',
-      'offices.html', 'profile.html', 'register.html', 'reports.html', 'settings.html',
-      'tickets.html', 'users.html']
+    requester: ['confirm.html', 'dashboard.html', 'flow.html', 'notifications.html',
+      'profile.html', 'register.html', 'reports.html', 'request.html',
+      'tickets.html?queue=mine', 'visits.html'],
+    technician: ['dashboard.html', 'flow.html', 'maintenance.html', 'notifications.html',
+      'profile.html', 'register.html', 'reports.html', 'technician.html'],
+    coordinator: ['confirm.html', 'dashboard.html', 'flow.html', 'maintenance.html',
+      'notifications.html', 'profile.html', 'register.html', 'reports.html',
+      'request.html', 'review.html', 'tickets.html'],
+    management: ['audit.html', 'flow.html', 'notifications.html', 'offices.html',
+      'profile.html', 'settings.html', 'users.html']
   };
+  /* Each lane is opened at its own landing page: the administrator has no
+     dashboard, so its lane opens at the users directory (role scope 5). */
+  var landing = { requester: 'dashboard.html', technician: 'dashboard.html',
+                  coordinator: 'dashboard.html', management: 'users.html' };
   var seen = {};
 
   for (var i = 0; i < roles.length; i++) {
@@ -1837,7 +2046,7 @@ tests.push(async function scopeAcrossWidths() {
     seen[role] = {};
     for (var j = 0; j < widths.length; j++) {
       var w = widths[j];
-      var p = await openWidth(BASE + prefix + '-dashboard.html', w);
+      var p = await openWidth(BASE + prefix + '-' + landing[role], w);
       ok(p.errors.length === 0, role + ' at ' + w + 'px loads with no errors' +
         (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));
       var got = navDestinations(p);

@@ -1,9 +1,9 @@
-/* query.js  --  the browser mirror of server/query.py.
+/* query.js: the browser mirror of server/query.py.
  *
  * One definition of the list contract and the KPI maths, shared by both modes:
- *   • live mode (window.ApiMode)  --  the ticket list calls GET /api/tickets, so the
+ *   • live mode (window.ApiMode); the ticket list calls GET /api/tickets, so the
  *     server decides visibility and only ships the requested page;
- *   • local demo mode  --  the identical filter/sort/paginate maths runs over
+ *   • local demo mode; the identical filter/sort/paginate maths runs over
  *     Store.db, so a browser without the backend reports the same numbers.
  *
  * The turnaround / overdue / summarise semantics must stay line-for-line equal

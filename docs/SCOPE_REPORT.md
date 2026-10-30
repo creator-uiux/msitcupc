@@ -80,14 +80,20 @@ Visible: Dashboard; Tickets, New Request, Review and Assign, Confirmation; Maint
 
 ### System Administrator
 
-Visible: Dashboard; Service Records, Maintenance; Office Register, Reports; Administration Users, Offices, Configuration, Audit Log; Notifications, Profile.
+Visible: Administration Users, Offices, Configuration, Audit Log, plus the
+shared Workflow Guide, Notifications and Profile.  Role scope 5 takes the
+dashboard, the ticket screens, the office register, reports and maintenance out
+of this lane, so it holds administration work and the read-only audit viewer
+only.  `GET /api/tickets`, `/api/reports` and `/api/export` answer 403 for the
+lane, and the generated `mgmt-*` files exist only for the pages it may open.
 
 | Surface | Baseline | Decision | Flag | Files |
 |---|---|---|---|---|
-| Dashboard | B Appendix E.3, C 25.5A | KEPT, sparklines off | `dashboardKpiSparklines` | `dashboard.html`, generated `mgmt-dashboard.html` |
-| Service Records and ticket detail | B Appendix E.1 and E.2 | KEPT, board and jump picker off | two flags | `tickets.html`, `ticket.html` |
-| Maintenance | A preventive maintenance | KEPT, calendar planner off | `maintenancePlanner` | `maintenance.html` |
-| Register and reports | A register and reports | KEPT | none | `register.html`, `reports.html` |
+| Dashboard | B Appendix E.3, C 25.5A | REMOVED from the lane (role scope 5) | none | `permissions.json`, `js/ui.js` |
+| Service Records and ticket detail | B Appendix E.1 and E.2 | REMOVED from the lane, refused by the backend | none | `permissions.json`, `server/app.py` |
+| Maintenance | A preventive maintenance | REMOVED from the lane | none | `permissions.json` |
+| Register and reports | A register and reports | REMOVED from the lane | none | `permissions.json`, `server/app.py` |
+| Workflow Guide | A process documentation | KEPT, read-only, no lane filter without a swimlane | none | `flow.html` |
 | Users | C administration provisioning | KEPT | none | `users.html` |
 | Offices | C administration provisioning | KEPT | none | `offices.html` |
 | Configuration | C administration configuration | KEPT, demo simulation switch off | `demoIntakeSimulation` | `settings.html` |

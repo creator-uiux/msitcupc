@@ -85,8 +85,6 @@ def _audit(state, subject_type, subject_id, kind, text, status=None, actor=None)
         "at": now_iso(), "by": w["by"], "role": w["role"],
         "subjectType": subject_type, "subjectId": subject_id,
         "status": status, "kind": kind, "text": text})
-    if len(state["audit"]) > 4000:
-        del state["audit"][:-2000]
 
 
 def _audit_status(state, t, prev, new, kind, text):
@@ -128,16 +126,50 @@ def priority_for(state, impact, urgency):
     return str(val) if val else None
 
 
-def frequency_days(state, key):
+def frequency_days(state, key, interval_days=None):
     """Configured maintenance frequency -> days until the next occurrence."""
+    if key == "custom":
+        days = _interval_days(interval_days)
+        if days:
+            return days
     for row in (state.get("settings") or {}).get("frequencies", []):
         if isinstance(row, (list, tuple)) and len(row) >= 3 and row[0] == key:
             try:
                 return int(row[2])
             except (TypeError, ValueError):
                 return 91
-    return {"weekly": 7, "monthly": 30, "quarterly": 91,
+    return {"daily": 1, "weekly": 7, "biweekly": 14, "monthly": 30, "quarterly": 91,
             "semiannual": 182, "annual": 365}.get(key, 91)
+
+
+CUSTOM_INTERVAL_MIN_DAYS = 1
+CUSTOM_INTERVAL_MAX_DAYS = 3650
+
+
+def _interval_days(value):
+    """The whole day count a Custom cadence needs, or None when it is unusable.
+
+    The upper bound matters: the next due date is added to a real date, and a
+    runaway interval lands outside the range a date can hold.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        days = int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    return days if CUSTOM_INTERVAL_MIN_DAYS <= days <= CUSTOM_INTERVAL_MAX_DAYS else None
+
+
+def _custom_interval(d):
+    """Validate the day count that a Custom schedule needs.
+
+    Returns the day count, None when the frequency is not Custom, and False
+    when Custom was chosen without a usable interval.
+    """
+    if (d or {}).get("frequency") != "custom":
+        return None
+    return _interval_days((d or {}).get("intervalDays")) or False
 
 
 def _settings(state):
@@ -211,7 +243,7 @@ TRANSITIONS_FALLBACK = {
                     "cancelled": ("coordinator",)},
     "needs_info":  {"submitted": ("requester", "coordinator"),
                     "cancelled": ("coordinator",)},
-    "assigned":    {"in_progress": ("technician",), "on_hold": ("technician",),
+    "assigned":    {"in_progress": ("technician",),
                     "cancelled": ("coordinator",)},
     "in_progress": {"on_hold": ("technician",), "resolved": ("technician",),
                     "cancelled": ("coordinator",)},
@@ -1211,11 +1243,15 @@ def create_schedule(state, role, d):
         return {"ok": False, "msg": "Office, category, frequency, due date and technician are required."}
     if not d.get("checklist"):
         return {"ok": False, "msg": "Provide at least one checklist item."}
+    interval = _custom_interval(d)
+    if interval is False:
+        return {"ok": False, "msg": "A Custom cadence needs a whole number of days between 1 and 3650."}
     sid = next_id(state, "sched")
     state["schedules"].append({
         "id": sid, "office": d["office"], "assets": list(d.get("assets") or []), "category": d["category"],
         "checklist": list(d["checklist"]), "frequency": d["frequency"], "dueDate": d["dueDate"],
-        "technician": d["technician"], "active": True, "lastCheck": None, "nextCheck": d["dueDate"]})
+        "intervalDays": interval, "technician": d["technician"], "active": True,
+        "lastCheck": None, "nextCheck": d["dueDate"]})
     notify(state, "coordinator", "%s created for %s - due %s." % (sid, d["office"], d["dueDate"][:10]), "sched", {"office": d["office"]})
     _audit(state, "schedule", sid, "sched",
            "Schedule created - %s %s every %s, first due %s." % (d["office"], d["category"], d["frequency"], d["dueDate"][:10]))
@@ -1357,14 +1393,31 @@ def world_tick(state):
 
     for j in state["jobs"]:
         if j["status"] == "on_hold" and j.get("visitDate") and _parse_ms(j["visitDate"]) <= now_ms:
-            j["status"] = "assigned"
-            _audit(state, "job", j["id"], "sched",
-                   "Agreed reschedule date reached - visit may proceed, job returned to coordination.",
-                   _label(j["status"]), actor=SYSTEM)
-            notify(state, "technician",
-                   "Agreed date reached for %s - continue the maintenance visit." % j["id"],
-                   "sched", {"jobId": j["id"], "office": j["office"]}, to=j.get("technician"))
-            events.append("On agreed date: %s visit can proceed." % j["id"])
+            # A reschedule clears the old answer (N49 -> N38 -> N49).  When the
+            # agreed date arrives the office answers availability again; the
+            # visit only returns to Assigned after a yes.
+            if j.get("availability") == "yes":
+                j["status"] = "assigned"
+                _audit(state, "job", j["id"], "sched",
+                       "Agreed reschedule date reached after the office confirmed availability - visit may proceed.",
+                       _label(j["status"]), actor=SYSTEM)
+                notify(state, "technician",
+                       "Agreed date reached for %s - continue the maintenance visit." % j["id"],
+                       "sched", {"jobId": j["id"], "office": j["office"]}, to=j.get("technician"))
+                events.append("On agreed date: %s visit can proceed." % j["id"])
+            elif j.get("availability") != "asked":
+                j["availability"] = "asked"
+                _audit(state, "job", j["id"], "sched",
+                       "Agreed reschedule date reached - availability confirmation requested from the office.",
+                       _label(j["status"]), actor=SYSTEM)
+                notify(state, "requester",
+                       "Confirm availability for the rescheduled maintenance visit %s on %s."
+                       % (j["id"], (j.get("visitDate") or "")[:10]),
+                       "sched", {"jobId": j["id"], "office": j["office"]})
+                notify(state, "coordinator",
+                       "%s: agreed reschedule date reached; waiting for the office availability answer." % j["id"],
+                       "sched", {"jobId": j["id"], "office": j["office"]})
+                events.append("Availability confirmation requested: %s." % j["id"])
 
     if len(state["notifications"]) > 120:
         del state["notifications"][120:]
@@ -1605,7 +1658,7 @@ def _advance_next_due(state, j):
     sc = get_schedule(state, j.get("scheduleId"))
     if not sc:
         return
-    mult = frequency_days(state, sc.get("frequency"))
+    mult = frequency_days(state, sc.get("frequency"), sc.get("intervalDays"))
     from datetime import datetime, timedelta, timezone
     nd = datetime.fromtimestamp(_parse_ms(sc["dueDate"]) / 1000, timezone.utc) + timedelta(days=mult)
     j["nextDue"] = nd.strftime("%Y-%m-%d")
@@ -1724,7 +1777,7 @@ def run_schedule_check(state, role, silent=False):
     if not g["ok"]:
         return g
     events = _run_schedule_check(state, silent=bool(silent))
-    return {"ok": True, "msg": "Schedule check finished -- %d result(s)." % len(events),
+    return {"ok": True, "msg": "Schedule check finished: %d result(s)." % len(events),
             "events": events}
 
 
@@ -2209,6 +2262,16 @@ def update_schedule(state, role, sid, d):
                        ("dueDate", "due date"), ("technician", "technician")):
         if d.get(key) and d[key] != sc.get(key):
             sc[key] = d[key]; changed.append(label)
+    if d.get("frequency") == "custom":
+        source = d if d.get("intervalDays") is not None else {
+            "frequency": "custom", "intervalDays": sc.get("intervalDays")}
+        interval = _custom_interval(source)
+        if interval is False:
+            return {"ok": False, "msg": "A Custom cadence needs a whole number of days between 1 and 3650."}
+        if interval != sc.get("intervalDays"):
+            sc["intervalDays"] = interval; changed.append("custom interval")
+    elif d.get("frequency"):
+        sc["intervalDays"] = None
     if d.get("assets") is not None and list(d.get("assets") or []) != list(sc.get("assets") or []):
         sc["assets"] = list(d["assets"]); changed.append("assets")
     if d.get("checklist"):
@@ -2259,7 +2322,7 @@ def save_settings(state, role, d):
         except (TypeError, ValueError):
             return {"ok": False, "msg": "Reminder interval must be whole minutes."}
         if minutes < 1 or minutes > 1440:
-            return {"ok": False, "msg": "Reminder interval must be 1–1440 minutes."}
+            return {"ok": False, "msg": "Reminder interval must be 1 to 1440 minutes."}
         if settings.get("reminderMinutes") != minutes:
             settings["reminderMinutes"] = minutes; changed.append("reminder interval = %d min" % minutes)
     if "simulate" in d:

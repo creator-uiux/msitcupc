@@ -238,7 +238,7 @@ function openCaptured(url, sessionRole) {
             if (signedIn) {
               var role = w.UI.roleKey();
               out.expect = w.UI.can(u.page, role) ? w.UI.urlFor(u.page, role)
-                                                  : w.UI.urlFor('dashboard.html', role);
+                                                  : w.UI.urlFor(w.UI.homePage(role), role);
             } else {
               /* sessionless: no navigation, the page renders the URL role */
               out.expect = '';
@@ -258,6 +258,11 @@ function openCaptured(url, sessionRole) {
 var ROLE_PAGES = [
   ['or', 'requester'], ['itc', 'technician'], ['ic', 'coordinator'], ['mgmt', 'management']
 ];
+/* Each lane's landing page.  The System Administrator holds no dashboard: its
+   lane is Administration, so it lands on the users directory (role scope 5).
+   Mirrors HOME_PAGE in js/ui.js and HOME_FOR_ROLE in tools/role_pages.py. */
+var HOME = { requester: 'dashboard', technician: 'dashboard',
+             coordinator: 'dashboard', management: 'users' };
 var PAGES = ['dashboard', 'ticket', 'reports', 'flow', 'roles'];
 var tests = [];
 
@@ -284,7 +289,10 @@ tests.push(async function rolePagesExist() {
   /* forbidden combos must NOT exist */
   [['or', 'review'], ['itc', 'review'], ['mgmt', 'review'],
    ['itc', 'request'], ['mgmt', 'request'], ['or', 'technician'],
-   ['ic', 'technician'], ['mgmt', 'technician']].forEach(function (pair) {
+   ['ic', 'technician'], ['mgmt', 'technician'],
+   /* the administrator lane is Administration plus the audit viewer only */
+   ['mgmt', 'dashboard'], ['mgmt', 'tickets'], ['mgmt', 'ticket'],
+   ['mgmt', 'register'], ['mgmt', 'reports'], ['mgmt', 'maintenance']].forEach(function (pair) {
     var f = path.join(ROOT, pair[0] + '-' + pair[1] + '.html');
     if (fs.existsSync(f)) forbidden.push(pair[0] + '-' + pair[1] + '.html');
   });
@@ -321,9 +329,10 @@ tests.push(async function rolePagesRenderOwnRole() {
   var TITLE = { requester: 'Office Requester', technician: 'IT Technician', coordinator: 'IT Coordinator', management: 'System Administrator' };
   for (var i = 0; i < ROLE_PAGES.length; i++) {
     var pfx = ROLE_PAGES[i][0], role = ROLE_PAGES[i][1];
-    var p = await open(BASE + pfx + '-dashboard.html', role);
-    ok(p.errors.length === 0, pfx + '-dashboard.html loads clean' + (p.errors.length ? ' -> ' + p.errors.join('|') : ''));
-    ok(p.w.UI.roleKey() === role, pfx + '-dashboard.html pins role=' + role + ' (got ' + p.w.UI.roleKey() + ')');
+    var home = pfx + '-' + HOME[role] + '.html';
+    var p = await open(BASE + home, role);
+    ok(p.errors.length === 0, home + ' loads clean' + (p.errors.length ? ' -> ' + p.errors.join('|') : ''));
+    ok(p.w.UI.roleKey() === role, home + ' pins role=' + role + ' (got ' + p.w.UI.roleKey() + ')');
     var side = p.d.querySelector('.role-chip');
     ok(side && side.textContent.trim() === TITLE[role], pfx + ': header shows the role title ("' + (side ? side.textContent.trim() : '') + '")');
     /* nav hrefs must carry the same prefix */
@@ -332,7 +341,7 @@ tests.push(async function rolePagesRenderOwnRole() {
        pfx + ': every nav link is ' + pfx + '-prefixed');
     /* the active page is marked */
     var active = p.d.querySelector('.side-link.active');
-    ok(active && active.getAttribute('href') === pfx + '-dashboard.html', pfx + ': dashboard is the active nav item');
+    ok(active && active.getAttribute('href') === home, pfx + ': the landing page is the active nav item');
     close(p);
   }
 });
@@ -345,10 +354,11 @@ tests.push(async function wrongRoleRedirects() {
      'requester on itc-dashboard.html redirects to or-dashboard.html (got ' + JSON.stringify(p.url || p.expect) + ')');
   try { p.w.close(); } catch (e) { }
 
-  /* signed in as management, open ic-ticket.html -> mgmt-ticket.html */
+  /* signed in as management, open ic-ticket.html -> its own landing page,
+     because the administrator lane holds no ticket screen at all */
   var p2 = await openCaptured(BASE + 'ic-ticket.html', 'management');
-  ok(/mgmt-ticket\.html/.test(p2.url || p2.expect || ''),
-     'management on ic-ticket.html redirects to mgmt-ticket.html (got ' + JSON.stringify(p2.url || p2.expect) + ')');
+  ok(/mgmt-users\.html/.test(p2.url || p2.expect || ''),
+     'management on ic-ticket.html redirects to mgmt-users.html (got ' + JSON.stringify(p2.url || p2.expect) + ')');
   ok(!/login\.html/.test(p2.url || p2.expect || ''), 'a signed-in wrong-role visit does not bounce to login');
   try { p2.w.close(); } catch (e) { }
 
@@ -364,7 +374,9 @@ tests.push(async function wrongRoleRedirects() {
 tests.push(async function wrongRoleNeverLandsOn404() {
   var cases = [
     ['technician', 'ic-review.html', 'itc-dashboard.html'],
-    ['management', 'itc-technician.html', 'mgmt-dashboard.html'],
+    ['management', 'itc-technician.html', 'mgmt-users.html'],
+    ['management', 'ic-tickets.html', 'mgmt-users.html'],
+    ['management', 'ic-reports.html', 'mgmt-users.html'],
     ['requester', 'ic-review.html', 'or-dashboard.html'],
     ['coordinator', 'itc-technician.html', 'ic-dashboard.html'],
     ['technician', 'or-request.html', 'itc-dashboard.html']
@@ -384,13 +396,14 @@ tests.push(async function wrongRoleNeverLandsOn404() {
 tests.push(async function sessionlessRendersOwnRole() {
   for (var i = 0; i < ROLE_PAGES.length; i++) {
     var pfx = ROLE_PAGES[i][0], role = ROLE_PAGES[i][1];
-    var p = await openCaptured(BASE + pfx + '-dashboard.html', null);
+    var home = pfx + '-' + HOME[role] + '.html';
+    var p = await openCaptured(BASE + home, null);
     var u = p.url || p.expect || '';
     ok(!/login\.html/.test(u),
-       pfx + '-dashboard.html sessionless load does NOT go to login (nav=' + JSON.stringify(u || '(none)') + ')');
-    ok(p.redirected !== true, pfx + '-dashboard.html sessionless load does not redirect');
+       home + ' sessionless load does NOT go to login (nav=' + JSON.stringify(u || '(none)') + ')');
+    ok(p.redirected !== true, home + ' sessionless load does not redirect');
     ok(p.w.UI.roleKey() === role,
-       pfx + '-dashboard.html sessionless load renders the URL role (got ' + p.w.UI.roleKey() + ')');
+       home + ' sessionless load renders the URL role (got ' + p.w.UI.roleKey() + ')');
     var side = p.d.querySelector('.role-chip');
     ok(side && side.textContent.trim().length > 0,
        pfx + ': sessionless preview still shows a role title ("' + (side ? side.textContent.trim() : '') + '")');
@@ -450,9 +463,6 @@ tests.push(async function roleVisibility() {
     ['coordinator', 'ic-dashboard.html', '#depWrap', true],
     ['coordinator', 'ic-dashboard.html', '.staff-only', true],
     ['coordinator', 'ic-dashboard.html', '.tech-only', true],
-    ['management', 'mgmt-dashboard.html', '.actor-only', false],
-    ['management', 'mgmt-dashboard.html', '#depWrap', false],
-    ['management', 'mgmt-dashboard.html', '.tech-only', false],
     ['technician', 'itc-dashboard.html', '#depWrap', false],
 
     ['requester', 'or-tickets.html', '.col-check', false],
@@ -465,18 +475,13 @@ tests.push(async function roleVisibility() {
     ['coordinator', 'ic-tickets.html', '.filter-tech', true],
     ['coordinator', 'ic-tickets.html', '.filter-office', true],
     ['coordinator', 'ic-tickets.html', '.filter-scope', true],
-    ['management', 'mgmt-tickets.html', '.col-check', false],
-    ['management', 'mgmt-tickets.html', '.filter-tech', true],
 
     ['requester', 'or-reports.html', '.lead-only', false],
     ['technician', 'itc-reports.html', '.lead-only', false],
     ['coordinator', 'ic-reports.html', '.lead-only', true],
-    ['management', 'mgmt-reports.html', '.lead-only', true],
 
     ['technician', 'itc-maintenance.html', '.schedule-manage', false],
     ['coordinator', 'ic-maintenance.html', '.schedule-manage', true],
-    ['management', 'mgmt-maintenance.html', '.schedule-manage', false],
-    ['management', 'mgmt-maintenance.html', '#btnNewSched', false],
     ['coordinator', 'ic-maintenance.html', '#btnNewSched', true],
 
     ['requester', 'or-ticket.html?id=IT-2026-000142', '#tab-dep', false],
@@ -502,12 +507,114 @@ tests.push(async function roleVisibility() {
   }
 });
 
+tests.push(async function managementLaneIsAdministrationOnly() {
+  /* Role scope 5: the System Administrator holds Administration plus the
+     read-only audit viewer, and no operational screen at all. */
+  var fs = require('fs');
+  var p = await open(BASE + 'mgmt-users.html', 'management');
+  var OPERATIONAL = ['dashboard', 'tickets', 'ticket', 'register', 'reports', 'maintenance'];
+  OPERATIONAL.forEach(function (page) {
+    ok(p.w.UI.can(page + '.html', 'management') === false,
+       'management may not open ' + page + '.html');
+    ok(!fs.existsSync(path.join(ROOT, 'mgmt-' + page + '.html')),
+       'no mgmt-' + page + '.html is generated');
+  });
+  ['users', 'offices', 'settings', 'audit', 'flow', 'notifications', 'profile'].forEach(function (page) {
+    ok(p.w.UI.can(page + '.html', 'management') === true,
+       'management opens ' + page + '.html');
+  });
+  /* A lane must never be sent to a page it cannot open (that is a 404). */
+  ['requester', 'technician', 'coordinator', 'management'].forEach(function (role) {
+    var home = p.w.UI.homePage(role);
+    ok(p.w.UI.can(home, role), role + ': the landing page ' + home + ' belongs to that role');
+    ok(p.w.UI.urlFor('dashboard.html', role) === p.w.UI.urlFor(home, role)
+       || p.w.UI.can('dashboard.html', role),
+       role + ': a link to an unavailable page resolves inside the lane');
+  });
+  /* The audit viewer is read-only: the administrator holds no workflow action. */
+  var denied = ['createTicket', 'assign', 'close', 'cancel', 'recordRepair', 'recordTest',
+                'createSchedule', 'updateSchedule', 'officeDecision', 'startWork'];
+  denied.forEach(function (method) {
+    ok(p.w.PermissionMap.canMethod('management', method) === false,
+       'management cannot call ' + method);
+  });
+  ok(p.w.PermissionMap.canMethod('management', 'saveSettings') === true,
+     'management keeps its own administration methods');
+  close(p);
+});
+
+tests.push(async function capabilityRowsFollowTheMap() {
+  /* The capability reference is derived from the one permission map.  A row
+     may never claim a role the map does not grant it, and it may not name an
+     action or a page that the map does not carry. */
+  var fs = require('fs');
+  var perm = JSON.parse(fs.readFileSync(path.join(ROOT, 'permissions.json'), 'utf8'));
+  var p = await open(BASE + 'roles.html', 'coordinator');
+  var rows = p.w.UI.CAPS.filter(function (c) { return !c.group; });
+  ok(rows.length >= 40, 'the reference covers every lane action (' + rows.length + ' rows)');
+  var badMethod = [], badPage = [], widened = [];
+  rows.forEach(function (c) {
+    var roles = p.w.UI.capsRoles(c);
+    if (c.m) {
+      c.m.forEach(function (m) {
+        if (!perm.actions[m]) badMethod.push(c.key + ' names unknown action ' + m);
+      });
+      roles.forEach(function (r) {
+        var granted = c.m.some(function (m) {
+          return (perm.actions[m] || []).indexOf(r) > -1;
+        });
+        if (!granted) widened.push(c.key + ' grants ' + r);
+      });
+    } else if (c.p) {
+      if (!perm.pages[c.p]) badPage.push(c.key + ' names unknown page ' + c.p);
+      roles.forEach(function (r) {
+        if ((perm.pages[c.p] || []).indexOf(r) === -1) widened.push(c.key + ' grants ' + r);
+      });
+    }
+    ok(roles.length > 0, 'capability row is owned by someone: ' + c.key);
+  });
+  ok(badMethod.length === 0, 'every capability row names a real action' +
+     (badMethod.length ? ' -> ' + badMethod.join(' | ') : ''));
+  ok(badPage.length === 0, 'every capability row names a real page' +
+     (badPage.length ? ' -> ' + badPage.join(' | ') : ''));
+  ok(widened.length === 0, 'no capability row is wider than the map' +
+     (widened.length ? ' -> ' + widened.join(' | ') : ''));
+
+  /* The rows the diagram puts in one lane must stay in that lane. */
+  function owners(key) {
+    var hit = rows.filter(function (c) { return c.key === key; })[0];
+    return hit ? p.w.UI.capsRoles(hit).join(',') : '(missing)';
+  }
+  ok(owners('Review and verify the result: accept, or reject with feedback') === 'requester',
+     'accept and reject belongs to the office alone');
+  ok(owners('Confirm a maintenance visit result') === 'requester',
+     'the visit confirmation belongs to the office alone');
+  ok(owners('Authorized closure with a recorded reason') === 'coordinator',
+     'authorized closure belongs to the coordinator');
+  ok(owners('Read the audit log') === 'management',
+     'the audit viewer belongs to the administrator');
+  ok(owners('Enter a request on behalf of an office, with its source') === 'coordinator',
+     'the on-behalf intake belongs to the coordinator');
+  ok(owners('Submit a request for own office (no source field)') === 'requester',
+     'own-office intake belongs to the office');
+  ok(owners('Maintain reference data and operational settings') === 'management',
+     'reference data belongs to the administrator');
+  ['dashboard.html', 'register.html', 'reports.html'].forEach(function (page) {
+    var hit = rows.filter(function (c) { return c.p === page; })[0];
+    ok(hit && p.w.UI.capsRoles(hit).indexOf('management') === -1,
+       page + ' is not a screen of the administrator lane');
+  });
+  close(p);
+});
+
 tests.push(async function roleNavigationMatchesPermissionMap() {
   var CASES = [
-    ['requester', 'or-dashboard.html', ['my requests', 'new request', 'office register'], ['maintenance', 'users']],
-    ['technician', 'itc-dashboard.html', ['my tickets', 'my maintenance jobs', 'office register'], ['users', 'new request']],
-    ['coordinator', 'ic-dashboard.html', ['tickets', 'maintenance', 'reports'], ['users', 'offices', 'audit log']],
-    ['management', 'mgmt-dashboard.html', ['service records', 'users', 'reports'], ['new request', 'review and assign']]
+    ['requester', 'or-dashboard.html', ['my requests', 'new request', 'office register', 'workflow guide'], ['maintenance', 'users']],
+    ['technician', 'itc-dashboard.html', ['my tickets', 'my maintenance jobs', 'office register', 'workflow guide'], ['users', 'new request']],
+    ['coordinator', 'ic-dashboard.html', ['tickets', 'maintenance', 'reports', 'workflow guide'], ['users', 'offices', 'audit log']],
+    ['management', 'mgmt-users.html', ['users', 'offices', 'configuration', 'audit log', 'workflow guide'],
+     ['new request', 'review and assign', 'tickets', 'my tickets', 'maintenance',
+      'office register', 'reports', 'dashboard']]
   ];
   for (var i = 0; i < CASES.length; i++) {
     var role = CASES[i][0], page = CASES[i][1];
@@ -543,7 +650,13 @@ tests.push(async function forbiddenUrlShowsNeutralPanel() {
     ['requester', 'maintenance.html'],
     ['technician', 'users.html'],
     ['coordinator', 'users.html'],
-    ['technician', 'review.html']
+    ['technician', 'review.html'],
+    /* role scope 5: the administrator lane holds no operational screen */
+    ['management', 'dashboard.html'],
+    ['management', 'tickets.html'],
+    ['management', 'register.html'],
+    ['management', 'reports.html'],
+    ['management', 'maintenance.html']
   ];
   for (var i = 0; i < CASES.length; i++) {
     var role = CASES[i][0], page = CASES[i][1];

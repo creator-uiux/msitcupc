@@ -17,7 +17,7 @@
      import or a direct link never flashes the wrong palette.
      Defaults to light (no auto-OS-dark). -->
 <script>(function(){try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t!=="dark")t="light";document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}catch(e){}})();</script>
-<script>(function(){var P="itc",R="technician",F="flow.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+<script>(function(){var P="itc",R="technician",F="flow.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];var HOME={"requester": "or-dashboard.html", "technician": "itc-dashboard.html", "coordinator": "ic-dashboard.html", "management": "mgmt-users.html"};try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace(ALLOW.indexOf(o)>-1?(o+"-"+F):(HOME[a]||("or-"+F)));return;}window.ITC_URL_ROLE=P;})();</script>
 </head>
 <body>
 <div class="app">
@@ -28,7 +28,7 @@
 
     <main class="content">
       <div class="sec-title">
-        <h2>Workflow Guide -- the documented process, four lanes</h2>
+        <h2>Workflow Guide: the documented process, four lanes</h2>
         <span class="hint">extracted from <span class="mono">Maintenance System.pdf</span> (Owner: Anthony Derecho, updated Jan 30, 2021)</span>
       </div>
 
@@ -59,8 +59,8 @@
       </div>
 
       <!-- coverage -->
-      <div class="sec-title mt"><h2>Coverage proof -- flowchart node to working behaviour</h2>
-        <span class="hint" id="covCount"> -- </span></div>
+      <div class="sec-title mt"><h2>Coverage proof: flowchart node to working behaviour</h2>
+        <span class="hint" id="covCount">0</span></div>
       <div class="card">
         <table class="cov">
           <thead><tr><th>Flowchart node (verbatim)</th><th>Lane</th><th>Implemented where</th><th>Behaviour</th><th></th></tr></thead>
@@ -251,6 +251,9 @@ function laneName(id) {
 }
 
 function render() {
+  /* the lane follows the signed-in role, so a re-render picks up a sign-in */
+  myLane = LANE_FOR_ROLE[Store.db.role] || null;
+  if (!myLane) showAll = true;
   var nodes = FD.implementedNodes();
   document.getElementById('lanes').innerHTML = FD.LANES.map(function (lane) {
     var dim = !showAll && myLane && lane.id !== myLane;
@@ -279,7 +282,7 @@ function render() {
     return '<tr><td data-label="#">' + (i + 1) + '</td>' +
       '<td data-label="From">' + UI.esc(FD.labelOf(e[0])) + '</td>' +
       '<td data-label="To">' + UI.esc(FD.labelOf(e[1])) + '</td>' +
-      '<td data-label="Label">' + (e[2] ? '<b>' + UI.esc(e[2]) + '</b>' : '<span class="muted"> -- </span>') + '</td></tr>';
+      '<td data-label="Label">' + (e[2] ? '<b>' + UI.esc(e[2]) + '</b>' : '<span class="muted">None</span>') + '</td></tr>';
   }).join('');
 
   /* coverage */
@@ -294,8 +297,8 @@ function render() {
   document.getElementById('covBody').innerHTML = cov.map(function (c) {
     return '<tr><td class="node-cell" data-label="Node"><span class="mono">' + c.id + '</span> ' + UI.esc(c.label) + '</td>' +
       '<td data-label="Lane">' + UI.esc(c.lane) + '</td>' +
-      '<td class="mono" data-label="Implemented where">' + UI.esc(c.where || ' -- ') + '</td>' +
-      '<td data-label="Behaviour">' + UI.esc(c.what || ' -- ') + '</td>' +
+      '<td class="mono" data-label="Implemented where">' + UI.esc(c.where || 'Not recorded') + '</td>' +
+      '<td data-label="Behaviour">' + UI.esc(c.what || 'Not recorded') + '</td>' +
       '<td class="ok-mark" data-label="Status">' + (c.where ? UI.icon('check') : UI.icon('x')) + '</td></tr>';
   }).join('');
 
@@ -303,7 +306,8 @@ function render() {
   var mineBtn = document.getElementById('laneMine');
   var allBtn = document.getElementById('laneAll');
   if (mineBtn) {
-    mineBtn.disabled = !myLane;
+    /* A role with no swimlane of its own gets no lane filter, not a grayed one. */
+    mineBtn.hidden = !myLane;
     mineBtn.className = 'btn btn-sm' + (!showAll && myLane ? ' btn-primary' : '');
   }
   if (allBtn) allBtn.className = 'btn btn-sm' + (showAll ? ' btn-primary' : '');

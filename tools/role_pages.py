@@ -45,6 +45,15 @@ ROLE_LABEL = {"requester": "OR", "technician": "ITC",
 PREFIX_FOR_ROLE = {v: k for k, v in URL_PREFIX.items()}
 PREFIX_ORDER = ["or", "itc", "ic", "mgmt"]
 
+# Where each lane lands.  The System Administrator has no dashboard: its lane
+# is Administration, so the users directory is its home.  Keep in step with
+# HOME_PAGE in js/ui.js; tools/rolepages_test.js proves the two agree.
+HOME_FOR_ROLE = {"requester": "dashboard.html", "technician": "dashboard.html",
+                 "coordinator": "dashboard.html", "management": "users.html"}
+# the same map as generated file names, baked into every pre-paint guard
+HOME_URLS = {r: "%s-%s" % (PREFIX_FOR_ROLE[r], HOME_FOR_ROLE[r])
+             for r in HOME_FOR_ROLE}
+
 # Pages that never get a role prefix (public chrome + entry points).
 NO_ROLE_PAGES = {"login.html", "404.html", "index.html"}
 
@@ -61,7 +70,7 @@ BOOT = (
     '<script>(function(){'
     'var P="%s",R="%s",F="%s";'
     'var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};'
-    'var ALLOW=%s;'
+    'var ALLOW=%s;var HOME=%s;'
     # theme first, so a dark import never flashes the light palette
     # default to light unless explicitly dark (no auto-OS-dark)
     'try{var tm=/[?&]theme=(dark|light)\\b/.exec(location.search);'
@@ -72,7 +81,7 @@ BOOT = (
     'var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}'
     'var a=d&&d.auth&&d.auth.role;'
     'if(a&&a!==R){var o=OWN[a]||"or";'
-    'location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}'
+    'location.replace(ALLOW.indexOf(o)>-1?(o+"-"+F):(HOME[a]||("or-"+F)));return;}'
     'window.ITC_URL_ROLE=P;'
     '})();</script>'
 )
@@ -121,7 +130,8 @@ def transform(src, page, role, prefix, allowed_prefixes):
                  count=1, flags=re.S)
     # The guard goes in <head> so it runs before the document paints - a
     # wrong-role or signed-out visitor never sees a flash of the page.
-    boot = BOOT % (prefix, role, page, json.dumps(allowed_prefixes))
+    boot = BOOT % (prefix, role, page, json.dumps(allowed_prefixes),
+                   json.dumps(HOME_URLS))
     if "</head>" in out:
         out = out.replace("</head>", boot + "\n</head>", 1)
     else:

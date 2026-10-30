@@ -18,7 +18,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#1E3A5F">
-<script>(function(){var P="itc",R="technician",F="technician.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["itc"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+<script>(function(){var P="itc",R="technician",F="technician.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["itc"];var HOME={"requester": "or-dashboard.html", "technician": "itc-dashboard.html", "coordinator": "ic-dashboard.html", "management": "mgmt-users.html"};try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace(ALLOW.indexOf(o)>-1?(o+"-"+F):(HOME[a]||("or-"+F)));return;}window.ITC_URL_ROLE=P;})();</script>
 </head>
 <body>
 <div class="app">
@@ -41,7 +41,7 @@
         <div class="stack">
           <!-- ticket queue -->
           <div class="card">
-            <div class="card-head"><h3>My queue</h3><span class="hint" id="wCount"> -- </span></div>
+            <div class="card-head"><h3>My queue</h3><span class="hint" id="wCount">0</span></div>
             <table class="table">
               <thead><tr><th>Ticket</th><th>Office</th><th>Status</th><th>Target</th><th></th></tr></thead>
               <tbody id="wBody"></tbody>
@@ -60,7 +60,7 @@
             <ul class="list" id="wFeed"></ul>
           </div>
 
-          <div class="note"><span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span><div><b>Testing rule:</b> Resolved is only reachable when testing passes  --  a failed test loops back to <b>diagnosis</b> with the failure notes preserved.</div></div>
+          <div class="note"><span><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></span><div><b>Testing rule:</b> Resolved is only reachable when testing passes. A failed test loops back to <b>diagnosis</b> with the failure notes preserved.</div></div>
         </div>
       </section>
 
@@ -142,7 +142,7 @@ function render() {
       '<div class="t-sub">' + UI.esc(t.category) + '</div></td>' +
       '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div></td>' +
       '<td data-label="Status">' + UI.badge(t.status) + '</td>' +
-      '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : ' -- ') + '</td>' +
+      '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : 'Not set') + '</td>' +
       '<td data-label="Record"><a class="link-arrow" href="ticket.html?id=' + encodeURIComponent(t.id) + '">Full record' + UI.icon('arrowRight') + '</a></td></tr>';
   }).join('');
   document.querySelectorAll('#wBody tr[data-pick]').forEach(function (tr) {
@@ -163,7 +163,7 @@ function render() {
     var d = t.diagnosis;
     var nextStep =
       t.status === 'assigned' ? 'Coordinate the visit → Start work → In Progress'
-        : t.status === 'on_hold' ? 'Dependency outcome?  --  follow up (the coordinator resolves it)'
+        : t.status === 'on_hold' ? 'Dependency pending. Follow up (the coordinator resolves it)'
           : t.status === 'resolved' ? 'Waiting for office confirmation'
             : !d.findings ? 'Diagnose issue and record findings'
               : !d.actions ? 'Record the repair / actions performed'
@@ -175,13 +175,13 @@ function render() {
       '<h3 class="record-subject">' + UI.esc(t.issue) + '</h3>' +
       '<div class="info mt">' +
       '<div><div class="k">Office / requester</div><div class="v">' + UI.esc(t.office) + ' · ' + UI.esc(t.requester) + '</div></div>' +
-      '<div><div class="k">Asset</div><div class="v mono">' + UI.esc(t.asset || ' -- ') + '</div></div>' +
+      '<div><div class="k">Asset</div><div class="v mono">' + UI.esc(t.asset || 'Not set') + '</div></div>' +
       '<div><div class="k">Previous history</div><div class="v">' + countHistory(t.office, t.asset) + ' prior record(s)</div></div>' +
       '<div><div class="k">Next step</div><div class="v">' + nextStep + '</div></div>' +
       '</div>' +
       (d.findings ? '<div class="note ok mt"><span>' + UI.icon('clipboard') + '</span><div><b>Diagnosis:</b> ' + UI.esc(d.findings) +
         ' · parts ' + UI.esc(d.parts || 'none') + ' · ₱' + (d.cost || 0).toFixed(2) + ' · ' + (d.labor || 0) + 'h</div></div>'
-        : '<div class="note mt"><span>' + UI.icon('search') + '</span><div>No diagnosis yet  --  record findings before testing.</div></div>') +
+        : '<div class="note mt"><span>' + UI.icon('search') + '</span><div>No diagnosis yet. Record findings before testing.</div></div>') +
       '<div class="row mt">' + workActions(t, d) + '</div></div>';
     panel.querySelectorAll('[data-w]').forEach(function (b) {
       b.addEventListener('click', function () { Actions.act(b.dataset.w, t.id, render); });
@@ -212,7 +212,7 @@ function render() {
     if (t.status === 'on_hold' && t.dependency) {
       a.push('<span class="hint">Waiting on the IT Coordinator to follow up the dependency.</span>');
     }
-    if (!a.length) a.push('<span class="hint">No action available  --  waiting for the office to confirm the resolved result.</span>');
+    if (!a.length) a.push('<span class="hint">No action available. Waiting for the office to confirm the resolved result.</span>');
     return a.join('');
   }
 
@@ -289,25 +289,35 @@ function renderJobs(jobs) {
     var done = j.items.filter(function (i) { return i.done; }).length;
     var pct = total ? Math.round(done * 100 / total) : 0;
     var canRun = ['submitted', 'on_hold', 'closed', 'cancelled'].indexOf(j.status) === -1;
+    /* A job that cannot be worked shows its record, never a locked editor. */
+    var terminal = ['closed', 'cancelled'].indexOf(j.status) > -1;
+    var runNote = canRun ? '' : (terminal
+      ? '<span class="chip">Record kept, nothing to do</span>'
+      : UI.waitingOn(j.status, true));
     var items = j.items.map(function (it, i) {
       var result = it.result || '';
-      return '<div class="chk-card' + (it.done ? ' done' : '') + '" data-chk="' + i + '">' +
-        '<div class="chk-head"><b>' + UI.esc(it.task) + '</b>' +
-        '<span class="chk-state">' + (it.done ? UI.esc(result) : 'Not recorded') + '</span></div>' +
-        '<div class="seg chk-seg" role="group" aria-label="Result for ' + UI.attr(it.task) + '">' +
+      var seg = canRun ? '<div class="seg chk-seg" role="group" aria-label="Result for ' + UI.attr(it.task) + '">' +
         CHK_RESULTS.map(function (r) {
           var on = result === r[0];
           return '<button type="button" class="chk-seg-btn' + (on ? ' on' : '') + '" data-res="' + UI.attr(r[0]) + '"' +
-            ' aria-pressed="' + (on ? 'true' : 'false') + '"' + (canRun ? '' : ' disabled') + '>' + UI.esc(r[1]) + '</button>';
-        }).join('') + '</div>' +
-        '<label class="chk-finding"><span>Finding</span>' +
-        '<input type="text" data-finding value="' + UI.attr(it.finding || '') + '" placeholder="e.g. dust buildup on intake"' + (canRun ? '' : ' disabled') + '></label>' +
-        '<div class="chk-ev"><span class="chk-ev-list">' +
+            ' aria-pressed="' + (on ? 'true' : 'false') + '">' + UI.esc(r[1]) + '</button>';
+        }).join('') + '</div>' : '';
+      var finding = canRun
+        ? '<label class="chk-finding"><span>Finding</span>' +
+          '<input type="text" data-finding value="' + UI.attr(it.finding || '') + '" placeholder="e.g. dust buildup on intake"></label>'
+        : (it.finding ? '<div class="chk-finding"><span>Finding</span>' +
+            '<span class="t-sub">' + UI.esc(it.finding) + '</span></div>' : '');
+      var ev = '<div class="chk-ev"><span class="chk-ev-list">' +
         (it.evidence || []).map(function (n) { return '<span class="chip">' + UI.esc(n) + '</span>'; }).join('') +
-        '</span><label class="file-btn" title="Attach a photo or file">' + UI.icon('image') + ' Photo' +
-        '<input type="file" hidden accept="image/*" capture="environment" data-ev' + (canRun ? '' : ' disabled') + '></label>' +
-        '<button type="button" class="btn btn-sm btn-ghost" data-detail="' + i + '"' + (canRun ? '' : ' disabled') + '>Dialog</button>' +
-        '</div></div>';
+        '</span>' +
+        (canRun ? '<label class="file-btn" title="Attach a photo or file">' + UI.icon('image') + ' Photo' +
+          '<input type="file" hidden accept="image/*" capture="environment" data-ev></label>' +
+          '<button type="button" class="btn btn-sm btn-ghost" data-detail="' + i + '">Dialog</button>' : '') +
+        '</div>';
+      return '<div class="chk-card' + (it.done ? ' done' : '') + '" data-chk="' + i + '">' +
+        '<div class="chk-head"><b>' + UI.esc(it.task) + '</b>' +
+        '<span class="chk-state">' + (it.done ? UI.esc(result) : 'Not recorded') + '</span></div>' +
+        seg + finding + ev + '</div>';
     }).join('');
     return '<div class="card-block job-card" data-jobcard="' + UI.attr(j.id) + '">' +
       '<div class="card-head-row"><div class="row"><span class="t-id">' + UI.esc(j.id) + '</span>' +
@@ -316,17 +326,20 @@ function renderJobs(jobs) {
       '<div class="t-sub mt-xs">' + UI.esc(j.scheduleId) + ' · ' + UI.esc(j.category) + ' · ' + UI.esc(j.assets.join(', ')) +
       (j.visitDate ? ' · visit ' + UI.dateOnly(j.visitDate) : '') + '</div>' +
       '<div class="chk-progress" aria-hidden="true"><span style="width:' + pct + '%"></span></div>' +
-      '<div class="chk-progress-text">' + (total && done === total ? 'All items recorded. Ready to complete the visit.'
+      '<div class="chk-progress-text">' + (total && done === total
+        ? (canRun ? 'All items recorded. Ready to complete the visit.' : 'All items recorded.')
         : (total - done) + ' of ' + total + ' still to record.') + '</div>' +
       '<div class="chk-list">' + items + '</div>' +
       '<div class="chk-foot">' +
       '<span class="chk-foot-progress">' + done + ' of ' + total + ' saved</span>' +
-      '<button type="button" class="btn btn-sm btn-primary" data-save-job data-job="' + UI.attr(j.id) + '"' + (canRun ? '' : ' disabled') + '>Save progress</button>' +
-      '<button type="button" class="btn btn-sm btn-ghost" data-flag-fault data-job="' + UI.attr(j.id) + '"' + (canRun ? '' : ' disabled') + '>Flag additional fault</button>' +
-      '<button type="button" class="btn btn-sm btn-ghost" data-outcome="success" data-job="' + UI.attr(j.id) + '"' + (canRun ? '' : ' disabled') + '>Complete visit</button>' +
+      (canRun
+        ? '<button type="button" class="btn btn-sm btn-primary" data-save-job data-job="' + UI.attr(j.id) + '">Save progress</button>' +
+          '<button type="button" class="btn btn-sm btn-ghost" data-flag-fault data-job="' + UI.attr(j.id) + '">Flag additional fault</button>' +
+          '<button type="button" class="btn btn-sm btn-ghost" data-outcome="success" data-job="' + UI.attr(j.id) + '">Complete visit</button>'
+        : runNote) +
       '<a class="btn btn-sm btn-soft" href="maintenance.html?job=' + encodeURIComponent(j.id) + '">Open job</a>' +
       '</div></div>';
-  }).join('') : '<div class="empty"> <img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No maintenance jobs for you  --  the system generates them automatically when a schedule falls due.</div>';
+  }).join('') : '<div class="empty"> <img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No maintenance jobs for you. The system generates them automatically when a schedule falls due.</div>';
 
   host.querySelectorAll('[data-jobcard]').forEach(function (card) {
     var jobId = card.dataset.jobcard;
@@ -413,7 +426,7 @@ function saveJobProgress(jobId, card) {
 
 function checklistModal(jobId, idx) {
   var j = Store.getJob(jobId), it = j.items[idx];
-  UI.openModal('Record checklist item  --  ' + it.task + ' (' + (idx + 1) + '/' + j.items.length + ')',
+  UI.openModal('Record checklist item: ' + it.task + ' (' + (idx + 1) + '/' + j.items.length + ')',
     '<div class="grid grid-form">' +
     UI.field('Result', UI.select('result', ['Passed', 'Attention needed', 'Failed', 'Not applicable'], it.result || 'Passed')) +
     UI.field('Finding', UI.input('finding', 'e.g. dust buildup on intake', it.finding, { required: true })) +
@@ -450,13 +463,13 @@ function fault(jobId, val) {
 function outcomeModal(jobId, preset) {
   var j = Store.getJob(jobId);
   var allDone = j.items.every(function (i) { return i.done; });
-  UI.openModal('Continue maintenance documentation  --  complete the visit',
+  UI.openModal('Continue maintenance documentation: complete the visit',
     '<div class="field"><label for="outcomeSel">Outcome</label><select id="outcomeSel" name="outcome">' +
     ['success'].map(function (o) {
       return '<option value="' + o + '"' + (o === preset ? ' selected' : '') + '>' + o + '</option>';
     }).join('') + '</select></div>' +
     UI.field('Notes', U_PLACEHOLDER('notes', 'e.g. Replaced fan filter; one asset deferred to next cycle.')) +
-    (allDone ? '' : '<div class="note warn mt"><span>' + UI.icon('alert') + '</span><div>Checklist incomplete  --  <b>the visit cannot be completed</b>: do not mark incomplete maintenance successful.</div></div>'),
+    (allDone ? '' : '<div class="note warn mt"><span>' + UI.icon('alert') + '</span><div>Checklist incomplete. <b>The visit cannot be completed</b>: do not mark incomplete maintenance successful.</div></div>'),
     '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Save outcome</button>');
   document.getElementById('mGo').onclick = function () {
     var r = Maint.recordOutcome(jobId, UI.modalValue('outcome'), UI.modalValue('notes'));

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Offices  --  ITC Maintenance System</title>
+<title>Offices | ITC Maintenance System</title>
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/green.css">
 <link rel="stylesheet" href="css/kit.css">
@@ -29,7 +29,7 @@
     <main class="content">
       <div class="sec-title">
         <h2>Office directory</h2>
-        <span class="hint">Every office served  --  services stay linked to their office</span>
+        <span class="hint">Every office served. Services stay linked to their office.</span>
       </div>
 
       <div class="card">
@@ -46,10 +46,10 @@
       <section class="grid grid-kpi mt" id="oKpi"></section>
 
       <div class="card mt">
-        <div class="card-head"><h3>Offices</h3><span class="chip" id="oCount"> -- </span>
-          <span class="hint">open / total service records</span></div>
+        <div class="card-head"><h3>Offices</h3><span class="chip" id="oCount">0</span>
+          <span class="hint">accounts assigned to each office</span></div>
         <table class="table">
-          <thead><tr><th>Office</th><th>Contact</th><th>Services</th><th>State</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Office</th><th>Contact</th><th>Accounts</th><th>State</th><th>Actions</th></tr></thead>
           <tbody id="oBody"></tbody>
         </table>
         <div class="empty" id="oEmpty" hidden><img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No offices match these filters.</div>
@@ -84,18 +84,21 @@ function offices() {
   var db = Store.db;
   var byName = {};
   (db.offices || []).forEach(function (o) { byName[o.name] = o; });
-  /* offices referenced by records but missing from the directory still show */
-  (db.tickets || []).forEach(function (t) { if (t.office && !byName[t.office]) byName[t.office] = { name: t.office, active: true, _implicit: true }; });
+  /* offices referenced by an account but missing from the directory still show */
+  (db.people || []).forEach(function (p) { if (p.office && !byName[p.office]) byName[p.office] = { name: p.office, active: true, _implicit: true }; });
   return Object.keys(byName).map(function (k) { return byName[k]; });
 }
 
+/* Directory administration only.  The administrator lane holds no service
+   records (role scope 5), so an office is described by the accounts assigned
+   to it, never by the tickets or the visits it raised. */
 function stats(name) {
-  var db = Store.db, all = db.tickets.filter(function (t) { return t.office === name; });
-  var open = all.filter(function (t) { return Query.OPEN_STATES.indexOf(t.status) > -1; }).length;
-  var jobs = db.jobs.filter(function (j) { return j.office === name; });
-  var scheds = db.schedules.filter(function (s) { return s.office === name; });
-  return { total: all.length, open: open, overdue: all.filter(function (t) { return Query.isOverdue(t); }).length,
-    jobs: jobs.length, jobsOpen: jobs.filter(function (j) { return j.status !== 'closed'; }).length, scheds: scheds.length };
+  var mine = (Store.db.people || []).filter(function (p) { return p.office === name; });
+  var live = mine.filter(function (p) { return p.active !== false; });
+  function byRole(r) { return live.filter(function (p) { return p.role === r; }).length; }
+  return { staff: live.length, inactive: mine.length - live.length,
+    requesters: byRole('requester'), techs: byRole('technician'),
+    coordinators: byRole('coordinator') };
 }
 
 function render() {
@@ -110,13 +113,14 @@ function render() {
   });
 
   var active = offices().filter(function (o) { return o.active !== false; }).length;
-  var total = 0, openAll = 0, overdueAll = 0;
-  offices().forEach(function (o) { var s = stats(o.name); total += s.total; openAll += s.open; overdueAll += s.overdue; });
+  var staffAll = 0, unassigned = 0;
+  offices().forEach(function (o) { staffAll += stats(o.name).staff; });
+  unassigned = (Store.db.people || []).filter(function (p) { return !p.office; }).length;
   document.getElementById('oKpi').innerHTML =
     kpi('Offices', offices().length, active + ' active', 'k-brand', UI.icon('building')) +
-    kpi('Service records', total, 'linked to their office', 'k-ok', UI.icon('ticket')) +
-    kpi('Still active', openAll, 'submitted → resolved', 'k-hold', UI.icon('hourglass')) +
-    kpi('Overdue', overdueAll, 'past due point', 'k-warn', UI.icon('clock'));
+    kpi('Active', active, (offices().length - active) + ' retired', 'k-ok', UI.icon('checkCircle')) +
+    kpi('Accounts assigned', staffAll, 'people tied to an office', 'k-hold', UI.icon('users')) +
+    kpi('No office set', unassigned, 'check the directory', 'k-warn', UI.icon('user'));
   function kpi(l, v, d, c, dot) {
     return '<div class="card kpi ' + c + '"><div class="dot">' + dot + '</div><div class="label">' + l +
       '</div><div class="value">' + v + '</div><div class="delta">' + d + '</div></div>';
@@ -133,16 +137,16 @@ function render() {
     var s = stats(o.name), off = o.active === false;
     return '<tr style="--row-index:' + i + '">' +
       '<td data-label="Office"><div class="t-title">' + UI.esc(o.name) + '</div>' +
-      '<div class="t-sub mono">' + UI.esc(o.code || ' -- ') + ' · ' + UI.esc(o.location || '') + '</div></td>' +
-      '<td data-label="Contact"><div class="t-title">' + UI.esc(o.contactPerson || ' -- ') + '</div>' +
+      '<div class="t-sub mono">' + UI.esc(o.code || 'No code') + ' · ' + UI.esc(o.location || '') + '</div></td>' +
+      '<td data-label="Contact"><div class="t-title">' + UI.esc(o.contactPerson || 'Not set') + '</div>' +
       '<div class="t-sub">' + UI.esc(o.contactEmail || '') + (o.contactPhone ? ' · ' + UI.esc(o.contactPhone) : '') + '</div></td>' +
-      '<td data-label="Services"><div class="t-title">' + s.open + ' open / ' + s.total + ' total</div>' +
-      '<div class="t-sub">' + s.scheds + ' schedule(s) · ' + s.jobsOpen + ' open job(s)' + (s.overdue ? ' · ' + s.overdue + ' overdue' : '') + '</div></td>' +
+      '<td data-label="Accounts"><div class="t-title">' + s.staff + ' account(s)</div>' +
+      '<div class="t-sub">' + s.requesters + ' requester(s) · ' + s.techs + ' technician(s) · ' + s.coordinators + ' coordinator(s)' +
+      (s.inactive ? ' · ' + s.inactive + ' inactive' : '') + '</div></td>' +
       '<td data-label="State"><span class="badge ' + (off ? 'b-cancelled' : 'b-resolved') + '">' + (off ? 'Inactive' : 'Active') + '</span></td>' +
       '<td data-label="Actions"><div class="chip-row">' +
       '<button class="btn btn-ghost btn-sm" data-oedit="' + UI.attr(o.name) + '">Edit</button>' +
       '<button class="btn ' + (off ? 'btn-soft' : 'btn-danger-soft') + ' btn-sm" data-otoggle="' + UI.attr(o.name) + '" data-on="' + (off ? '1' : '0') + '">' + (off ? 'Activate' : 'Deactivate') + '</button>' +
-      '<a class="btn btn-ghost btn-sm" href="tickets.html?office=' + encodeURIComponent(o.name) + '">Tickets</a>' +
       '</div></td></tr>';
   }).join('');
 
@@ -164,7 +168,7 @@ function findOffice(name) {
 
 function officeModal(o) {
   o = o || {};
-  UI.openModal(o.name ? 'Edit office  --  ' + o.name : 'New office',
+  UI.openModal(o.name ? 'Edit office: ' + o.name : 'New office',
     '<div class="grid grid-form">' +
     UI.field('Office name', UI.input('name', 'e.g. College of Engineering', o.name || '', { required: true })) +
     UI.field('Code', UI.input('code', 'e.g. COE', o.code || '')) +

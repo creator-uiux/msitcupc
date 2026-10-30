@@ -1,4 +1,4 @@
-/* live.js  --  real-time engine: schedule checks, reminder loops, dependency
+/* live.js: real-time engine: schedule checks, reminder loops, dependency
    follow-ups, simulated incoming traffic, cross-tab sync, event toasts.
    In DEMO mode (?demo=1) the world clock runs once and stops, so captured
    screenshots are reproducible. */
@@ -44,7 +44,7 @@
           t.reminders.push(new Date(Date.now()).toISOString());
           t.history.push({
             at: new Date(Date.now()).toISOString(), by: 'System', role: 'system', status: 'resolved', kind: 'remind',
-            text: 'No response  --  Status kept Resolved; follow-up reminder ' + t.reminders.length + ' sent to the office.'
+            text: 'No response. Status kept Resolved; follow-up reminder ' + t.reminders.length + ' sent to the office.'
           });
           db.seq.notif++;
           db.notifications.unshift({
@@ -52,7 +52,7 @@
             ticketId: t.id, office: t.office, read: false,
             text: 'Follow-up reminder: please confirm the result of ' + t.id + ' (' + t.office + ').'
           });
-          events.push('Reminder loop: ' + t.id + ' still Resolved  --  follow-up reminder sent.');
+          events.push('Reminder loop: ' + t.id + ' still Resolved. Follow-up reminder sent.');
         }
       });
 
@@ -65,7 +65,7 @@
           db.notifications.unshift({
             id: db.seq.notif, at: new Date(Date.now()).toISOString(), role: 'coordinator', kind: 'dep',
             ticketId: t.id, read: false,
-            text: 'Dependency follow-up due: ' + t.id + '  --  ' + t.dependency.nextAction + ' (' + t.dependency.responsible + ').'
+            text: 'Dependency follow-up due: ' + t.id + '. ' + t.dependency.nextAction + ' (' + t.dependency.responsible + ').'
           });
           events.push('Follow up dependency due: ' + t.id + '.');
         }
@@ -86,25 +86,45 @@
           jobId: j.id, office: j.office, read: false,
           text: 'Follow-up reminder: please confirm the result of maintenance ' + j.id + ' (' + j.office + ').'
         });
-        events.push('Reminder loop: maintenance ' + j.id + ' still Resolved  --  follow-up sent.');
+        events.push('Reminder loop: maintenance ' + j.id + ' still Resolved. Follow-up sent.');
       });
 
-      // Rescheduled job whose agreed date arrived -> work can continue
+      // Rescheduled job whose agreed date arrived -> availability is asked again
       db.jobs.forEach(function (j) {
         if (j.status === 'on_hold' && j.visitDate && new Date(j.visitDate).getTime() <= now) {
-          j.status = 'assigned';
-          db.seq.notif++;
-          db.notifications.unshift({
-            id: db.seq.notif, at: new Date(Date.now()).toISOString(), role: 'technician', kind: 'sched', to: j.technician,
-            jobId: j.id, office: j.office, read: false, text: 'Agreed date reached for ' + j.id + '  --  continue the maintenance visit.'
-          });
-          events.push('On agreed date: ' + j.id + ' visit can proceed.');
+          if (j.availability === 'yes') {
+            j.status = 'assigned';
+            db.seq.notif++;
+            db.notifications.unshift({
+              id: db.seq.notif, at: new Date(Date.now()).toISOString(), role: 'technician', kind: 'sched', to: j.technician,
+              jobId: j.id, office: j.office, read: false, text: 'Agreed date reached for ' + j.id + '. Continue the maintenance visit.'
+            });
+            events.push('On agreed date: ' + j.id + ' visit can proceed.');
+          } else if (j.availability !== 'asked') {
+            j.availability = 'asked';
+            db.seq.notif++;
+            db.notifications.unshift({
+              id: db.seq.notif, at: new Date(Date.now()).toISOString(), role: 'requester', kind: 'sched',
+              jobId: j.id, office: j.office, read: false,
+              text: 'Confirm availability for the rescheduled maintenance visit ' + j.id + ' on ' + j.visitDate.slice(0, 10) + '.'
+            });
+            db.seq.notif++;
+            db.notifications.unshift({
+              id: db.seq.notif, at: new Date(Date.now()).toISOString(), role: 'coordinator', kind: 'sched',
+              jobId: j.id, office: j.office, read: false,
+              text: j.id + ': agreed reschedule date reached, waiting for the office availability answer.'
+            });
+            events.push('Availability confirmation requested: ' + j.id + '.');
+          }
         }
       });
 
-      // Simulation: other offices keep working  --  occasional live intake
+      // Simulation: other offices keep working, with occasional live intake.
+      // The PDF has no simulated intake, so the registry flag decides whether
+      // this runs at all; the settings switch alone is not enough.
       var gap = now - (db.lastSim || 0);
-      if (db.settings.simulate && gap > 45000 && Math.random() < 0.5) {
+      var simOn = window.Features && window.Features.on('demoIntakeSimulation');
+      if (simOn && db.settings.simulate && gap > 45000 && Math.random() < 0.5) {
         db.lastSim = now;
         var pool = [
           { office: 'Library', requester: 'M. Bataller', category: 'Hardware Repair', issue: 'Public-use PC in the reference area will not boot past the logo.', asset: 'PC-LIB-07' },
@@ -127,11 +147,11 @@
           diagnosis: { findings: '', actions: '', parts: '', cost: 0, labor: 0, dates: '', evidence: [] },
           confirmation: { state: 'none', person: '', date: null, feedback: '' },
           dependency: null, tests: [], reminders: [],
-          history: [{ at: new Date(Date.now()).toISOString(), by: pick.requester, role: 'requester', status: 'submitted', kind: 'status', text: 'Request recorded  --  Status: Submitted.' }]
+          history: [{ at: new Date(Date.now()).toISOString(), by: pick.requester, role: 'requester', status: 'submitted', kind: 'status', text: 'Request recorded. Status: Submitted.' }]
         });
         db.notifications.unshift({
           id: ++db.seq.notif, at: new Date(Date.now()).toISOString(), role: 'coordinator', kind: 'intake',
-          ticketId: id, office: pick.office, read: false, text: id + ' recorded live from ' + pick.office + '  --  Status: Submitted.'
+          ticketId: id, office: pick.office, read: false, text: id + ' recorded live from ' + pick.office + '. Status: Submitted.'
         });
         events.push('Live intake: ' + id + ' from ' + pick.office + '.');
       }

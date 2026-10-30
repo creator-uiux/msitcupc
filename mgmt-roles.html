@@ -18,7 +18,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#1E3A5F">
-<script>(function(){var P="mgmt",R="management",F="roles.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+<script>(function(){var P="mgmt",R="management",F="roles.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];var HOME={"requester": "or-dashboard.html", "technician": "itc-dashboard.html", "coordinator": "ic-dashboard.html", "management": "mgmt-users.html"};try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace(ALLOW.indexOf(o)>-1?(o+"-"+F):(HOME[a]||("or-"+F)));return;}window.ITC_URL_ROLE=P;})();</script>
 </head>
 <body>
 <div class="app">
@@ -31,7 +31,7 @@
 
       <div class="sec-title">
         <h2>Roles &amp; access</h2>
-        <span class="hint">four roles -- exactly what each one can and cannot do (SOP 28.2)</span>
+        <span class="hint">Four roles, and exactly what each one can and cannot do (SOP 28.2).</span>
       </div>
 
       <section class="grid grid-2">
@@ -100,7 +100,7 @@ function render() {
     '<p class="rc-blurb">' + UI.esc(r.blurb) + '</p>' +
     '<div class="caps-count"><b>' + caps.length + '</b> features unlocked for this role</div>' +
     '<ul class="caps-list">' + caps.slice(0, 6).map(function (c) { return '<li>' + c + '</li>'; }).join('') +
-    (caps.length > 6 ? '<li class="muted">+ ' + (caps.length - 6) + ' more  --  see the matrix below</li>' : '') +
+    (caps.length > 6 ? '<li class="muted">+ ' + (caps.length - 6) + ' more. See the matrix below</li>' : '') +
     '</ul>';
 
   /* administration block */
@@ -139,7 +139,7 @@ function render() {
       UI.ROLE_ORDER.map(function (k) {
         var allow = UI.capsForRole(k).indexOf(c.key) > -1;
         return '<td class="' + (allow ? 'cap-y' : 'cap-n') + '" data-label="' + UI.ROLES[k].short + '">' +
-          (allow ? UI.icon('check') : ' -- ') + '</td>';
+          (allow ? UI.icon('check') : '<span class="muted">No</span>') + '</td>';
       }).join('') + '</tr>';
   }).join('');
 }

@@ -28,32 +28,27 @@
     "dashboard.html": [
       "requester",
       "technician",
-      "coordinator",
-      "management"
+      "coordinator"
     ],
     "tickets.html": [
       "requester",
       "technician",
-      "coordinator",
-      "management"
+      "coordinator"
     ],
     "ticket.html": [
       "requester",
       "technician",
-      "coordinator",
-      "management"
+      "coordinator"
     ],
     "register.html": [
       "requester",
       "technician",
-      "coordinator",
-      "management"
+      "coordinator"
     ],
     "reports.html": [
       "requester",
       "technician",
-      "coordinator",
-      "management"
+      "coordinator"
     ],
     "flow.html": [
       "requester",
@@ -91,8 +86,7 @@
     ],
     "maintenance.html": [
       "technician",
-      "coordinator",
-      "management"
+      "coordinator"
     ],
     "visits.html": [
       "requester"
@@ -280,9 +274,6 @@
     },
     "assigned": {
       "in_progress": [
-        "technician"
-      ],
-      "on_hold": [
         "technician"
       ],
       "cancelled": [

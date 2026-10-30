@@ -1,5 +1,5 @@
-/* actions.js  --  shared guarded actions + modal forms for every screen.
-   Actions.act(name, ticketId, cb)  --  cb(newId) fires after a mutation. */
+/* actions.js: shared guarded actions + modal forms for every screen.
+   Actions.act(name, ticketId, cb): cb(newId) fires after a mutation. */
 (function () {
   'use strict';
   var S = window.Store, F = window.Flow, M = window.Maint, U = window.UI;
@@ -19,7 +19,7 @@
 
       /* ---- coordinator review ---- */
       case 'needsinfo':
-        U.openModal('Request missing details  --  Details complete? No',
+        U.openModal('Request missing details (details complete: No)',
           U.field('List exactly what is missing', U.textarea('missing', 'e.g. Serial number of the unit, exact error message, room number.', '', 3, true)),
           '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Send request (→ Needs Information)</button>');
         document.getElementById('mGo').onclick = function () {
@@ -28,7 +28,7 @@
         break;
 
       case 'supplyinfo':
-        U.openModal('Information supplied  --  return this ticket to review',
+        U.openModal('Information supplied: return this ticket to review',
           U.field('What was supplied', U.textarea('note', 'e.g. Serial number and exact error text received by phone.', '', 3, true)),
           '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Return to Submitted</button>');
         document.getElementById('mGo').onclick = function () {
@@ -37,13 +37,13 @@
         break;
 
       case 'reviewassign':
-        U.openModal('Review complete  --  assess, assign and notify',
+        U.openModal('Review complete: assess, assign and notify',
           '<div class="grid grid-form">' +
           U.field('Impact', U.select('impact', ['Low', 'Medium', 'High'], t.impact || 'Medium', true)) +
           U.field('Urgency', U.select('urgency', ['Low', 'Medium', 'High'], t.urgency || 'Medium', true)) +
           U.field('Priority', U.select('priority', [['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['critical', 'Critical']], t.priority || 'medium', true)) +
           U.field('Target completion date', U.dateInput('target', (t.target || '').slice(0, 10), { required: true })) +
-          U.field('Technician', U.select('tech', [['J. Tan', 'J. Tan  --  hardware / network'], ['M. Uy', 'M. Uy  --  printers / UPS'], ['K. Villanueva', 'K. Villanueva  --  systems']], t.technician || 'J. Tan', true)) +
+          U.field('Technician', U.select('tech', [['J. Tan', 'J. Tan (hardware / network)'], ['M. Uy', 'M. Uy (printers / UPS)'], ['K. Villanueva', 'K. Villanueva (systems)']], t.technician || 'J. Tan', true)) +
           '</div>',
           '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Save and assign</button>');
         document.getElementById('mGo').onclick = function () {
@@ -58,7 +58,7 @@
         break;
 
       case 'assess':
-        U.openModal('Assess impact and urgency  --  set priority and target date',
+        U.openModal('Assess impact and urgency: set priority and target date',
           '<div class="grid grid-form">' +
           U.field('Impact', U.select('impact', ['Low', 'Medium', 'High'], t.impact || 'Medium', true)) +
           U.field('Urgency', U.select('urgency', ['Low', 'Medium', 'High'], t.urgency || 'Medium', true)) +
@@ -73,8 +73,8 @@
         break;
 
       case 'assign':
-        U.openModal('Assign technician  --  Status: Assigned',
-          U.field('Technician', U.select('tech', [['J. Tan', 'J. Tan  --  hardware / network'], ['M. Uy', 'M. Uy  --  printers / UPS'], ['K. Villanueva', 'K. Villanueva  --  systems']], t.technician || 'J. Tan', true)) +
+        U.openModal('Assign technician: status Assigned',
+          U.field('Technician', U.select('tech', [['J. Tan', 'J. Tan (hardware / network)'], ['M. Uy', 'M. Uy (printers / UPS)'], ['K. Villanueva', 'K. Villanueva (systems)']], t.technician || 'J. Tan', true)) +
           U.field('Coordination note (optional)', U.input('note', 'e.g. Visit after 2 PM, coordinate with the office head')),
           '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Assign &amp; notify</button>');
         document.getElementById('mGo').onclick = function () {
@@ -86,8 +86,8 @@
         break;
 
       case 'reassign':
-        U.openModal('Reassign technician  --  ' + id,
-          U.field('Technician', U.select('tech', [['J. Tan', 'J. Tan  --  hardware / network'], ['M. Uy', 'M. Uy  --  printers / UPS'], ['K. Villanueva', 'K. Villanueva  --  systems']], t.technician || 'J. Tan', true)) +
+        U.openModal('Reassign technician: ' + id,
+          U.field('Technician', U.select('tech', [['J. Tan', 'J. Tan (hardware / network)'], ['M. Uy', 'M. Uy (printers / UPS)'], ['K. Villanueva', 'K. Villanueva (systems)']], t.technician || 'J. Tan', true)) +
           '<div class="note mt"><span>' + UI.icon('eye') + '</span><div>The status does not change. The previous and the new technician, and the office, are notified.</div></div>',
           '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Reassign &amp; notify</button>');
         document.getElementById('mGo').onclick = function () {
@@ -131,7 +131,7 @@
       }
 
       case 'diagnose':
-        U.openModal((t.diagnosis.findings ? 'Edit' : 'Record') + ' diagnosis  --  findings, actions, parts, costs, labor, dates, evidence',
+        U.openModal((t.diagnosis.findings ? 'Edit' : 'Record') + ' diagnosis: findings, actions, parts, costs, labor, dates, evidence',
           U.field('Findings', U.textarea('findings', 'Root cause and what you observed', t.diagnosis.findings, 3, true)) +
           '<div class="grid grid-form mt">' +
           U.field('Actions performed', U.input('actions', 'e.g. Replaced PSU, cleaned chassis', t.diagnosis.actions)) +
@@ -153,7 +153,7 @@
         break;
 
       case 'repair':
-        U.openModal((t.diagnosis.actions ? 'Edit' : 'Record') + ' repair  --  actions performed, parts, costs, labor, dates, evidence',
+        U.openModal((t.diagnosis.actions ? 'Edit' : 'Record') + ' repair: actions performed, parts, costs, labor, dates, evidence',
           U.field('Actions performed', U.textarea('actions', 'e.g. Replaced PSU, cleaned chassis, reconfigured network', t.diagnosis.actions, 3, true)) +
           '<div class="grid grid-form mt">' +
           U.field('Parts used', U.input('parts', 'e.g. ATX 600W PSU', t.diagnosis.parts)) +
@@ -177,7 +177,7 @@
         U.openModal('Parts, approval or external support needed? → On Hold',
           U.field('Dependency reason', U.input('reason', 'e.g. Replacement PSU awaiting supplier delivery', '', { required: true })) +
           '<div class="grid grid-form mt">' +
-          U.field('Responsible person', U.input('responsible', 'e.g. Procurement  --  Mr. Uy', '', { required: true })) +
+          U.field('Responsible person', U.input('responsible', 'e.g. Procurement, Mr. Uy', '', { required: true })) +
           U.field('Next action', U.input('nextAction', 'e.g. Follow up on PO status', '', { required: true })) +
           U.field('Follow-up due', U.dateInput('dueAt', S.NOW().slice(0, 10))) + '</div>',
           '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Place On Hold</button>');
@@ -192,14 +192,14 @@
         break;
 
       case 'pass':
-        U.openModal('Record test  --  Service passed testing?',
+        U.openModal('Record test: did the service pass?',
           U.field('Service summary (what was done and verified)', U.textarea('note', 'e.g. 30-minute burn-in, no errors, office user confirmed.', '', 3, true)),
           '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Yes → Status: Resolved</button>');
         document.getElementById('mGo').onclick = function () { var r = F.recordTest(id, 'pass', U.modalValue('note')); U.closeModal(); after(r, cb); };
         break;
 
       case 'fail':
-        U.openModal('Record failed test  --  return to diagnosis (loop)',
+        U.openModal('Record failed test: return to diagnosis (loop)',
           U.field('What failed / retest notes', U.textarea('note', 'e.g. #REF errors persist after template rebuild.')),
           '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-danger-soft" id="mGo">Record failed test</button>');
         document.getElementById('mGo').onclick = function () { var r = F.recordTest(id, 'fail', U.modalValue('note')); U.closeModal(); after(r, cb); };
@@ -207,14 +207,14 @@
 
       /* ---- dependency follow-up (coordinator lane) ---- */
       case 'followup':
-        U.openModal('Record follow-up update  --  ' + id,
+        U.openModal('Record follow-up update: ' + id,
           U.field('Follow-up outcome', U.textarea('text', 'e.g. Supplier confirmed delivery on Friday.', '', 3, true)),
           '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Save</button>');
         document.getElementById('mGo').onclick = function () { var r = F.followUp(id, U.modalValue('text')); U.closeModal(); after(r, cb); };
         break;
 
       case 'resolve':
-        U.openModal('Dependency outcome? Resolved  --  record the outcome note',
+        U.openModal('Dependency resolved: record the outcome note',
           U.field('What resolved the dependency?', U.textarea('note', 'e.g. Supplier delivered the PSU; procured and checked by procurement.', '', 3, true)),
           '<button class="btn btn-ghost" data-close>Keep On Hold</button><button class="btn btn-primary" id="mGo">Resolve → back to work</button>');
         document.getElementById('mGo').onclick = function () { var r = F.resolveDependency(id, U.modalValue('note')); U.closeModal(); after(r, cb); };
@@ -231,7 +231,7 @@
       case 'accept': after(F.officeDecision(id, 'accepted', { person: U.viewerName() || t.requester, feedback: '' }), cb); break;
 
       case 'reject':
-        U.openModal('Office rejects the result  --  record feedback',
+        U.openModal('Office rejects the result: record feedback',
           U.field('Office feedback (what is still wrong?)', U.textarea('feedback', 'e.g. Still faint prints on legal size paper.', '', 3, true)),
           '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-danger-soft" id="mGo">Record feedback → diagnosis</button>');
         document.getElementById('mGo').onclick = function () {
@@ -245,7 +245,7 @@
       case 'close': after(F.close(id, 'confirmation'), cb); break;
 
       case 'autoclose':
-        U.openModal('Authorized closure  --  confirmation not on record',
+        U.openModal('Authorized closure: confirmation not on record',
           U.field('Reason for authorized closure', U.textarea('reason', 'e.g. Office head authorised closure by email; requester on leave.', '', 3, true)),
           '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-danger-soft" id="mGo">Close ticket</button>');
         document.getElementById('mGo').onclick = function () { var r = F.close(id, 'authorized', U.modalValue('reason')); U.closeModal(); after(r, cb); };
@@ -256,9 +256,9 @@
         /* The office may have asked for the withdrawal; their stated reason
            prefills the coordinator's cancellation reason. */
         var wReason = (t && t.withdrawal && t.withdrawal.reason) || '';
-        U.openModal('Record cancellation reason  --  ' + id,
+        U.openModal('Record cancellation reason: ' + id,
           (wReason ? '<div class="note warn"><span>↩</span><div><b>The office requested withdrawal.</b> ' + U.esc(wReason) + '</div></div>' : '') +
-          U.field('Cancellation reason', U.textarea('reason', 'e.g. Active request withdrawn  --  office procured a replacement in-house.', wReason, 3, true)),
+          U.field('Cancellation reason', U.textarea('reason', 'e.g. Active request withdrawn. Office procured a replacement in-house.', wReason, 3, true)),
           '<button class="btn btn-ghost" data-close>Keep ticket open</button><button class="btn btn-danger-soft" id="mGo">Set Cancelled</button>');
         document.getElementById('mGo').onclick = function () { var r = F.cancel(id, U.modalValue('reason')); U.closeModal(); after(r, cb); };
         break;
@@ -279,7 +279,7 @@
 
       /* ---- conversation (reply composer, shared with the record screen) ---- */
       case 'comment':
-        U.openModal('Reply  --  ' + id,
+        U.openModal('Reply: ' + id,
           U.field('Message', U.textarea('text', 'Write a message or update…', '', 3, true)) +
           '<div class="note mt"><span>' + UI.icon('eye') + '</span><div>Post an <b>internal note</b> from the record screen to keep staff-only detail out of the office view.</div></div>',
           '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Send reply</button>');
@@ -290,7 +290,7 @@
         break;
 
       case 'note':
-        U.openModal('Internal note  --  ' + id,
+        U.openModal('Internal note: ' + id,
           U.field('Internal note (IT staff only)', U.textarea('text', 'e.g. Waiting on the vendor RMA; do not promise a date to the office.', '', 3, true)),
           '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Record note</button>');
         document.getElementById('mGo').onclick = function () {
@@ -301,7 +301,7 @@
 
       /* ---- requester corrections while Submitted / Needs Information ---- */
       case 'edit-intake':
-        U.openModal('Edit your request  --  ' + id,
+        U.openModal('Edit your request: ' + id,
           U.field('What is the problem?', U.textarea('issue', 'Describe the issue in your own words', t.issue, 3, true, 10)) +
           '<div class="grid grid-form mt">' +
           U.field('Category', U.select('category', (S.db.settings.categories || []), t.category, true)) +

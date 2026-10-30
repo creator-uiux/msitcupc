@@ -49,8 +49,10 @@ check('late UTC renders in Manila', Time.fmt(lateInstant), 'Oct 9, 2026 4:30 am'
 /* 2026-10-08 17:00:00Z is 2026-10-09 1:00 am in Manila. */
 check('evening UTC is already tomorrow in Manila', Time.fmt('2026-10-08T17:00:00.000Z'), 'Oct 9, 2026 1:00 am');
 
-check('empty timestamp is a dash', Time.fmt(null), ' -- ');
-check('garbage timestamp is a dash', Time.fmt('not-a-date'), ' -- ');
+/* An unusable timestamp reads as words, the way every empty value does
+   since the copy cleanup (checklist 30.3). */
+check('an empty timestamp reads as unset', Time.fmt(null), 'Not set');
+check('a garbage timestamp reads as unset', Time.fmt('not-a-date'), 'Not set');
 
 /* todayPlus must land on the Manila calendar day. */
 var tp = Time.todayPlus(7);

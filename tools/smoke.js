@@ -195,6 +195,26 @@ ok(!r.ok, 'schedule blocked without checklist');
 r = M.createSchedule({ office: 'Registrar', assets: [], category: 'Hardware Repair', checklist: ['Filter check'], frequency: 'monthly', dueDate: '2026-12-01', technician: 'J. Tan' });
 ok(r.ok, 'create a schedule that is not due yet');
 
+/* A Custom cadence stores a day count that is later added to a date, so the
+   accepted range has to match the backend exactly. */
+[0, -5, '45.7', 45.7, '45abc', 'abc', null, undefined, 3651, 4000, 5000000, true].forEach(function (bad) {
+  r = M.createSchedule({ office: 'Registrar', assets: [], category: 'Hardware Repair',
+    checklist: ['Filter check'], frequency: 'custom', intervalDays: bad,
+    dueDate: '2026-12-01', technician: 'J. Tan' });
+  ok(!r.ok, 'custom interval ' + JSON.stringify(bad) + ' refused');
+});
+r = M.createSchedule({ office: 'Registrar', assets: [], category: 'Hardware Repair',
+  checklist: ['Filter check'], frequency: 'custom', intervalDays: '45',
+  dueDate: '2026-12-01', technician: 'J. Tan' });
+var wideSch = r.ok && S.getSchedule(r.id);
+ok(!!wideSch && wideSch.intervalDays === 45, 'a quoted whole number is accepted and stored as a number');
+r = M.createSchedule({ office: 'Registrar', assets: [], category: 'Hardware Repair',
+  checklist: ['Filter check'], frequency: 'custom', intervalDays: 3650,
+  dueDate: '2026-12-01', technician: 'J. Tan' });
+ok(r.ok, 'the widest accepted interval is 3650 days');
+ok(F.frequencyDays('custom', 99999999) === 30, 'a runaway stored interval falls back to the configured value');
+ok(F.frequencyDays('custom', 45) === 45, 'frequencyDays honours the stored interval');
+
 var ev = M.runScheduleCheck(false);
 console.log('   schedule check events:', ev.map(function (e) { return e.kind + ':' + e.id; }).join(', ') || '(none)');
 ok(ev.some(function (e) { return e.kind === 'gen'; }), 'Maintenance due? Yes + job does not exist -> generate linked maintenance job');

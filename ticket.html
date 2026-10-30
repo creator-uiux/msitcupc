@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ticket  --  ITC Maintenance System</title>
+<title>Ticket | ITC Maintenance System</title>
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/green.css">
 <link rel="stylesheet" href="css/kit.css">
@@ -30,7 +30,9 @@
       <div class="sec-title">
         <h2 id="tTitle">Ticket</h2>
         <span class="hint">Service record and audit trail</span>
+        <button type="button" class="btn btn-ghost btn-sm no-print" id="tPrint">Print ticket</button>
       </div>
+      <div class="print-only" id="tPrintDoc"></div>
 
       <div class="toolbar mb-md" id="tPickerBar">
         <label class="field-inline pick"><span>Open ticket</span>
@@ -148,7 +150,7 @@ function pickList() {
     return t.id.toLowerCase().includes(search) || t.office.toLowerCase().includes(search) || t.requester.toLowerCase().includes(search) || t.issue.toLowerCase().includes(search);
   });
   sel.innerHTML = tickets.map(function (t) {
-    return '<option value="' + t.id + '">' + t.id + '  --  ' + UI.esc(t.office) + ' (' + UI.STATUS[t.status][0] + ')</option>';
+    return '<option value="' + t.id + '">' + t.id + ': ' + UI.esc(t.office) + ' (' + UI.STATUS[t.status][0] + ')</option>';
   }).join('');
   if (!currentId || !Store.getTicket(currentId)) {
     var first = tickets.filter(function (t) { return t.status !== 'closed'; })[0] || tickets[0];
@@ -202,7 +204,7 @@ function validMoves(t) {
   return out;
 }
 
-/* Where the current status is actioned  --  the record itself is read-only. */
+/* Where the current status is actioned. The record itself is read-only. */
 function whereCard(t) {
   var role = Store.db.role;
   var rows = [];
@@ -263,6 +265,16 @@ function render() {
   document.getElementById('tTitle').innerHTML = UI.esc(t.issue.slice(0, 54)) + (t.issue.length > 54 ? '…' : '');
   var pickEl = document.getElementById('tPick');
   if (pickEl) pickEl.value = t.id;
+  var printDoc = document.getElementById('tPrintDoc');
+  if (printDoc) {
+    printDoc.innerHTML =
+      '<div class="print-head"><div class="print-brand">University of the Philippines Cebu</div>' +
+      '<div class="print-sub">IT Service and Maintenance Management System</div>' +
+      '<h1>Service Record</h1></div>' +
+      '<div class="print-meta"><b>' + UI.esc(t.id) + '</b> | ' + UI.esc(t.office) +
+      ' | ' + UI.esc(UI.STATUS[t.status] ? UI.STATUS[t.status][0] : t.status) +
+      '<br>Printed ' + UI.esc(new Date().toLocaleString()) + '</div>';
+  }
 
   /* head.  Priority is the IT assessment (hidden from the office and from
      technicians); the assigned technician and impact/urgency are staff
@@ -280,13 +292,13 @@ function render() {
     '<div><div class="k">Office</div><div class="v">' + UI.esc(t.office) + '</div></div>' +
     '<div><div class="k">Requester</div><div class="v">' + UI.esc(t.requester) + UI.personLinks(t.requester) + '</div></div>' +
     '<div><div class="k">Category / source</div><div class="v">' + UI.esc(t.category) + ' · ' + UI.esc(UI.sourceLabel(t.source)) + '</div></div>' +
-    '<div><div class="k">Asset</div><div class="v mono">' + UI.esc(t.asset || ' -- ') + '</div></div>' +
+    '<div><div class="k">Asset</div><div class="v mono">' + UI.esc(t.asset || 'Not set') + '</div></div>' +
     (role === 'requester' ? '' :
-      '<div><div class="k">Impact / urgency</div><div class="v">' + UI.esc(t.impact || ' -- ') + ' / ' + UI.esc(t.urgency || ' -- ') + '</div></div>') +
-    '<div><div class="k">Target completion</div><div class="v">' + (t.target ? UI.dateOnly(t.target) : ' -- ') + '</div></div>' +
+      '<div><div class="k">Impact / urgency</div><div class="v">' + UI.esc(t.impact || 'Not set') + ' / ' + UI.esc(t.urgency || 'Not set') + '</div></div>') +
+    '<div><div class="k">Target completion</div><div class="v">' + (t.target ? UI.dateOnly(t.target) : 'Not set') + '</div></div>' +
     (role === 'requester' ? '' :
-      '<div><div class="k">Technician</div><div class="v">' + UI.esc(t.technician || ' -- ') + (t.technician ? UI.personLinks(t.technician) : '') + '</div></div>') +
-    '<div><div class="k">Attachments</div><div class="v">' + (t.attachments.length ? UI.esc(t.attachments.join(', ')) : ' -- ') + '</div></div>' +
+      '<div><div class="k">Technician</div><div class="v">' + UI.esc(t.technician || 'Unassigned') + (t.technician ? UI.personLinks(t.technician) : '') + '</div></div>') +
+    '<div><div class="k">Attachments</div><div class="v">' + (t.attachments.length ? UI.esc(t.attachments.join(', ')) : 'None') + '</div></div>' +
     '</div>';
 
   /* dependency */
@@ -312,11 +324,11 @@ function render() {
     (d.findings
       ? '<div class="card-pad"><div class="info">' +
         '<div><div class="k">Findings</div><div class="v">' + UI.esc(d.findings) + '</div></div>' +
-        '<div><div class="k">Actions performed</div><div class="v">' + UI.esc(d.actions || ' -- ') + '</div></div>' +
-        '<div><div class="k">Parts</div><div class="v">' + UI.esc(d.parts || ' -- ') + '</div></div>' +
+        '<div><div class="k">Actions performed</div><div class="v">' + UI.esc(d.actions || 'Not recorded') + '</div></div>' +
+        '<div><div class="k">Parts</div><div class="v">' + UI.esc(d.parts || 'None') + '</div></div>' +
         (UI.roleKey() === 'requester' ? '' : '<div><div class="k">Cost / labor</div><div class="v">₱' + (d.cost || 0).toFixed(2) + ' · ' + (d.labor || 0) + 'h</div></div>') +
-        '<div><div class="k">Dates</div><div class="v">' + UI.esc(d.dates || ' -- ') + '</div></div>' +
-        '<div><div class="k">Evidence</div><div class="v">' + (d.evidence && d.evidence.length ? UI.esc(d.evidence.join(', ')) : ' -- ') + '</div></div>' +
+        '<div><div class="k">Dates</div><div class="v">' + UI.esc(d.dates || 'Not recorded') + '</div></div>' +
+        '<div><div class="k">Evidence</div><div class="v">' + (d.evidence && d.evidence.length ? UI.esc(d.evidence.join(', ')) : 'None') + '</div></div>' +
         '</div></div>'
       : '<div class="empty"> <img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No diagnosis recorded yet.</div>');
 
@@ -327,7 +339,7 @@ function render() {
     (tests.length
       ? '<ul class="list">' + tests.map(function (x) {
         return '<li><span class="ico ' + (x.result === 'pass' ? 'ok' : 'warn') + '">' + (x.result === 'pass' ? UI.icon('check') : UI.icon('x')) + '</span>' +
-          '<div class="body"><strong>' + (x.result === 'pass' ? 'Service passed testing' : 'Failed test  --  returned to diagnosis') + '</strong>' +
+          '<div class="body"><strong>' + (x.result === 'pass' ? 'Service passed testing' : 'Failed test, returned to diagnosis') + '</strong>' +
           '<span>' + UI.esc(x.note || 'no notes') + ' · ' + UI.esc(x.by) + '</span></div>' +
           '<span class="when">' + UI.timeAgo(x.at) + '</span></li>';
       }).join('') + '</ul>'
@@ -342,10 +354,10 @@ function render() {
       '<span class="badge ' + (s === 'accepted' ? 'b-resolved' : s === 'rejected' ? 'b-cancelled' : s === 'no_response' ? 'b-needs-info' : 'b-assigned') + '">' +
       UI.esc(s === 'none' ? 'not requested' : s) + '</span></div>' +
       '<div class="info mt">' +
-      '<div><div class="k">Review &amp; verify</div><div class="v">' + (s === 'accepted' ? 'Office accepts result' : s === 'rejected' ? 'Office rejected  --  feedback recorded' : s === 'no_response' ? 'No response  --  reminder loop' : 'Waiting for office decision') + '</div></div>' +
-      '<div><div class="k">Confirming person</div><div class="v">' + UI.esc(t.confirmation.person || ' -- ') + '</div></div>' +
-      '<div><div class="k">Confirmed on</div><div class="v">' + (t.confirmation.date ? UI.clock(t.confirmation.date) : ' -- ') + '</div></div>' +
-      '<div><div class="k">Feedback</div><div class="v">' + UI.esc(t.confirmation.feedback || ' -- ') + '</div></div>' +
+      '<div><div class="k">Review &amp; verify</div><div class="v">' + (s === 'accepted' ? 'Office accepts result' : s === 'rejected' ? 'Office rejected, feedback recorded' : s === 'no_response' ? 'No response, reminder loop' : 'Waiting for office decision') + '</div></div>' +
+      '<div><div class="k">Confirming person</div><div class="v">' + UI.esc(t.confirmation.person || 'Not recorded') + '</div></div>' +
+      '<div><div class="k">Confirmed on</div><div class="v">' + (t.confirmation.date ? UI.clock(t.confirmation.date) : 'Not set') + '</div></div>' +
+      '<div><div class="k">Feedback</div><div class="v">' + UI.esc(t.confirmation.feedback || 'None') + '</div></div>' +
       '<div><div class="k">Reminders sent</div><div class="v">' + t.reminders.length + '</div></div>' +
       '</div></div>';
   } else cf.innerHTML = '';
@@ -538,6 +550,9 @@ function doUpload(e) {
     if (list) list.innerHTML = '';
   });
 }
+
+var printBtn = document.getElementById('tPrint');
+if (printBtn) printBtn.addEventListener('click', function () { window.print(); });
 
 Store.subscribe(render);
 render();

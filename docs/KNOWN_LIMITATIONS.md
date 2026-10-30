@@ -75,6 +75,15 @@ current commit. Blocked or unverified items are listed first.
 - No password sign-in. Production uses UPMail Google sign-in restricted to
   `@upcebu.edu.ph`; the demo account list on the sign-in page is always
   available and labelled "Demo only".
+- **No asset register.** The role scope matrix names assets inside
+  Administration, and the product keeps an asset as free text on a ticket
+  (`asset`, `server/engine.py` `create_ticket`) and as a list of names on a
+  maintenance schedule (`assets`, `server/engine.py` `create_schedule`). A
+  name is typed where it is used. There is no asset record with an identifier,
+  a location, an owner or a lifecycle, no asset page and no administration
+  action for one, so an asset cannot be searched across the offices that hold
+  it. Adding it is a data model change, not a screen
+  (`docs/DECISIONS.md` D43).
 - **One navigation column, not a rail plus a contextual menu.** Section 25.5B
   suggests a narrow rail with a collapsible contextual menu between 1024 and
   1919 px. The owner asked for the double navigation to be removed, so the
@@ -98,17 +107,28 @@ current commit. Blocked or unverified items are listed first.
   `visits.html` is granted to the requester and lists the visits and plans for
   the requester's own office only. It cannot edit, reschedule or confirm a
   visit; those actions stay on `confirm.html` and in the coordinator lane.
-- **The System Administrator does not see the create-schedule control.**
-  `create_schedule` is coordinator-only. Edit and pause remain visible
-  because `update_schedule` and `set_schedule_active` include that role.
+- **Schedule controls belong to the coordinator.** `create_schedule`,
+  `update_schedule` and `set_schedule_active` name the coordinator alone, and
+  under role scope 5 the administrator lane does not reach the maintenance
+  screen at all, so it is offered no schedule control. Only the lane that
+  plans the work can change a plan.
+- **The sign-in page still reads "Continue to dashboard" for the
+  administrator.** `js/login.js` is a frozen surface, so its copy was not
+  touched. `landing()` asks for `dashboard.html` and `UI.urlFor` resolves a
+  page outside the lane to that lane's own home, so the administrator signs in
+  on the users directory while the link text still says dashboard. Fixing the
+  label needs an explicit owner request to unfreeze the sign-in page
+  (`docs/DECISIONS.md` D23).
 - **System resolves to light on authenticated app pages.** The frozen
   `js/theme.js` applies the pre-paint default before the page styles load.
   Dark mode and an explicit Light choice work; changing the System result
   would require editing a frozen shared file.
-- **Role visibility is a presentation layer.** Elements a role cannot use
-  are hidden with body-class rules, not removed from the markup. The
-  permission map and the backend guards remain the security boundary, and
-  the parity checks prove they agree with the mirror.
+- **Role visibility is a presentation layer.** A control the lane cannot use is
+  left out of the rendered markup rather than grayed out, and the generated
+  role page for a page outside the lane does not exist. The hiding is still not
+  the security boundary: the permission map, the scoped snapshot and the
+  backend guards are, and the parity checks prove the browser mirror agrees
+  with them.
 - **The demo account list is on the sign-in page everywhere.** It is labelled
   "Demo only" and does not depend on the host, the port or a server flag, so
   it is visible on a different localhost port, a static copy and Firebase
@@ -131,6 +151,16 @@ current commit. Blocked or unverified items are listed first.
   withdrawal, and the IT Coordinator records the cancellation reason, because
   the PDF places that step in the coordinator lane. A requester therefore
   cannot end a ticket in one step.
+- **The printed copy is measured on two pages.** `tools/print_check.py` asks
+  Chrome for the print media on `ticket.html` and `reports.html` and fails if a
+  screen control survives or the letterhead stays hidden. Every other page
+  benefits from the same `@media print` rules, but only those two are measured,
+  and the measurement is of the demo dataset.
+- **The feature registry gates one behaviour, not only its control.** With
+  `demoIntakeSimulation` off, the offline world clock creates no simulated
+  intake at all, so a browser-only demonstration shows a register that changes
+  only when the demo acts on it. Turning the flag on restores the invented
+  traffic; the live server never simulates.
 - **The permission map is regenerated, not edited.** `permissions.json` is
   the source of truth; `js/permissions.js` is generated from it and
   `tools/permission_parity_check.py` fails if the copies drift. Adding an
@@ -155,7 +185,44 @@ current commit. Blocked or unverified items are listed first.
   account list is always on the page. When the server demo gate is off, the
   demo usernames are refused by `server/app.py`; the browser-only demo still
   runs from `js/store.js` when the API refuses or is absent, which is why the
-  live server is the supported path for real data.
+  live server is the supported path for real data. A refused session is not
+  one of those cases: when a server answers that the token has expired, the
+  browser clears it and returns to `login.html?next=` the page in hand instead
+  of carrying on against the bundled seed dataset.
+- **A state merge that the server refuses is reported, and the screen reloads
+  the stored dataset.** `js/api.js` names the reason and re-pulls, because a
+  page still holding the rejected edits would go on offering changes that do
+  not exist. The pending record edit is not kept for a retry, so a rejection
+  costs the last change and not the whole draft.
+- **The concurrency check is a smoke test, not a reproduction.**
+  `test_http_concurrency` in `server/tests.py` runs four readers and two
+  tickers over six threads against one server for 130 requests and asserts
+  that every request succeeds and that the tickets and audit rows in memory
+  match the rows in the database. The torn commit it guards against was never
+  observed before the lock was added, so the test proves the guard holds under
+  load, not that the old code failed. `tools/session_check.py` proves the expired-session path
+  end to end in a real browser: a live register, a dropped session row, the
+  landing on the sign-in screen with the page to return to, the demo sign-in
+  back to the reports page, and a static copy still running offline.
+- **A UTF-16 text file without a byte order mark is still refused.** The D21
+  byte check in `server/app.py` rejects a NUL byte, because a Windows
+  executable is full of them, so an Excel tab-delimited export saved as
+  UTF-16 without the leading BOM cannot be told from a binary. The accepted
+  forms are UTF-8 text and UTF-16 with a `FF FE` or `FE FF` mark, which the
+  writer that produced the sample emits.
+- **The idle clock moves about once a minute, not once per request.**
+  `server/auth.py` refreshes `last_seen` only after `SESSION_TOUCH_SECONDS`
+  (60 seconds), so a session that has been idle for 30 minutes can live up to
+  31 minutes, and a screen left open with no request in flight expires on the
+  next call rather than at the moment the deadline passes. The bound is the
+  30 minutes of decision D22, and the 24 hour absolute age is checked on every
+  request.
+- **A half-applied action rolls back, and the reason stays in the log.** The
+  guard in `server/app.py` reloads the stored dataset when an engine call
+  raises and answers "The server could not complete that action", and the
+  worker does the same after a failed tick. The reply names the exception
+  type, not the cause, so the traceback is written to the server log and an
+  operator has to read it there.
 
 ## Resolved during this work
 
@@ -214,3 +281,72 @@ current commit. Blocked or unverified items are listed first.
   only a Closed job with a complete checklist may be Successful. The system
   writes the outcome when the visit closes, and an audited authorized closure
   is available for a visit the office never confirmed.
+- The offline state merge used to trust the client: it could create a ticket
+  that was already Assigned, and a record the client left out was deleted. It
+  now merges by id onto the stored records, admits a new record only as
+  Submitted with server-written timestamps, history and audit, and never
+  removes what the client did not send.
+- The management import used to accept a changed status on a live record and
+  a shortened audit list. History, comments and audit are now compared as an
+  exact prefix of what is stored, and a status change on an existing record is
+  refused.
+- The audit trail used to be trimmed at 4000 entries, so the oldest evidence
+  could vanish. Nothing trims it now.
+- The technician snapshot still carried `priority`, `impact` and `urgency`, and
+  both the technician and the office snapshot listed the name and size of
+  attachments on records outside their scope. All four leaks are closed at the
+  snapshot, and a test reads `/api/state` to prove it.
+- The 30 minute idle session timeout in decision D22 was written down but not
+  enforced. Sessions now carry a last-seen time, and a token that has not been
+  used for 30 minutes, or is older than 24 hours, is dropped.
+- The maintenance frequency list was short of the eight the settings table
+  carries, and "Custom" fell back to a fixed interval. The eight are seeded,
+  the plan editor offers a custom interval in days, and the cadence anchor uses
+  it on both transports.
+- A rescheduled visit let its agreed date pass in silence. The world clock now
+  asks the office again, and returns the visit to Assigned only after a yes.
+- `assigned` to `on_hold` was in the transition whitelist although Appendix B
+  draws On Hold only from a dependency that cannot proceed. It is gone from the
+  map, the mirror and both fallback tables, so the board no longer offers it.
+- An attachment was accepted on the type the browser declared. The bytes are
+  now checked against it, so a renamed executable is refused, and a browser
+  that sends no type at all is served by the extension.
+- Session bookkeeping wrote `last_seen` to SQLite on every authenticated
+  request outside the state lock, while every save deletes all rows and
+  re-inserts them over one shared connection, so a concurrent commit could
+  make a half-rebuilt database durable. The write now happens at most once a
+  minute and inside the lock, the sign-in and state snapshots are serialised
+  the same way, and the connection waits up to five seconds for a write lock
+  instead of failing the request.
+- An unbounded custom interval reached `datetime + timedelta(days=...)` and
+  raised `OverflowError` in the middle of `/api/call`, after the dataset in
+  memory had been changed but before it was saved, so the two diverged and the
+  browser read "Backend unavailable." The interval is now a whole number of
+  days from 1 to 3650 in both mirrors, an out-of-range stored value falls back
+  to the configured cadence instead of crashing the date maths, and an action
+  that raises partway reloads the stored dataset.
+- A state merge the server refused was thrown away in silence, so the screen
+  kept showing edits that were never stored. The reason is now named and the
+  stored dataset is re-read.
+- A merged new ticket that arrived without a status, or with the display label
+  "Submitted", rejected the whole batch with 400 and, with the silence above,
+  lost every pending edit. An absent status or any casing of the label now
+  reads as Submitted; only a real workflow status is refused.
+- An expired session was reported as a missing backend and the page fell back
+  to the bundled seed dataset, so the registers kept rendering demo records as
+  if they were live. The browser tells the two apart and returns to the
+  sign-in screen, while a static copy with no server at all still runs the
+  local prototype.
+- A plan labelled a schedule with no stored interval "Custom (0 days)" while
+  the engine advanced it every 30 days. The label now reads "interval not set"
+  and names the cadence actually in use.
+- `"45.7"` and `"45abc"` were accepted offline and refused by the server. Both
+  mirrors now require a plain whole number, and the offline suite runs the
+  same table the server test runs.
+- An Excel tab-delimited export saved as UTF-16 was refused as "contents do
+  not match the type" because its ASCII text is full of NUL bytes. A marked
+  UTF-16 body now decodes and is accepted.
+- A merged record could name evidence files the server holds no bytes for, so
+  the chip rendered with a size of 0. `attachments` is now protected on the
+  merge, and the request page uploads the chosen files after the record
+  exists.

@@ -1,7 +1,13 @@
-b5b4069911f431c393caec49de9798bc2299eaef06d9cf943d122bf7aa1b3428 *login.html
-3130b7179810e17aa3caa4b7bfe79de197437ecb9aefc2fe9f032a8d5a88092b *css/login.css
-e956505ab0666dd57301a3706fb7ce3ce4b59265a2308bb7f487b0e5a425e291 *js/login.js
-2ceb84e4705aed813d861ecd52e31e7e6e511af48dd0cf9b97547d6fca58b50d *js/theme.js
+# Login surface baseline.
+# Re-recorded 2026-10-30. The first recording predated the owner-requested
+# glass sign-in card (commit 97b074b) and the intake scope work (df1d4af), so
+# four entries no longer matched the tree. The images are unchanged.
+# Verify the freeze with git diff against the current commit; this file is the
+# tripwire for an unannounced edit.
+d894fb3de87661d867e68c73fb8af44077360fb9ed8d74d647c9cd6544bbb0cb *login.html
+9c4445c778a47d4d3ca66c395f907a6d37dc98eae270e70292a789b7d2aa650e *css/login.css
+534daf72c8a24a2d8b1537ed134ecbf6b1cfed849d70dd9971a74b9c665ff093 *js/login.js
+1b770986f0bd919aaa4dc0b5cf387ff7ffe75e4590f58628de7389b8aa44587e *js/theme.js
 d6b43d9fc55e38c28bcfc7f064ab62d466c38790a4d9690751310c11ec8f45b1 *img/UPLoginUI.PNG
 f0b96665d2498c65bff6efa7b348740f30c5bfbeb2b3080c424961c05c06e2f5 *img/login-bg.jpg
 a0fd4847465e12208439948aee2c18361e0a17c4aa238b5c5a793895d4f5c400 *img/login-bg2.png

@@ -18,7 +18,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#1E3A5F">
-<script>(function(){var P="mgmt",R="management",F="audit.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+<script>(function(){var P="mgmt",R="management",F="audit.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["mgmt"];var HOME={"requester": "or-dashboard.html", "technician": "itc-dashboard.html", "coordinator": "ic-dashboard.html", "management": "mgmt-users.html"};try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace(ALLOW.indexOf(o)>-1?(o+"-"+F):(HOME[a]||("or-"+F)));return;}window.ITC_URL_ROLE=P;})();</script>
 </head>
 <body>
 <div class="app">
@@ -54,7 +54,7 @@
 
       <div class="card mt">
         <div class="card-head"><h3>Events</h3>
-          <span class="chip" id="aCount"> -- </span>
+          <span class="chip" id="aCount">0</span>
           <span class="hint">newest first</span></div>
         <table class="table">
           <thead><tr><th>When</th><th>Actor</th><th>Event</th><th>Record</th><th>Detail</th></tr></thead>
@@ -78,7 +78,7 @@
 <script src="js/ui.js"></script>
 <script src="js/live.js"></script>
 <script>
-UI.mountChrome({ title: 'Audit log', sub: 'Who did what, when  --  tamper-evident history' });
+UI.mountChrome({ title: 'Audit log', sub: 'Who did what, when: tamper-evident history' });
 
 var A_F = { q: '', by: '', type: '', kind: '', from: '', to: '' };
 var aPage = 1;
@@ -142,7 +142,7 @@ function render() {
       '<td data-label="Actor"><div class="t-title">' + UI.esc(a.by) + '</div><div class="t-sub">' + UI.esc(a.role || '') + '</div></td>' +
       '<td data-label="Event"><span class="chip">' + UI.esc(KINDS[a.kind] || a.kind) + '</span></td>' +
       '<td data-label="Record">' + (link ? '<a class="t-id" href="' + link + '">' + UI.esc(a.subjectId) + '</a>'
-        : '<span class="t-id">' + UI.esc(a.subjectId || ' -- ') + '</span>') +
+        : '<span class="t-id">' + UI.esc(a.subjectId || 'No subject') + '</span>') +
         '<div class="t-sub">' + UI.esc(a.subjectType || '') + '</div>' +
         (a.status ? '<div class="t-sub">' + UI.esc(a.status) + '</div>' : '') + '</td>' +
       '<td data-label="Detail">' + UI.esc(a.text) + '</td></tr>';

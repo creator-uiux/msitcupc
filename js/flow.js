@@ -1,4 +1,4 @@
-/* flow.js  --  workflow engine. Implements every node, decision, loop and guard
+/* flow.js: workflow engine. Implements every node, decision, loop and guard
    of the "IT Service and Maintenance Management System" swimlane flowchart. */
 (function () {
   'use strict';
@@ -34,7 +34,7 @@
     }
     return null;
   }
-  /* Append-only audit event (actor, timestamp, status, reason)  --  mirrors engine._audit. */
+  /* Append-only audit event (actor, timestamp, status, reason); mirrors engine._audit. */
   function audit(subjectType, subjectId, kind, text, status) {
     var w = who();
     if (!S.db.audit) S.db.audit = [];
@@ -52,13 +52,13 @@
     in_progress: 'In Progress', on_hold: 'On Hold', resolved: 'Resolved',
     closed: 'Closed', cancelled: 'Cancelled'
   };
-  function label(status) { return LABELS[status] || status || ' -- '; }
-  /* Status-change whitelist  --  mirrors server/engine.py TRANSITIONS (Appendix B).
+  function label(status) { return LABELS[status] || status || 'Not set'; }
+  /* Status-change whitelist; mirrors server/engine.py TRANSITIONS (Appendix B).
      The server re-checks every move; this keeps the offline prototype honest. */
   var TRANSITIONS = (window.PermissionMap && window.PermissionMap.transitions) ? window.PermissionMap.transitions : {
     submitted: { needs_info: ['coordinator'], assigned: ['coordinator'], cancelled: ['coordinator'] },
     needs_info: { submitted: ['requester', 'coordinator'], cancelled: ['coordinator'] },
-    assigned: { in_progress: ['technician'], on_hold: ['technician'], cancelled: ['coordinator'] },
+    assigned: { in_progress: ['technician'], cancelled: ['coordinator'] },
     in_progress: { on_hold: ['technician'], resolved: ['technician'], cancelled: ['coordinator'] },
     on_hold: { in_progress: ['coordinator'], cancelled: ['coordinator'] },
     resolved: { closed: ['requester', 'coordinator'], in_progress: ['requester'], cancelled: ['coordinator'] },
@@ -79,14 +79,30 @@
   function auditStatus(id, prev, next, kind, text) {
     audit('ticket', id, kind, label(prev) + ' -> ' + label(next) + ': ' + text, label(next));
   }
-  /* Configured maintenance frequency -> days until the next occurrence. */
-  function frequencyDays(key) {
+  /* Configured maintenance frequency -> days until the next occurrence.
+     Mirrors engine.frequency_days, including the accepted day counts. */
+  var CUSTOM_MIN_DAYS = 1, CUSTOM_MAX_DAYS = 3650;
+  function intervalDays(raw) {
+    var s = String(raw === undefined || raw === null ? '' : raw).trim();
+    if (!/^[0-9]+$/.test(s)) return null;
+    var n = parseInt(s, 10);
+    return (n >= CUSTOM_MIN_DAYS && n <= CUSTOM_MAX_DAYS) ? n : null;
+  }
+  function frequencyDays(key, interval) {
+    if (key === 'custom') {
+      var custom = intervalDays(interval);
+      if (custom) return custom;
+    }
     var rows = (S.db.settings && S.db.settings.frequencies) || [];
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
       if (row && row.length >= 3 && row[0] === key) { var n = parseInt(row[2], 10); return isNaN(n) ? 91 : n; }
     }
-    return { weekly: 7, monthly: 30, quarterly: 91, semiannual: 182, annual: 365 }[key] || 91;
+    return { daily: 1, weekly: 7, biweekly: 14, monthly: 30, quarterly: 91, semiannual: 182, annual: 365 }[key] || 91;
+  }
+  function customInterval(d) {
+    if (!d || d.frequency !== 'custom') return null;
+    return intervalDays(d.intervalDays) || false;
   }
 
   /* Impact x urgency -> priority from settings.priorityMatrix (decision D6).
@@ -106,7 +122,7 @@
   function advanceNextDue(j) {
     var sc = S.getSchedule(j.scheduleId);
     if (!sc) return;
-    var mult = frequencyDays(sc.frequency);
+    var mult = frequencyDays(sc.frequency, sc.intervalDays);
     var nd = new Date(new Date(sc.dueDate).getTime() + mult * 864e5);
     j.nextDue = nd.toISOString().slice(0, 10);
     sc.dueDate = nd.toISOString(); sc.nextCheck = sc.dueDate; sc.lastCheck = NOW(); sc.active = true;
@@ -149,7 +165,7 @@
       var key = String(d.idempotencyKey || '').trim();
       if (key) {
         var dup = S.db.tickets.filter(function (x) { return x.idempotencyKey === key; })[0];
-        if (dup) return { ok: true, msg: dup.id + ' already recorded  --  Status: Submitted.', id: dup.id, duplicate: true };
+        if (dup) return { ok: true, msg: dup.id + ' already recorded. Status: Submitted.', id: dup.id, duplicate: true };
       }
       var id = S.nextId('ticket'), t;
       S.update(function (db) {
@@ -160,17 +176,17 @@
           dateReported: d.dateReported || NOW(), idempotencyKey: key,
           status: 'submitted', impact: null, urgency: null, priority: priority, target: null,
           technician: null, createdAt: NOW(), updatedAt: NOW(), reviewed: false,
-          history: [{ at: NOW(), by: d.requester, role: 'requester', status: 'submitted', kind: 'status', text: 'Request recorded  --  Status: Submitted. Captured ticket, office, requester, category, priority, issue, date, asset, attachments, source.' }],
+          history: [{ at: NOW(), by: d.requester, role: 'requester', status: 'submitted', kind: 'status', text: 'Request recorded. Status: Submitted. Captured ticket, office, requester, category, priority, issue, date, asset, attachments, source.' }],
           tests: [], reminders: [], dependency: null, linkedTo: d.linkedTo || null,
           cancelReason: null, closure: null, authorizedReason: '', recurring: !!d.linkedTo, withdrawal: null,
           diagnosis: { findings: '', actions: '', parts: '', cost: 0, labor: 0, dates: '', evidence: [] },
           confirmation: { state: 'none', person: '', date: null, feedback: '' }
         };
         db.tickets.unshift(t);
-        audit('ticket', id, 'create', 'Ticket recorded for ' + d.requester + ' (' + d.office + ')  --  Status: Submitted.', 'Submitted');
-        S.notify('coordinator', id + ' recorded  --  Status: Submitted (' + d.office + ').', 'intake', { ticketId: id, office: d.office });
+        audit('ticket', id, 'create', 'Ticket recorded for ' + d.requester + ' (' + d.office + '). Status: Submitted.', 'Submitted');
+        S.notify('coordinator', id + ' recorded. Status: Submitted (' + d.office + ').', 'intake', { ticketId: id, office: d.office });
       });
-      return { ok: true, msg: id + ' recorded  --  Status: Submitted.', id: id };
+      return { ok: true, msg: id + ' recorded. Status: Submitted.', id: id };
     },
 
     // Supply missing information -> Update existing ticket -> Return to review (no new ticket)
@@ -186,11 +202,11 @@
         if (d.asset) t.asset = d.asset;
         if (d.attachments) t.attachments = t.attachments.concat(d.attachments);
         t.status = 'submitted';
-        hist(t, 'submitted', 'status', 'Missing information supplied (' + (d.note || 'details updated') + ')  --  returned to review; no new ticket created.', t.requester, 'requester');
-        auditStatus(t.id, 'needs_info', 'submitted', 'status', 'Missing information supplied  --  ticket returned to Submitted for review.');
-        S.notify('coordinator', t.id + ' returned to review  --  missing information supplied.', 'intake', { ticketId: t.id });
+        hist(t, 'submitted', 'status', 'Missing information supplied (' + (d.note || 'details updated') + '). Returned to review; no new ticket created.', t.requester, 'requester');
+        auditStatus(t.id, 'needs_info', 'submitted', 'status', 'Missing information supplied. Ticket returned to Submitted for review.');
+        S.notify('coordinator', t.id + ' returned to review. Missing information supplied.', 'intake', { ticketId: t.id });
       });
-      return { ok: true, msg: 'Information submitted for ' + id + '  --  back to review.' };
+      return { ok: true, msg: 'Information submitted for ' + id + '. Back to review.' };
     },
 
     // Review and verify service result -> Office accepts result? (Yes/No/No response)
@@ -209,12 +225,12 @@
         S.update(function () {
           t.confirmation = { state: 'accepted', person: data.person, date: NOW(), feedback: data.feedback || '' };
           t.status = 'closed'; t.closedAt = NOW(); t.closure = 'confirmation'; t.authorizedReason = '';
-          hist(t, 'closed', 'confirm', 'Office accepts result  --  confirmation recorded for ' + data.person + '. Status: Closed.', data.person, 'requester');
-          auditStatus(t.id, 'resolved', 'closed', 'confirm', 'Office accepted the result  --  confirmation recorded for ' + data.person + '; closed after confirmation.');
+          hist(t, 'closed', 'confirm', 'Office accepts result. Confirmation recorded for ' + data.person + '. Status: Closed.', data.person, 'requester');
+          auditStatus(t.id, 'resolved', 'closed', 'confirm', 'Office accepted the result. Confirmation recorded for ' + data.person + '; closed after confirmation.');
           S.notify('coordinator', t.id + ' confirmed and closed by the office.', 'confirm', { ticketId: t.id });
           S.notify('requester', t.id + ' is now Closed. Thank you.', 'confirm', { ticketId: t.id, office: t.office });
         });
-        return { ok: true, msg: 'Confirmation recorded for ' + id + '  --  Status: Closed.' };
+        return { ok: true, msg: 'Confirmation recorded for ' + id + '. Status: Closed.' };
       }
       if (decision === 'rejected') {
         if (!data.feedback) return { ok: false, msg: 'Record office feedback before rejecting.' };
@@ -222,21 +238,21 @@
         S.update(function () {
           t.confirmation = { state: 'rejected', person: data.person || t.requester, date: NOW(), feedback: data.feedback };
           t.status = 'in_progress';
-          hist(t, 'in_progress', 'confirm', 'Office rejected the result  --  feedback recorded and returned to diagnosis: "' + data.feedback + '"', t.requester, 'requester');
-          auditStatus(t.id, 'resolved', 'in_progress', 'confirm', 'Office rejected the result  --  feedback: "' + data.feedback + '"');
-          S.notify('technician', t.id + ' rejected by office  --  return to diagnosis with feedback.', 'confirm', { ticketId: t.id });
+          hist(t, 'in_progress', 'confirm', 'Office rejected the result. Feedback recorded and returned to diagnosis: "' + data.feedback + '"', t.requester, 'requester');
+          auditStatus(t.id, 'resolved', 'in_progress', 'confirm', 'Office rejected the result. Feedback: "' + data.feedback + '"');
+          S.notify('technician', t.id + ' rejected by office. Return to diagnosis with feedback.', 'confirm', { ticketId: t.id });
           S.notify('coordinator', t.id + ' returned to diagnosis after office feedback.', 'confirm', { ticketId: t.id });
         });
-        return { ok: true, msg: 'Feedback recorded  --  ' + id + ' returned to diagnosis.' };
+        return { ok: true, msg: 'Feedback recorded. ' + id + ' returned to diagnosis.' };
       }
       S.update(function () {
         t.confirmation.state = 'no_response';
         t.reminders.push(NOW());
-        hist(t, t.status, 'confirm', 'No response from office  --  Status kept Resolved; follow-up reminder 1 sent to the office.', 'System', 'system');
-        audit('ticket', id, 'confirm', 'No response from office  --  Status kept ' + label(t.status) + '; follow-up reminder sent.', label(t.status));
+        hist(t, t.status, 'confirm', 'No response from office. Status kept Resolved; follow-up reminder 1 sent to the office.', 'System', 'system');
+        audit('ticket', id, 'confirm', 'No response from office. Status kept ' + label(t.status) + '; follow-up reminder sent.', label(t.status));
         S.notify('requester', 'Follow-up reminder: please confirm the result of ' + t.id + ' (' + t.office + ').', 'remind', { ticketId: t.id, office: t.office });
       });
-      return { ok: true, msg: 'No response recorded  --  ' + id + ' stays Resolved, reminder sent.' };
+      return { ok: true, msg: 'No response recorded. ' + id + ' stays Resolved, reminder sent.' };
     },
 
     // Create new ticket linked to previous service record (issue recurs after closure)
@@ -248,8 +264,8 @@
       var res;
       S.update(function () {
         old.recurring = true;
-        hist(old, old.status, 'link', 'Issue recurs after closure  --  new ticket linked to previous service record; flows back to Section 1.', old.requester, 'requester');
-        audit('ticket', old.id, 'link', 'Issue recurs after closure  --  linked recurrence ticket created (Section 1).', label(old.status));
+        hist(old, old.status, 'link', 'Issue recurs after closure. New ticket linked to previous service record; flows back to Section 1.', old.requester, 'requester');
+        audit('ticket', old.id, 'link', 'Issue recurs after closure. Linked recurrence ticket created (Section 1).', label(old.status));
         res = Flow.createTicket({
           office: old.office, requester: old.requester, category: old.category, source: old.source,
           issue: d.issue || old.issue, asset: old.asset, linkedTo: old.id
@@ -258,7 +274,7 @@
       if (!res.ok) return res;
       S.update(function () {
         var nt = S.getTicket(res.id);
-        hist(nt, 'submitted', 'link', 'Linked corrective ticket following Section 1  --  previous record: ' + old.id + '.', nt.requester, 'requester');
+        hist(nt, 'submitted', 'link', 'Linked corrective ticket following Section 1. Previous record: ' + old.id + '.', nt.requester, 'requester');
       });
       return { ok: true, msg: 'Linked ticket ' + res.id + ' created (Section 1).', id: res.id };
     },
@@ -274,11 +290,11 @@
       if (!missing) return { ok: false, msg: 'List the missing details.' };
       S.update(function () {
         t.status = 'needs_info';
-        hist(t, 'needs_info', 'status', 'Details complete? No  --  requested missing details: ' + missing, 'K. Ramos', 'coordinator');
+        hist(t, 'needs_info', 'status', 'Details complete? No. Requested missing details: ' + missing, 'K. Ramos', 'coordinator');
         auditStatus(t.id, 'submitted', 'needs_info', 'status', 'Details incomplete - requested: ' + missing);
         S.notify('requester', t.id + ' needs information: ' + missing, 'intake', { ticketId: t.id, office: t.office });
       });
-      return { ok: true, msg: 'Status: Needs Information  --  requester notified.' };
+      return { ok: true, msg: 'Status: Needs Information. Requester notified.' };
     },
 
     // Details complete? Yes -> Assess impact and urgency -> Set priority and target date
@@ -297,7 +313,7 @@
       S.update(function () {
         t.impact = d.impact; t.urgency = d.urgency; t.priority = d.priority; t.target = d.target;
         t.reviewed = true;
-        hist(t, 'submitted', 'note', 'Details complete? Yes  --  assessed impact ' + d.impact + ', urgency ' + d.urgency + '; priority ' + d.priority + ', target ' + d.target + '.', 'K. Ramos', 'coordinator');
+        hist(t, 'submitted', 'note', 'Details complete? Yes. Assessed impact ' + d.impact + ', urgency ' + d.urgency + '; priority ' + d.priority + ', target ' + d.target + '.', 'K. Ramos', 'coordinator');
         audit('ticket', id, 'assess', 'Assessed impact ' + d.impact + ', urgency ' + d.urgency + '; priority ' + d.priority + ', target ' + d.target + '.' + note, label(t.status));
       });
       return { ok: true, msg: 'Assessment recorded for ' + id + '.' };
@@ -313,12 +329,12 @@
       if (!tech) return { ok: false, msg: 'Choose a technician.' };
       S.update(function () {
         t.technician = tech; t.status = 'assigned';
-        hist(t, 'assigned', 'status', 'Assigned to ' + tech + '  --  Status: Assigned. Notify technician and requester.', 'K. Ramos', 'coordinator');
+        hist(t, 'assigned', 'status', 'Assigned to ' + tech + '. Status: Assigned. Notify technician and requester.', 'K. Ramos', 'coordinator');
         auditStatus(t.id, 'submitted', 'assigned', 'status', 'Assigned to ' + tech + '.');
-        S.notify('technician', t.id + ' assigned to you (' + t.office + '  --  ' + t.category + ').', 'assign', { ticketId: t.id });
-        S.notify('requester', t.id + ' has been assigned to a technician  --  Status: Assigned.', 'assign', { ticketId: t.id, office: t.office });
+        S.notify('technician', t.id + ' assigned to you (' + t.office + ', ' + t.category + ').', 'assign', { ticketId: t.id });
+        S.notify('requester', t.id + ' has been assigned to a technician. Status: Assigned.', 'assign', { ticketId: t.id, office: t.office });
       });
-      return { ok: true, msg: 'Status: Assigned  --  technician and requester notified.' };
+      return { ok: true, msg: 'Status: Assigned. Technician and requester notified.' };
     },
 
     // Move an active ticket to a different technician.  The status is
@@ -342,13 +358,13 @@
     },
 
     // Coordinate service schedule (IT Technician lane; the coordinator also
-    // coordinates the visit when assigning  --  see actions.js case 'assign')
+    // coordinates the visit when assigning; see actions.js case 'assign')
     coordinate: function (id, d) {
       var g = guardRole(['coordinator', 'technician']); if (!g.ok) return g;
       var t = S.getTicket(id);
       if (!t) return { ok: false, msg: 'Ticket not found.' };
       if (!d.date) return { ok: false, msg: 'Pick a service date.' };
-      var ctext = 'Service schedule coordinated: ' + d.date + (d.slot ? ' (' + d.slot + ')' : '') + ', technician ' + (d.tech || t.technician || ' -- ') + (d.notes ? '  --  ' + d.notes : '');
+      var ctext = 'Service schedule coordinated: ' + d.date + (d.slot ? ' (' + d.slot + ')' : '') + ', technician ' + (d.tech || t.technician || 'Unassigned') + (d.notes ? '. ' + d.notes : '');
       S.update(function () {
         hist(t, t.status, 'sched', ctext, who().by, who().role);
         audit('ticket', id, 'sched', ctext, label(t.status));
@@ -368,15 +384,15 @@
       if (!t) return { ok: false, msg: 'Ticket not found.' };
       var ob = officeBlock(t.office, t.requester); if (ob) return ob;
       if (t.status === 'closed' || t.status === 'cancelled') return { ok: false, msg: 'This request is already closed or cancelled.' };
-      if (t.withdrawal) return { ok: false, msg: 'Withdrawal already requested  --  the IT Coordinator will action it.' };
+      if (t.withdrawal) return { ok: false, msg: 'Withdrawal already requested. The IT Coordinator will action it.' };
       if (!reason) return { ok: false, msg: 'Record why the request is no longer needed.' };
       S.update(function () {
         t.withdrawal = { reason: reason, at: NOW(), by: who().by };
-        hist(t, t.status, 'withdraw', 'Office requested withdrawal of the active request: ' + reason + '  --  sent to the IT Coordinator, who records the cancellation reason.', who().by, who().role);
-        audit('ticket', id, 'withdraw', 'Withdrawal requested by the office: ' + reason + '  --  status unchanged, IT Coordinator to record the cancellation reason.', label(t.status));
-        S.notify('coordinator', t.id + ' withdrawal requested by the office  --  record the cancellation reason.', 'cancel', { ticketId: t.id, office: t.office });
+        hist(t, t.status, 'withdraw', 'Office requested withdrawal of the active request: ' + reason + '. Sent to the IT Coordinator, who records the cancellation reason.', who().by, who().role);
+        audit('ticket', id, 'withdraw', 'Withdrawal requested by the office: ' + reason + '. Status unchanged, IT Coordinator to record the cancellation reason.', label(t.status));
+        S.notify('coordinator', t.id + ' withdrawal requested by the office. Record the cancellation reason.', 'cancel', { ticketId: t.id, office: t.office });
       });
-      return { ok: true, msg: 'Withdrawal requested  --  the IT Coordinator will record the cancellation reason.' };
+      return { ok: true, msg: 'Withdrawal requested. The IT Coordinator will record the cancellation reason.' };
     },
 
     // Active request withdrawn -> record cancellation reason -> Status: Cancelled
@@ -392,11 +408,11 @@
         var prev = t.status;
         t.status = 'cancelled'; t.cancelReason = reason;
         if (t.withdrawal) t.withdrawal = Object.assign({}, t.withdrawal, { actionedAt: NOW(), actionedBy: who().by });
-        hist(t, 'cancelled', 'cancel', 'Cancellation reason recorded  --  Status: Cancelled. Requester notified; records and activity history preserved.', 'K. Ramos', 'coordinator');
+        hist(t, 'cancelled', 'cancel', 'Cancellation reason recorded. Status: Cancelled. Requester notified; records and activity history preserved.', 'K. Ramos', 'coordinator');
         auditStatus(t.id, prev, 'cancelled', 'cancel', 'Cancellation reason: ' + reason);
-        S.notify('requester', t.id + ' cancelled  --  reason: ' + reason, 'cancel', { ticketId: t.id, office: t.office });
+        S.notify('requester', t.id + ' cancelled. Reason: ' + reason, 'cancel', { ticketId: t.id, office: t.office });
       });
-      return { ok: true, msg: 'Status: Cancelled  --  records preserved.' };
+      return { ok: true, msg: 'Status: Cancelled. Records preserved.' };
     },
 
     // Dependency follow-up (8.x): record follow-up updates, continue follow-up
@@ -409,7 +425,7 @@
       S.update(function () {
         t.dependency.updates.push({ at: NOW(), text: text });
         t.dependency.dueAt = new Date(Date.now() + 864e5).toISOString();
-        hist(t, t.status, 'dep', 'Dependency outcome? Still pending  --  follow-up recorded: ' + text, who().by, who().role);
+        hist(t, t.status, 'dep', 'Dependency outcome? Still pending. Follow-up recorded: ' + text, who().by, who().role);
         audit('ticket', id, 'dep', 'Dependency follow-up recorded: ' + text, label(t.status));
       });
       return { ok: true, msg: 'Follow-up recorded for ' + id + '.' };
@@ -427,11 +443,11 @@
         var prev = t.status;
         t.dependency.state = 'resolved';
         t.status = t.holdReturn || 'in_progress';
-        hist(t, t.status, 'dep', 'Dependency outcome? Resolved (' + note + ')  --  returned to ' + t.status.toUpperCase().replace('_', ' ') + '.', 'K. Ramos', 'coordinator');
-        auditStatus(t.id, prev, t.status, 'dep', 'Dependency resolved: ' + note + '  --  work resumes.');
-        S.notify('technician', 'Dependency for ' + t.id + ' resolved  --  work can continue.', 'dep', { ticketId: t.id });
+        hist(t, t.status, 'dep', 'Dependency outcome? Resolved (' + note + '). Returned to ' + t.status.toUpperCase().replace('_', ' ') + '.', 'K. Ramos', 'coordinator');
+        auditStatus(t.id, prev, t.status, 'dep', 'Dependency resolved: ' + note + '. Work resumes.');
+        S.notify('technician', 'Dependency for ' + t.id + ' resolved. Work can continue.', 'dep', { ticketId: t.id });
       });
-      return { ok: true, msg: 'Dependency resolved  --  back in progress.' };
+      return { ok: true, msg: 'Dependency resolved. Back in progress.' };
     },
 
     // Dependency outcome? Cannot proceed -> record cancellation reason -> Status: Cancelled
@@ -446,11 +462,11 @@
         var prev = t.status;
         t.dependency.state = 'blocked';
         t.status = 'cancelled'; t.cancelReason = reason;
-        hist(t, 'cancelled', 'cancel', 'Dependency outcome? Cannot proceed  --  cancellation reason recorded. Status: Cancelled; records preserved.', 'K. Ramos', 'coordinator');
-        auditStatus(t.id, prev, 'cancelled', 'cancel', 'Dependency cannot proceed  --  reason: ' + reason);
-        S.notify('requester', t.id + ' cancelled  --  dependency cannot proceed: ' + reason, 'cancel', { ticketId: t.id, office: t.office });
+        hist(t, 'cancelled', 'cancel', 'Dependency outcome? Cannot proceed, cancellation reason recorded. Status: Cancelled; records preserved.', 'K. Ramos', 'coordinator');
+        auditStatus(t.id, prev, 'cancelled', 'cancel', 'Dependency cannot proceed. Reason: ' + reason);
+        S.notify('requester', t.id + ' cancelled. Dependency cannot proceed: ' + reason, 'cancel', { ticketId: t.id, office: t.office });
       });
-      return { ok: true, msg: 'Cancelled with reason  --  records preserved.' };
+      return { ok: true, msg: 'Cancelled with reason. Records preserved.' };
     },
 
     /* ---------- IT Technician lane ---------- */
@@ -472,7 +488,7 @@
       if (!coordinated && !note) return { ok: false, msg: 'Coordinate the visit with the office first (schedule entry or coordination note).' };
       S.update(function () {
         t.status = 'in_progress';
-        hist(t, 'in_progress', 'status', 'Work started  --  Status: In Progress. Reviewed ticket and previous office/asset history.' +
+        hist(t, 'in_progress', 'status', 'Work started. Status: In Progress. Reviewed ticket and previous office/asset history.' +
           (note ? ' Coordination note: ' + note : ''), 'J. Tan', 'technician');
         auditStatus(t.id, 'assigned', 'in_progress', 'status', 'Work started.');
         S.notify('coordinator', t.id + ' is now In Progress (J. Tan).', 'assign', { ticketId: t.id });
@@ -518,7 +534,7 @@
         if (d.dates) t.diagnosis.dates = d.dates;
         if ((d.evidence || []).length) t.diagnosis.evidence = d.evidence;
         t.repairedAt = NOW();
-        hist(t, t.status, 'note', 'Perform repair/installation/configuration/troubleshooting  --  actions: ' + d.actions +
+        hist(t, t.status, 'note', 'Perform repair/installation/configuration/troubleshooting. Actions: ' + d.actions +
           (t.diagnosis.parts ? ' | parts: ' + t.diagnosis.parts : '') + ' | ₱' + (t.diagnosis.cost || 0).toFixed(2) + ' · ' + (t.diagnosis.labor || 0) + 'h.', 'J. Tan', 'technician');
         audit('ticket', id, 'repair', 'Repair recorded: ' + d.actions + ' (₱' + (t.diagnosis.cost || 0).toFixed(2) + ' · ' + (t.diagnosis.labor || 0) + 'h).', label(t.status));
       });
@@ -536,11 +552,11 @@
         t.holdReturn = 'in_progress';
         t.dependency = { reason: dep.reason, responsible: dep.responsible, nextAction: dep.nextAction, state: 'pending', dueAt: dep.dueAt || new Date(Date.now() + 864e5).toISOString(), updates: [] };
         t.status = 'on_hold';
-        hist(t, 'on_hold', 'dep', 'Parts, approval or external support needed? Yes  --  Status: On Hold. Dependency: ' + dep.reason + ' (responsible: ' + dep.responsible + ').', 'J. Tan', 'technician');
+        hist(t, 'on_hold', 'dep', 'Parts, approval or external support needed? Yes. Status: On Hold. Dependency: ' + dep.reason + ' (responsible: ' + dep.responsible + ').', 'J. Tan', 'technician');
         auditStatus(t.id, 'in_progress', 'on_hold', 'dep', 'Dependency recorded: ' + dep.reason + ' (responsible: ' + dep.responsible + ', next: ' + dep.nextAction + ').');
-        S.notify('coordinator', t.id + ' On Hold  --  dependency: ' + dep.reason, 'dep', { ticketId: t.id });
+        S.notify('coordinator', t.id + ' On Hold. Dependency: ' + dep.reason, 'dep', { ticketId: t.id });
       });
-      return { ok: true, msg: 'Status: On Hold  --  dependency recorded.' };
+      return { ok: true, msg: 'Status: On Hold. Dependency recorded.' };
     },
 
     // Record failed test -> Return to diagnosis (loop)
@@ -558,20 +574,20 @@
           t.status = 'resolved';
           t.resolvedAt = NOW();
           t.confirmation = { state: 'pending', person: '', date: null, feedback: '' };
-          hist(t, 'resolved', 'test', 'Service passed testing  --  Status: Resolved (resolved means technician testing passed). Office notified, ready for confirmation. Summary: ' + note, 'J. Tan', 'technician');
-          auditStatus(t.id, 'in_progress', 'resolved', 'test', 'Service passed testing  --  office confirmation requested. Summary: ' + note);
-          S.notify('requester', t.id + ' is Resolved  --  please review and confirm the service result.', 'confirm', { ticketId: t.id, office: t.office });
-          S.notify('coordinator', t.id + ' resolved by J. Tan  --  awaiting office confirmation.', 'confirm', { ticketId: t.id });
+          hist(t, 'resolved', 'test', 'Service passed testing. Status: Resolved (resolved means technician testing passed). Office notified, ready for confirmation. Summary: ' + note, 'J. Tan', 'technician');
+          auditStatus(t.id, 'in_progress', 'resolved', 'test', 'Service passed testing. Office confirmation requested. Summary: ' + note);
+          S.notify('requester', t.id + ' is Resolved. Please review and confirm the service result.', 'confirm', { ticketId: t.id, office: t.office });
+          S.notify('coordinator', t.id + ' resolved by J. Tan. Awaiting office confirmation.', 'confirm', { ticketId: t.id });
         });
-        return { ok: true, msg: 'Test passed  --  Status: Resolved, office notified.' };
+        return { ok: true, msg: 'Test passed. Status: Resolved, office notified.' };
       }
       S.update(function () {
         t.tests.push({ at: NOW(), by: 'J. Tan', result: 'fail', note: note || '' });
-        hist(t, 'in_progress', 'test', 'Record failed test  --  service did not pass testing; returned to diagnosis.' + (note ? ' Notes: ' + note : ''), 'J. Tan', 'technician');
-        audit('ticket', id, 'test', 'Failed test recorded  --  returned to diagnosis.' + (note ? ' Notes: ' + note : ''), label(t.status));
-        S.notify('coordinator', t.id + ' failed testing  --  technician returned to diagnosis.', 'test', { ticketId: t.id });
+        hist(t, 'in_progress', 'test', 'Record failed test. Service did not pass testing; returned to diagnosis.' + (note ? ' Notes: ' + note : ''), 'J. Tan', 'technician');
+        audit('ticket', id, 'test', 'Failed test recorded. Returned to diagnosis.' + (note ? ' Notes: ' + note : ''), label(t.status));
+        S.notify('coordinator', t.id + ' failed testing. Technician returned to diagnosis.', 'test', { ticketId: t.id });
       });
-      return { ok: true, msg: 'Failed test recorded  --  back to diagnosis.' };
+      return { ok: true, msg: 'Failed test recorded. Back to diagnosis.' };
     },
 
     /* ---------- System lane: close / reminders ---------- */
@@ -585,7 +601,7 @@
       if (t.status !== 'resolved') return { ok: false, msg: 'Only Resolved tickets can be closed.' };
       if (mode === 'confirmation') {
         if (S.db.role !== 'requester') return { ok: false, msg: 'Confirmation closure is limited to the owning office requester.' };
-        if (t.confirmation.state !== 'accepted') return { ok: false, msg: 'Confirmation not yet accepted  --  use authorized closure only when allowed.' };
+        if (t.confirmation.state !== 'accepted') return { ok: false, msg: 'Confirmation not yet accepted. Use authorized closure only when allowed.' };
       } else {
         if (!reason) return { ok: false, msg: 'Authorized closure requires a reason.' };
         var allowed = ((S.db.settings && S.db.settings.authorizedClosureRoles) || ['coordinator']).filter(function (r) { return r !== 'management'; });
@@ -597,11 +613,11 @@
         t.status = 'closed'; t.closedAt = NOW(); t.closure = mode; t.authorizedReason = reason || '';
         hist(t, 'closed', 'status', mode === 'confirmation'
           ? 'Status: Closed after confirmation. Office service history and reporting updated; record retained.'
-          : 'Authorized closure  --  reason: ' + reason + '. Status: Closed; office service history and reporting updated.', 'K. Ramos', 'coordinator');
-        auditStatus(t.id, 'resolved', 'closed', 'status', mode === 'confirmation' ? 'Closed after office confirmation.' : 'Authorized closure  --  reason: ' + reason);
+          : 'Authorized closure. Reason: ' + reason + '. Status: Closed; office service history and reporting updated.', 'K. Ramos', 'coordinator');
+        auditStatus(t.id, 'resolved', 'closed', 'status', mode === 'confirmation' ? 'Closed after office confirmation.' : 'Authorized closure. Reason: ' + reason);
         S.notify('requester', t.id + ' is now Closed. Thank you.', 'confirm', { ticketId: t.id, office: t.office });
       });
-      return { ok: true, msg: 'Status: Closed  --  service record retained.' };
+      return { ok: true, msg: 'Status: Closed. Service record retained.' };
     },
 
     // Reply composer: public message or internal staff note (Flow.addComment)
@@ -671,7 +687,7 @@
       S.update(function () {
         t.reminders.push(NOW());
         t.confirmation.state = t.confirmation.state === 'pending' ? 'pending' : t.confirmation.state;
-        hist(t, 'resolved', 'remind', 'No response  --  Status kept Resolved; follow-up reminder sent to the office (' + t.reminders.length + ').', 'System', 'system');
+        hist(t, 'resolved', 'remind', 'No response. Status kept Resolved; follow-up reminder sent to the office (' + t.reminders.length + ').', 'System', 'system');
         audit('ticket', id, 'remind', 'Follow-up reminder ' + t.reminders.length + ' sent to the office.', label(t.status));
         S.notify('requester', 'Follow-up reminder: please confirm the result of ' + t.id + '.', 'remind', { ticketId: t.id, office: t.office });
       });
@@ -688,15 +704,17 @@
       var g = guardRole(['coordinator']); if (!g.ok) return g;
       if (!d.office || !d.category || !d.dueDate || !d.frequency || !d.technician) return { ok: false, msg: 'Office, category, frequency, due date and technician are required.' };
       if (!d.checklist || !d.checklist.length) return { ok: false, msg: 'Provide at least one checklist item.' };
+      var interval = customInterval(d);
+      if (interval === false) return { ok: false, msg: 'A Custom cadence needs a whole number of days between 1 and 3650.' };
       var id = S.nextId('sched');
       S.update(function (db) {
         db.schedules.push({
           id: id, office: d.office, assets: d.assets || [], category: d.category,
           checklist: d.checklist, frequency: d.frequency, dueDate: d.dueDate,
-          technician: d.technician, active: true, lastCheck: null, nextCheck: d.dueDate
+          intervalDays: interval, technician: d.technician, active: true, lastCheck: null, nextCheck: d.dueDate
         });
-        S.notify('coordinator', id + ' created for ' + d.office + '  --  due ' + d.dueDate.slice(0, 10) + '.', 'sched', { office: d.office });
-        audit('schedule', id, 'sched', 'Schedule created  --  ' + d.office + ' ' + d.category + ' every ' + d.frequency + ', first due ' + d.dueDate.slice(0, 10) + '.');
+        S.notify('coordinator', id + ' created for ' + d.office + '. Due ' + d.dueDate.slice(0, 10) + '.', 'sched', { office: d.office });
+        audit('schedule', id, 'sched', 'Schedule created. ' + d.office + ' ' + d.category + ' every ' + d.frequency + ', first due ' + d.dueDate.slice(0, 10) + '.');
       });
       return { ok: true, msg: 'Schedule ' + id + ' recorded.', id: id };
     },
@@ -716,7 +734,7 @@
           sc.lastCheck = NOW();
           if (new Date(sc.dueDate).getTime() > now) {
             // Keep schedule active and wait -> Next scheduled check
-            if (!silent) events.push({ kind: 'wait', id: sc.id, msg: sc.id + ': not due yet  --  keep schedule active, next check ' + sc.dueDate.slice(0, 10) });
+            if (!silent) events.push({ kind: 'wait', id: sc.id, msg: sc.id + ': not due yet. Keep schedule active, next check ' + sc.dueDate.slice(0, 10) });
             continue;
           }
           // Job already exists?
@@ -725,7 +743,7 @@
             if (db.jobs[j].scheduleId === sc.id && db.jobs[j].occurrence === sc.dueDate.slice(0, 10)) existing = db.jobs[j];
           }
           if (existing) {
-            if (!silent) events.push({ kind: 'exists', id: sc.id, jobId: existing.id, msg: sc.id + ': job ' + existing.id + ' already exists  --  used existing job, not duplicated.' });
+            if (!silent) events.push({ kind: 'exists', id: sc.id, jobId: existing.id, msg: sc.id + ': job ' + existing.id + ' already exists. Used existing job, not duplicated.' });
             continue;
           }
           // Generate linked maintenance job
@@ -739,9 +757,9 @@
             additionalFault: 'unknown', linkedTicketId: null, outcome: null,
             confirmation: { state: 'none', person: '', date: null }, nextDue: null, reminders: [], createdAt: NOW()
           });
-          S.notify('technician', jid + ' generated from ' + sc.id + ' (' + sc.office + ')  --  coordinate the visit.', 'job', { jobId: jid, office: sc.office, to: sc.technician });
-          S.notify('coordinator', jid + ' generated from ' + sc.id + '  --  maintenance due.', 'job', { jobId: jid });
-          events.push({ kind: 'gen', id: sc.id, jobId: jid, msg: sc.id + ' due  --  generated linked maintenance job ' + jid + '.' });
+          S.notify('technician', jid + ' generated from ' + sc.id + ' (' + sc.office + '). Coordinate the visit.', 'job', { jobId: jid, office: sc.office, to: sc.technician });
+          S.notify('coordinator', jid + ' generated from ' + sc.id + '. Maintenance due.', 'job', { jobId: jid });
+          events.push({ kind: 'gen', id: sc.id, jobId: jid, msg: sc.id + ' due. Generated linked maintenance job ' + jid + '.' });
         }
       });
       return events;
@@ -765,9 +783,9 @@
         if (sc) { sc.dueDate = newDate; sc.nextCheck = newDate; }
         S.notify('technician', 'Job ' + j.id + ' rescheduled to ' + newDate.slice(0, 10) + ' (record reschedule).', 'sched', { jobId: j.id, office: j.office, to: j.technician });
         S.notify('requester', 'Maintenance for ' + j.office + ' rescheduled to ' + newDate.slice(0, 10) + '.', 'sched', { jobId: j.id, office: j.office });
-        audit('job', j.id, 'sched', 'Rescheduled to ' + newDate.slice(0, 10) + '  --  reason: ' + (reason || 'Office unavailable') + '.', 'Rescheduled');
+        audit('job', j.id, 'sched', 'Rescheduled to ' + newDate.slice(0, 10) + '. Reason: ' + (reason || 'Office unavailable') + '.', 'Rescheduled');
       });
-      return { ok: true, msg: 'Reschedule recorded  --  ' + newDate.slice(0, 10) + '.' };
+      return { ok: true, msg: 'Reschedule recorded. ' + newDate.slice(0, 10) + '.' };
     },
 
     // Office available? Yes -> Status Assigned -> technician runs the checklist
@@ -788,13 +806,13 @@
           else if (prev === 'on_hold' && new Date(j.visitDate).getTime() <= Date.now()) j.status = 'assigned';
           var visit = (j.visitDate || '').slice(0, 10);
           if (j.status === 'assigned') {
-            S.notify('technician', 'Office available for ' + j.id + '  --  visit confirmed for ' + visit + '; the job is Assigned.', 'sched', { jobId: j.id, office: j.office, to: j.technician });
-            S.notify('coordinator', j.id + ': office available for ' + visit + '  --  job Assigned to ' + j.technician + '.', 'sched', { jobId: j.id, office: j.office });
+            S.notify('technician', 'Office available for ' + j.id + '. Visit confirmed for ' + visit + '; the job is Assigned.', 'sched', { jobId: j.id, office: j.office, to: j.technician });
+            S.notify('coordinator', j.id + ': office available for ' + visit + '. Job Assigned to ' + j.technician + '.', 'sched', { jobId: j.id, office: j.office });
           } else {
-            S.notify('technician', 'Office available for ' + j.id + '  --  visit remains On Hold until ' + visit + '.', 'sched', { jobId: j.id, office: j.office, to: j.technician });
+            S.notify('technician', 'Office available for ' + j.id + '. Visit remains On Hold until ' + visit + '.', 'sched', { jobId: j.id, office: j.office, to: j.technician });
           }
-          audit('job', j.id, 'sched', 'Office available  --  visit confirmed for ' + visit + '.', label(j.status));
-          res = { ok: true, msg: 'Office available  --  visit coordinated (' + label(j.status) + ').' };
+          audit('job', j.id, 'sched', 'Office available. Visit confirmed for ' + visit + '.', label(j.status));
+          res = { ok: true, msg: 'Office available. Visit coordinated (' + label(j.status) + ').' };
         });
         return res;
       }
@@ -832,7 +850,7 @@
         it.done = true; it.result = data.result; it.finding = data.finding || '';
         it.tech = who().by; it.date = NOW(); it.evidence = (data.evidence || []).length ? data.evidence : it.evidence;
         j.status = 'in_progress';
-        audit('job', j.id, 'checklist', 'Checklist item ' + (idx + 1) + '/' + j.items.length + ' done  --  ' + it.result + ': ' + it.task + '.', 'In Progress');
+        audit('job', j.id, 'checklist', 'Checklist item ' + (idx + 1) + '/' + j.items.length + ' done. Result: ' + it.result + '. Task: ' + it.task + '.', 'In Progress');
       });
       return { ok: true, msg: 'Checklist item recorded (' + (idx + 1) + '/' + j.items.length + ').' };
     },
@@ -866,9 +884,9 @@
       if (!res.ok) return res;
       S.update(function () {
         var t = S.getTicket(res.linkedTo === undefined ? res.id : res.id);
-        if (t) hist(t, t.status, 'link', 'Create linked corrective ticket following Section 1  --  maintenance job ' + j.id + '.', 'J. Tan', 'technician');
+        if (t) hist(t, t.status, 'link', 'Create linked corrective ticket following Section 1. Maintenance job ' + j.id + '.', 'J. Tan', 'technician');
         audit('job', j.id, 'link', 'Linked corrective ticket ' + res.id + ' created (Section 1).', j.status.replace('_', ' ').replace(/\b\w/g, function (m) { return m.toUpperCase(); }));
-        S.notify('coordinator', 'Additional fault in ' + j.id + '  --  linked corrective ticket ' + res.id + ' follows Section 1.', 'job', { ticketId: res.id, jobId: j.id });
+        S.notify('coordinator', 'Additional fault in ' + j.id + '. Linked corrective ticket ' + res.id + ' follows Section 1.', 'job', { ticketId: res.id, jobId: j.id });
       });
       return { ok: true, msg: 'Linked corrective ticket ' + res.id + ' created (Section 1).', id: res.id };
     },
@@ -887,7 +905,7 @@
       var allDone = j.items.every(function (i) { return i.done; });
       if (outcome === 'success') {
         if (j.status !== 'assigned' && j.status !== 'in_progress') return { ok: false, msg: 'The visit must be Assigned before it can be completed (' + j.id + ' is ' + label(j.status) + ').' };
-        if (!allDone) return { ok: false, msg: 'Cannot complete the visit  --  incomplete checklist (' + j.items.filter(function (i) { return !i.done; }).length + ' pending).' };
+        if (!allDone) return { ok: false, msg: 'Cannot complete the visit. Incomplete checklist (' + j.items.filter(function (i) { return !i.done; }).length + ' pending).' };
         if (j.additionalFault === 'unknown') return { ok: false, msg: 'Answer "Additional fault discovered?" first.' };
       }
       S.update(function () {
@@ -896,21 +914,21 @@
           j.status = 'resolved'; j.workComplete = true; j.outcome = null;
           j.resolvedAt = NOW(); j.reminders = [];
           j.confirmation = { state: 'pending', person: '', date: null, feedback: '' };
-          audit('job', j.id, 'outcome', 'Maintenance work completed  --  checklist complete, handed to the office for Section 3 confirmation' + (notes ? '  --  ' + notes : '') + '.', 'Resolved');
-          S.notify('requester', 'Maintenance ' + j.id + ' completed  --  Section 3 confirmation requested.', 'confirm', { jobId: j.id, office: j.office });
+          audit('job', j.id, 'outcome', 'Maintenance work completed. Checklist complete, handed to the office for Section 3 confirmation' + (notes ? '. ' + notes : '') + '.', 'Resolved');
+          S.notify('requester', 'Maintenance ' + j.id + ' completed. Section 3 confirmation requested.', 'confirm', { jobId: j.id, office: j.office });
           S.notify('coordinator', 'Maintenance ' + j.id + ' is ready for the office to confirm.', 'confirm', { jobId: j.id });
         } else {
           j.outcome = outcome;
           j.status = 'cancelled';
           j.confirmation.state = 'none';
           advanceNextDue(j);
-          audit('job', j.id, 'outcome', 'Maintenance outcome ' + outcome + (notes ? '  --  ' + notes : '') + '  --  not marked successful; records preserved.', 'Cancelled');
-          S.notify('coordinator', 'Maintenance outcome "' + outcome + '" for ' + j.id + '  --  not marked successful; next due advanced, records preserved.', 'job', { jobId: j.id });
+          audit('job', j.id, 'outcome', 'Maintenance outcome ' + outcome + (notes ? '. ' + notes : '') + '. Not marked successful; records preserved.', 'Cancelled');
+          S.notify('coordinator', 'Maintenance outcome "' + outcome + '" for ' + j.id + '. Not marked successful; next due advanced, records preserved.', 'job', { jobId: j.id });
           S.notify('requester', 'Maintenance ' + j.id + ' was not completed (' + outcome + '). The record is retained.', 'job', { jobId: j.id, office: j.office });
         }
       });
       return outcome === 'success'
-        ? { ok: true, msg: 'Maintenance work completed  --  awaiting office confirmation.' }
+        ? { ok: true, msg: 'Maintenance work completed. Awaiting office confirmation.' }
         : { ok: true, msg: 'Maintenance outcome recorded: ' + outcome + '.' };
     },
 
@@ -928,7 +946,7 @@
         j.outcome = j.items.every(function (i) { return i.done; }) ? 'success' : 'incomplete';
         advanceNextDue(j);
         audit('job', j.id, 'outcome', 'Record maintenance outcome: ' + (j.outcome === 'success' ? 'Successful' : 'Incomplete') + '. Do not mark incomplete or cancelled maintenance successful.', 'Closed');
-        audit('job', j.id, 'closure', 'Authorized closure  --  reason: ' + reason + '.', 'Closed');
+        audit('job', j.id, 'closure', 'Authorized closure. Reason: ' + reason + '.', 'Closed');
         S.notify('requester', 'Maintenance ' + j.id + ' was closed by authorized closure. Reason: ' + reason, 'job', { jobId: j.id, office: j.office });
         S.notify('coordinator', 'Maintenance ' + j.id + ' closed by authorized closure (' + who().by + ').', 'job', { jobId: j.id });
       });
@@ -948,9 +966,9 @@
           j.status = 'closed';
           j.outcome = j.items.every(function (i) { return i.done; }) ? 'success' : 'incomplete';
           advanceNextDue(j);
-          S.notify('coordinator', 'Maintenance ' + j.id + ' confirmed by ' + person + '  --  Section 3 closure recorded.', 'confirm', { jobId: j.id });
+          S.notify('coordinator', 'Maintenance ' + j.id + ' confirmed by ' + person + '. Section 3 closure recorded.', 'confirm', { jobId: j.id });
           S.notify('technician', 'Maintenance ' + j.id + ' confirmed by the office and closed.', 'confirm', { jobId: j.id, office: j.office, to: j.technician });
-          audit('job', j.id, 'confirm', 'Office confirmed maintenance  --  confirming person: ' + person + '. Section 3 closure recorded.', 'Closed');
+          audit('job', j.id, 'confirm', 'Office confirmed maintenance. Confirming person: ' + person + '. Section 3 closure recorded.', 'Closed');
           audit('job', j.id, 'outcome', 'Record maintenance outcome: ' + (j.outcome === 'success' ? 'Successful' : 'Incomplete') + '. Do not mark incomplete or cancelled maintenance successful.', 'Closed');
         });
         return { ok: true, msg: 'Maintenance confirmed and closed (Section 3).' };
@@ -961,20 +979,20 @@
           j.confirmation = { state: 'rejected', person: person || j.office, date: NOW(), feedback: feedback };
           j.status = 'in_progress'; j.outcome = null; j.workComplete = false;
           j.resolvedAt = null; j.reminders = [];
-          S.notify('technician', 'Maintenance ' + j.id + ' rejected by office  --  return to verification. Feedback: "' + feedback + '"', 'confirm', { jobId: j.id, office: j.office, to: j.technician });
+          S.notify('technician', 'Maintenance ' + j.id + ' rejected by office. Return to verification. Feedback: "' + feedback + '"', 'confirm', { jobId: j.id, office: j.office, to: j.technician });
           S.notify('coordinator', j.id + ' returned to verification on office feedback: "' + feedback + '"', 'confirm', { jobId: j.id, office: j.office });
-          audit('job', j.id, 'confirm', 'Office rejected the maintenance result  --  feedback: "' + feedback + '". Returned to verification.', 'In Progress');
+          audit('job', j.id, 'confirm', 'Office rejected the maintenance result. Feedback: "' + feedback + '". Returned to verification.', 'In Progress');
         });
-        return { ok: true, msg: 'Feedback recorded  --  job returned to verification.' };
+        return { ok: true, msg: 'Feedback recorded. Job returned to verification.' };
       }
       S.update(function () {
         j.confirmation.state = 'no_response';
         if (!j.reminders) j.reminders = [];
         j.reminders.push(NOW());
         S.notify('requester', 'Follow-up reminder: please confirm the result of maintenance ' + j.id + ' (' + j.office + ').', 'remind', { jobId: j.id, office: j.office });
-        audit('job', j.id, 'confirm', 'No response from office  --  job kept Resolved; follow-up reminder ' + j.reminders.length + ' sent to the office.', label(j.status));
+        audit('job', j.id, 'confirm', 'No response from office. Job kept Resolved; follow-up reminder ' + j.reminders.length + ' sent to the office.', label(j.status));
       });
-      return { ok: true, msg: 'No response recorded  --  job stays Resolved, reminder sent.' };
+      return { ok: true, msg: 'No response recorded. Job stays Resolved, reminder sent.' };
     },
 
     // Coordinator / administrator edits a preventive maintenance schedule
@@ -988,6 +1006,13 @@
       [['office', 'office'], ['category', 'category'], ['frequency', 'frequency'], ['dueDate', 'due date'], ['technician', 'technician']].forEach(function (pair) {
         if (d[pair[0]] && d[pair[0]] !== sc[pair[0]]) { sc[pair[0]] = d[pair[0]]; changed.push(pair[1]); }
       });
+      if (d.frequency === 'custom') {
+        var interval = customInterval(d.intervalDays === undefined ? { frequency: 'custom', intervalDays: sc.intervalDays } : d);
+        if (interval === false) return { ok: false, msg: 'A Custom cadence needs a whole number of days between 1 and 3650.' };
+        if (interval !== sc.intervalDays) { sc.intervalDays = interval; changed.push('custom interval'); }
+      } else if (d.frequency) {
+        sc.intervalDays = null;
+      }
       if (d.assets !== undefined && d.assets !== null && d.assets.join('|') !== (sc.assets || []).join('|')) { sc.assets = d.assets.slice(); changed.push('assets'); }
       if (d.checklist && d.checklist.length) { sc.checklist = d.checklist.slice(); changed.push('checklist'); }
       if (d.dueDate) sc.nextCheck = d.dueDate;
@@ -1132,7 +1157,7 @@
       person = { name: name, role: prole, office: office, username: slugUsername(name, taken), email: (d.email || '').trim(), phone: (d.phone || '').trim(), active: true, prefs: {} };
       people.push(person);
       S.update(function () { audit('user', person.username, 'user', "User '" + name + "' created (role: " + prole + ", username: " + person.username + ")."); });
-      return { ok: true, msg: "User '" + name + "' created  --  username " + person.username + ", initial password itc.", person: person };
+      return { ok: true, msg: "User '" + name + "' created. Username " + person.username + ", initial password itc.", person: person };
     },
 
     setPersonActive: function (pid, active) {
@@ -1262,6 +1287,9 @@
   /* The status board offers only moves this role may make from the current
      state; the backend still re-checks every call. */
   Flow.canTransition = function (cur, next) { return canTransition(cur, next); };
+  /* A screen that labels a cadence must count it the way the engine does. */
+  Flow.frequencyDays = frequencyDays;
+  Flow.intervalDays = intervalDays;
 
   window.Flow = Flow;
   window.Maint = Maint;

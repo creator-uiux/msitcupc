@@ -42,7 +42,7 @@
       <span class="badge b-resolved">Functional · real-time · v2</span>
     </div>
     <p>
-      A working, real-time implementation of <b>Maintenance System.pdf</b>  --  the Office IT Service Request,
+      A working, real-time implementation of <b>Maintenance System.pdf</b>: the Office IT Service Request,
       Maintenance and Closure workflow (29-step SOP + 4-lane swimlane). Every screen runs the actual
       workflow engine in the browser (<b>js/flow.js</b>): guarded transitions, role-based access, live
       notifications, automatic reminders and schedule checks, persisted in <span class="mono">localStorage</span>
@@ -52,8 +52,8 @@
     <p>
       A <b>zero-dependency Python&nbsp;+&nbsp;SQLite backend</b> (<span class="mono">server/</span>) runs the
       same engine with server-enforced RBAC, background workers and Server-Sent Events. Start it with
-      <span class="mono">python server/app.py</span> and open <span class="mono">http://127.0.0.1:8787/</span>  -- 
-      every page is then live against the backend. See <span class="mono">server/README.md</span> and
+      <span class="mono">python server/app.py</span> and open <span class="mono">http://127.0.0.1:8787/</span>.
+      Every page is then live against the backend. See <span class="mono">server/README.md</span> and
       <span class="mono">BACKEND.md</span>.
     </p>
     <p>
@@ -62,8 +62,8 @@
       Point the site at a running backend and it switches to the live service on its own.
     </p>
     <div class="row vp">
-      <span class="badge"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.5" y="3.5" width="19" height="13" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg> Desktop  --  1440 × 900</span>
-      <span class="badge"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 18h.01"/></svg> Mobile  --  390 × 844</span>
+      <span class="badge"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.5" y="3.5" width="19" height="13" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg> Desktop, 1440 × 900</span>
+      <span class="badge"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 18h.01"/></svg> Mobile, 390 × 844</span>
       <span class="badge">5 viewports · PNG export → shots/</span>
       <span class="badge">No build step · vanilla JS + css/app.css</span>
       <span class="badge">Google-only sign-in · 4 roles</span>
@@ -78,12 +78,12 @@
   <!-- live previews -->
   <div class="preview">
     <div class="frame">
-      <div class="bar"><i></i><i></i><i></i><span>dashboard.html  --  desktop preview (1440 px)</span></div>
+      <div class="bar"><i></i><i></i><i></i><span>dashboard.html, desktop preview (1440 px)</span></div>
       <div class="shell"><iframe src="dashboard.html" data-design="1440"></iframe></div>
-      <div class="cap"><span>Scale shown ~60%  --  click through below</span><a class="btn btn-soft" href="dashboard.html" target="_blank">Open</a></div>
+      <div class="cap"><span>Scale shown at ~60%. Click through below.</span><a class="btn btn-soft" href="dashboard.html" target="_blank">Open</a></div>
     </div>
     <div class="frame phone">
-      <div class="bar"><i></i><i></i><i></i><span>dashboard.html  --  mobile preview (390 px)</span></div>
+      <div class="bar"><i></i><i></i><i></i><span>dashboard.html, mobile preview (390 px)</span></div>
       <div class="shell"><iframe src="dashboard.html" data-design="390"></iframe></div>
       <div class="cap"><span>Bottom nav + stacked cards</span><a class="btn btn-soft" href="dashboard.html" target="_blank">Open</a></div>
     </div>
@@ -112,7 +112,7 @@
       </div></div>
       <div class="g-meta">
         <strong>Ticket detail</strong>
-        <p>Read-only service record: status &amp; audit timeline, dependency hold, diagnosis/parts/costs, testing and confirmation  --  with links into the section screens.</p>
+        <p>Read-only service record: status &amp; audit timeline, dependency hold, diagnosis/parts/costs, testing and confirmation, with links into the section screens.</p>
       </div>
     </a>
 
@@ -140,7 +140,7 @@
 
     <a class="g-card" href="technician.html">
       <div class="g-thumb"><div class="win">
-        <b>My Work  --  J. Tan</b>
+        <b>My Work: J. Tan</b>
         <div class="ln w60"></div><div class="ln"></div><div class="ln"></div><div class="ln w40"></div>
       </div></div>
       <div class="g-meta">
@@ -184,7 +184,7 @@
 
     <a class="g-card" href="flow.html">
       <div class="g-thumb"><div class="win">
-        <b>Swimlane flowchart  --  live</b>
+        <b>Swimlane flowchart: live</b>
         <div class="ln w40"></div><div class="ln"></div><div class="ln w60"></div><div class="ln"></div>
       </div></div>
       <div class="g-meta">
@@ -200,7 +200,7 @@
       </div></div>
       <div class="g-meta">
         <strong>Sign in (Google-only)</strong>
-        <p>Google Workspace sign-in with per-role account chooser  --  no passwords. The chosen account scopes the whole workspace.</p>
+        <p>Google Workspace sign-in with a per-role account chooser and no passwords. The chosen account scopes the whole workspace.</p>
       </div>
     </a>
 
@@ -211,7 +211,7 @@
       </div></div>
       <div class="g-meta">
         <strong>Service Ticket list</strong>
-        <p>Every record the role may see, filtered / sorted / paged server-side  --  open / mine / closed / cancelled / overdue chips, bulk assign, CSV, and stacked cards on phones.</p>
+        <p>Every record the role may see, filtered, sorted and paged server-side, with open, mine, closed, cancelled and overdue chips, bulk assign, CSV, and stacked cards on phones.</p>
       </div>
     </a>
 
@@ -299,7 +299,7 @@
       </div></div>
       <div class="g-meta">
         <strong>Roles &amp; feature matrix</strong>
-        <p>Requester, Technician, Coordinator and System Administrator  --  every role’s screens and actions, mapped to the SOP 28.2 access rules.</p>
+        <p>Requester, Technician, Coordinator and System Administrator: every role’s screens and actions, mapped to the SOP 28.2 access rules.</p>
       </div>
     </a>
 

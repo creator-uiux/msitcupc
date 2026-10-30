@@ -1060,13 +1060,13 @@ html[data-density="compact"] .list li{padding-top:8px;padding-bottom:8px}
   .health-big{font-size:18px}
 }
 
-/* A touch pointer gets a 40px target for every control it can press; the
+/* A touch pointer gets a 44px target for every control it can press; the
    reading surfaces keep their comfortable density. */
 @media (pointer:coarse){
-  .btn{min-height:40px}
-  .tabs .tab,.seg button{min-height:40px}
-  .side-link{min-height:42px}
-  .chk-finding input{min-height:42px}
+  .btn{min-height:44px}
+  .tabs .tab,.seg button{min-height:44px}
+  .side-link{min-height:44px}
+  .chk-finding input{min-height:44px}
 }
 
 /* Maintenance detail: the record and the checklist sit side by side on the
@@ -1145,3 +1145,30 @@ html[data-density="compact"] .list li{padding-top:8px;padding-bottom:8px}
 /* A table cell breaks long words anywhere; an action button keeps its label
    on one line, so "CSV" or "Activate" never splits into "CS / V". */
 .table .btn{white-space:nowrap}
+
+/* ---------- print view (Appendix E.2, Section 25.3.8) ----------
+   The letterhead and the record are the only things on paper: navigation,
+   filters, tabs and action buttons are hidden, and every tab panel is shown
+   so the printed ticket is the complete service record. */
+.print-only{display:none}
+@media print{
+  @page{margin:14mm}
+  html,body{background:#fff !important;color:#000 !important}
+  .sidebar,.appbar,.topbar,.toolbar,.filters,.tabs,#tReplyCard,#rPagination,
+  .pagination,.no-print,button{display:none !important}
+  .app{display:block}
+  .main{margin:0;min-height:0}
+  .content{max-width:none;padding:0}
+  .print-only{display:block}
+  .print-head{border-bottom:2px solid #014421;margin-bottom:12px;padding-bottom:8px}
+  .print-brand{font-size:16px;font-weight:700}
+  .print-sub{font-size:11px;color:#333}
+  .print-head h1{font-size:20px;margin:8px 0 0}
+  .print-meta{font-size:11px;color:#333;margin-bottom:12px}
+  .card,.table,.panel{background:#fff !important;color:#000 !important;
+    box-shadow:none !important;border-color:#b8b8b8 !important}
+  .tab-panel[hidden]{display:block !important}
+  .sec-title .hint{color:#333}
+  a{color:#000;text-decoration:none}
+  .card{break-inside:avoid}
+}

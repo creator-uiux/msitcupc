@@ -110,7 +110,7 @@ those places were implemented from the label text and the SOP numbering
 | IT Coordinator | the review, the assessment, the assignment and the reassignment, the dependency follow-up and its outcome, the cancellation reason, the authorized closure, the maintenance schedule, the manual schedule check | the technician may not record the follow-up, the office may not assess or assign | `tests.py` role scope, `permission_parity_check.py` |
 | IT Technician | the diagnosis, the service actions, the dependency record, the test, the checklist, the additional fault and the corrective ticket, and the completed visit | the technician may not act on a record that is not assigned to them, may not assign, prioritise, cancel or close, and may not see another technician's queue | `tests.py` role scope, the HTTP scope assertions |
 | System | the ticket number, every status, the notifications, the reminders, the audit trail, the register, the report data, the schedule check, the occurrence and the job generation, the next due date | no screen and no button; an automated step is written with the actor "System" | `smoke.js`, `tests.py` audit trail |
-| System Administrator | the users, the roles, the offices, the categories, the assets, the configuration and the audit viewer | no operational ticket step unless the person also holds an operational role | `pagetest.js` role scoping, `tests.py` role scope |
+| System Administrator | the users, the roles and office membership, the offices, the categories, the configuration and the read-only audit viewer. An asset stays a field on a record; there is no asset register yet (`DECISIONS.md` D43) | no operational ticket step, and no operational screen either: role scope 5 leaves the lane no dashboard, ticket, register, report or maintenance page, and `/api/tickets`, `/api/reports` and `/api/export` are refused (D14) | `pagetest.js` role scoping, `rolepages_test.js` lane check, `tests.py` role scope |
 
 ## Test results
 
@@ -119,18 +119,18 @@ that was not run is not listed.
 
 | Suite | Command | Result |
 |---|---|---|
-| Backend | `python server/tests.py` | 382 passed, 0 failed |
-| Workflow smoke | `node tools/smoke.js` | 60 passed, 0 failed |
-| Page integration | `node tools/pagetest.js` | 555 passed, 0 failed |
+| Backend | `python server/tests.py` | 457 passed, 0 failed |
+| Workflow smoke | `node tools/smoke.js` | 76 passed, 0 failed |
+| Page integration | `node tools/pagetest.js` | 700 passed, 0 failed |
 | Role pages | `node tools/rolepages_test.js` | 182 passed, 0 failed |
 | API | `python tools/api_check.py` | 17 passed, 0 failed |
 | Markup and DOM ids | `python tools/validate.py` | PASSED |
 | UI house rules | `python tools/ui_check.py` | PASSED (73 pages) |
-| JavaScript syntax | `python tools/js_syntax_check.py` | PASS (24 files, 193 inline blocks) |
+| JavaScript syntax | `python tools/js_syntax_check.py` | PASS (25 files, 194 inline blocks) |
 | Em dash sweep | `python tools/em_dash_check.py` | PASS (0 in the tree) |
 | Appendix C coverage | `python tools/appendix_c_check.py` | PASS (81 nodes, 106 edges) |
 | Permission parity | `python tools/permission_parity_check.py` | PASS |
-| Permission parity (Node.js) | `node tools/parity_check.js` | 54 passed, 0 failed |
+| Permission parity (Node.js) | `node tools/parity_check.js` | 55 passed, 0 failed |
 | Role page generation | `python tools/role_pages.py --check` | PASS (50 files) |
 | Asia/Manila display | `node tools/time_check.js` | PASS under three host timezones |
 | Visual gate | `python tools/gate_shots.py` | PASS (60 captures, no overflow, no clipping); 48 role captures also checked in |
@@ -138,8 +138,11 @@ that was not run is not listed.
 | HTML markup check | `node tools/html_check.js` | 365 passed, 0 failed across 73 pages |
 | UI structure audit | `node tools/ui_audit.js` | 345 passed, 0 issues |
 | Script load order | `node tools/script_order_check.js` | 69 passed, 0 failed across 73 pages |
-| Deep behavior audit | `node tools/deep_audit.js` | 628 passed, 0 issues |
-| Content check | `node tools/content_check.js` | 174 passed, 0 issues |
+| Deep behavior audit | `node tools/deep_audit.js` | 645 passed, 0 issues |
+| Content check | `node tools/content_check.js` | 178 passed, 0 issues |
+| Feature parity | `python tools/feature_parity_check.py` | PASS (11 optional flags off) |
+| Printed copies | `python tools/print_check.py` | PASS (2 pages: a record and a report) |
+| Session expiry | `python tools/session_check.py` | 11 checks passed, in a real browser against a live server |
 
 There is no separate build step. The repository root is the served tree and
 `server/app.py` serves it directly; there is no `public/` assembly step in V5.

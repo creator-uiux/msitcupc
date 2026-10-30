@@ -1,4 +1,4 @@
-/* theme.js -- apply the colour theme before the first paint.
+/* theme.js: apply the colour theme before the first paint.
  *
  * Loaded in <head>, after the inline pre-paint snippet, so the choice is
  * applied before anything renders and there is never a flash of the wrong

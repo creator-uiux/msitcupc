@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Audit Log  --  ITC Maintenance System</title>
+<title>Audit Log | ITC Maintenance System</title>
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/green.css">
 <link rel="stylesheet" href="css/kit.css">
@@ -53,7 +53,7 @@
 
       <div class="card mt">
         <div class="card-head"><h3>Events</h3>
-          <span class="chip" id="aCount"> -- </span>
+          <span class="chip" id="aCount">0</span>
           <span class="hint">newest first</span></div>
         <table class="table">
           <thead><tr><th>When</th><th>Actor</th><th>Event</th><th>Record</th><th>Detail</th></tr></thead>
@@ -77,7 +77,7 @@
 <script src="js/ui.js"></script>
 <script src="js/live.js"></script>
 <script>
-UI.mountChrome({ title: 'Audit log', sub: 'Who did what, when  --  tamper-evident history' });
+UI.mountChrome({ title: 'Audit log', sub: 'Who did what, when: tamper-evident history' });
 
 var A_F = { q: '', by: '', type: '', kind: '', from: '', to: '' };
 var aPage = 1;
@@ -141,7 +141,7 @@ function render() {
       '<td data-label="Actor"><div class="t-title">' + UI.esc(a.by) + '</div><div class="t-sub">' + UI.esc(a.role || '') + '</div></td>' +
       '<td data-label="Event"><span class="chip">' + UI.esc(KINDS[a.kind] || a.kind) + '</span></td>' +
       '<td data-label="Record">' + (link ? '<a class="t-id" href="' + link + '">' + UI.esc(a.subjectId) + '</a>'
-        : '<span class="t-id">' + UI.esc(a.subjectId || ' -- ') + '</span>') +
+        : '<span class="t-id">' + UI.esc(a.subjectId || 'No subject') + '</span>') +
         '<div class="t-sub">' + UI.esc(a.subjectType || '') + '</div>' +
         (a.status ? '<div class="t-sub">' + UI.esc(a.status) + '</div>' : '') + '</td>' +
       '<td data-label="Detail">' + UI.esc(a.text) + '</td></tr>';

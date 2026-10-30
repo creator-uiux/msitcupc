@@ -18,7 +18,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#1E3A5F">
-<script>(function(){var P="or",R="requester",F="register.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic", "mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+<script>(function(){var P="or",R="requester",F="register.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["or", "itc", "ic"];var HOME={"requester": "or-dashboard.html", "technician": "itc-dashboard.html", "coordinator": "ic-dashboard.html", "management": "mgmt-users.html"};try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace(ALLOW.indexOf(o)>-1?(o+"-"+F):(HOME[a]||("or-"+F)));return;}window.ITC_URL_ROLE=P;})();</script>
 </head>
 <body>
 <div class="app">
@@ -30,7 +30,7 @@
     <main class="content">
       <div class="sec-title">
         <h2>Office IT Service Register</h2>
-        <span class="hint">The central record of every service  --  corrective and preventive, with its history preserved</span>
+        <span class="hint">The central record of every service, corrective and preventive, with its history preserved.</span>
       </div>
 
       <div class="card">
@@ -68,7 +68,7 @@
         </div>
 
         <div class="tab-panel" id="panel-history" role="tabpanel" aria-labelledby="tab-history">
-          <div class="card-head"><h3>Register entries</h3><span class="chip" id="gCount"> -- </span>
+          <div class="card-head"><h3>Register entries</h3><span class="chip" id="gCount">0</span>
             <span class="hint">newest first</span></div>
           <table class="table">
             <thead><tr><th>Record</th><th>Office</th><th>Kind</th><th>Status</th><th>Owners</th><th>When</th></tr></thead>
@@ -148,7 +148,7 @@ function entries() {
   db.jobs.forEach(function (j) {
     if (scope && j.office !== scope) return;
     out.push({ kind: 'preventive', id: j.id, office: j.office, status: j.status, _status: UI.STATUS[j.status] || [j.status, 'b-assigned'],
-      title: 'Preventive maintenance  --  ' + j.category + ' (' + j.scheduleId + ')', category: j.category, asset: (j.assets || []).join(', '),
+      title: 'Preventive maintenance: ' + j.category + ' (' + j.scheduleId + ')', category: j.category, asset: (j.assets || []).join(', '),
       owner: 'Maintenance plan', technician: j.technician, at: j.visitDate || j.createdAt, createdAt: j.createdAt, href: 'maintenance.html?job=' + encodeURIComponent(j.id) });
   });
   return out;
@@ -218,7 +218,7 @@ function render() {
       '<td data-label="Office"><div class="t-title">' + UI.esc(e.office) + '</div></td>' +
       '<td data-label="Kind"><span class="chip">' + (e.kind === 'preventive' ? 'Preventive' : 'Corrective') + '</span></td>' +
       '<td data-label="Status"><span class="badge ' + st[1] + '">' + UI.esc(st[0]) + '</span></td>' +
-      '<td data-label="Owners"><div class="t-title">' + UI.esc(e.owner || ' -- ') + '</div>' +
+      '<td data-label="Owners"><div class="t-title">' + UI.esc(e.owner || 'Not set') + '</div>' +
       (role() === 'requester' ? '' :
         '<div class="t-sub">' + (e.technician ? 'tech ' + UI.esc(e.technician) : 'unassigned') + '</div>') + '</td>' +
       '<td data-label="When"><div class="t-title">' + UI.dateOnly(e.at) + '</div><div class="t-sub">' + UI.timeAgo(e.at) + '</div></td></tr>';
@@ -359,7 +359,7 @@ function renderAssets(scope, rows) {
           '<td data-label="Office">' + UI.esc(Object.keys(a.offices).join(', ')) + '</td>' +
           '<td data-label="Services">' + a.services + '</td>' +
           '<td data-label="Still open">' + a.open + '</td>' +
-          '<td data-label="Last service">' + (a.last ? UI.dateOnly(a.last) : ' -- ') + '</td></tr>';
+          '<td data-label="Last service">' + (a.last ? UI.dateOnly(a.last) : 'Not set') + '</td></tr>';
       }).join('') + '</tbody></table>' +
       '<div id="aPagination"></div>'
     : '<div class="empty"> <img src="img/empty-tickets.svg" alt="" width="120" height="90" loading="lazy">No assets on record for this scope.</div>';
@@ -384,10 +384,10 @@ function renderMaintenance(scope) {
         '<div class="t-sub">' + UI.esc(j.category) + '</div></td>' +
         '<td data-label="Schedule"><span class="mono">' + UI.esc(j.scheduleId) + '</span></td>' +
         '<td data-label="Office">' + UI.esc(j.office) + '</td>' +
-        (role() === 'requester' ? '' : '<td data-label="Technician">' + UI.esc(j.technician || ' -- ') + '</td>') +
+        (role() === 'requester' ? '' : '<td data-label="Technician">' + UI.esc(j.technician || 'Unassigned') + '</td>') +
         '<td data-label="Status"><span class="badge ' + st[1] + '">' + UI.esc(st[0]) + '</span></td>' +
         '<td data-label="Outcome">' + UI.esc(j.outcome === 'success' ? 'Successful' : j.outcome === 'incomplete' ? 'Incomplete' : j.outcome === 'cancelled' ? 'Cancelled' : 'Pending') + '</td>' +
-        '<td data-label="Next due">' + (j.nextDue ? UI.dateOnly(j.nextDue) : ' -- ') + '</td></tr>';
+        '<td data-label="Next due">' + (j.nextDue ? UI.dateOnly(j.nextDue) : 'Not set') + '</td></tr>';
     }).join('') + '</tbody></table>' +
     '<div id="mPagination"></div>' +
     /* The office reads the visits that concern it; preventive plans and
@@ -399,10 +399,10 @@ function renderMaintenance(scope) {
         return '<tr><td class="td-main" data-label="Schedule"><span class="t-id">' + UI.esc(s.id) + '</span></td>' +
           '<td data-label="Office">' + UI.esc(s.office) + '</td>' +
           '<td data-label="Category">' + UI.esc(s.category) + '</td>' +
-          '<td data-label="Assets">' + UI.esc((s.assets || []).join(', ') || ' -- ') + '</td>' +
+          '<td data-label="Assets">' + UI.esc((s.assets || []).join(', ') || 'None') + '</td>' +
           '<td data-label="Frequency">' + UI.esc(s.frequency) + '</td>' +
-          '<td data-label="Due">' + (s.dueDate ? UI.dateOnly(s.dueDate) : ' -- ') + '</td>' +
-          '<td data-label="Technician">' + UI.esc(s.technician || ' -- ') + '</td></tr>';
+          '<td data-label="Due">' + (s.dueDate ? UI.dateOnly(s.dueDate) : 'Not set') + '</td>' +
+          '<td data-label="Technician">' + UI.esc(s.technician || 'Unassigned') + '</td></tr>';
       }).join('') + '</tbody></table>' +
       '<div id="sPagination"></div>');
   UI.renderPagination(document.getElementById('mPagination'), mp, function (p) { mPage = p; renderMaintenance(scope); });

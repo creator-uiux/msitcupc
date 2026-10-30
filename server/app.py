@@ -1,4 +1,4 @@
-"""ITC Maintenance System  --  website server (HTTP API + static, standard library only).
+"""ITC Maintenance System: website server (HTTP API + static, standard library only).
 
 Run:
     python server/app.py                 # serves the site on http://127.0.0.1:8787
@@ -7,7 +7,7 @@ Run:
     python server/app.py --no-worker     # disable the background world clock
 
 One process serves the whole website: the HTML/CSS/JS front end and the JSON API
-on one origin (no CORS, no build step). Open http://127.0.0.1:8787/  --  the site is
+on one origin (no CORS, no build step). Open http://127.0.0.1:8787/. The site is
 live against the backend by default; append ?api=0 to a page for offline demo mode.
 
 Endpoints
@@ -16,7 +16,8 @@ Endpoints
     POST /api/login                  {username,password} | {role} | {credential}
     POST /api/logout                 bearer token
     GET  /api/state                  bearer token  -> dataset (office-scoped for requesters)
-    GET  /api/tickets?filters        server-side list: search/filter/sort/paginate
+    GET  /api/tickets?filters        server-side list, scoped to the lane; the
+                                     administrator lane is refused (role scope 5)
     GET  /api/users                  user records (management/coordinator)
     POST /api/users                  create/update a user (management)
     POST /api/profile                own contact details / password
@@ -24,7 +25,8 @@ Endpoints
     GET  /api/attachment?id=         stream stored bytes (authorization checked)
     POST /api/call                   {method, args} -> {ok,msg,id?,state}
     GET  /api/events?token=          Server-Sent Events stream
-    GET  /api/reports                aggregate report
+    GET  /api/reports                aggregate report, on the lane's own scope
+    GET  /api/export                 CSV of the ticket records the lane may read
     GET  /api/notifications/outbox   delivery log (coordinator/management)
     POST /api/tick                   run one world-clock tick (tests/ops)
     POST /api/reset                  re-seed (coordinator/management)
@@ -34,6 +36,7 @@ import argparse
 import base64
 import binascii
 import hashlib
+import io
 import json
 import mimetypes
 import os
@@ -43,8 +46,10 @@ import re
 import secrets
 import sys
 import threading
+import traceback
 import urllib.parse
 import webbrowser
+import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import auth
@@ -182,13 +187,32 @@ class ItcHandler(BaseHTTPRequestHandler):
         return urllib.parse.parse_qs(qs).get("token", [None])[0]
 
     def _user(self):
-        return auth.resolve(self.server.state.conn, self._token())
+        # The shared connection and the whole-dataset save mean any write here
+        # must hold the state lock or it can commit a half-built dataset.
+        with self.server.state.lock:
+            return auth.resolve(self.server.state.conn, self._token())
 
     def _require(self):
         user = self._user()
         if not user:
             self._json({"ok": False, "msg": "Not authenticated."}, 401)
         return user
+
+    def _engine_call(self, state, role, method, args, user):
+        """Run one engine action against the live dataset.
+
+        Only a successful action is written to SQLite, so an action that fails
+        partway would leave the dataset in memory ahead of the saved copy and
+        the next save would persist that half-state.  Roll back instead.
+        """
+        with state.lock:
+            try:
+                return engine.call(state.data, role, method, args, user=user)
+            except Exception as exc:
+                traceback.print_exc()
+                state.data = database.load_state(state.conn)
+                return {"ok": False,
+                        "msg": "The server could not complete that action (%s)." % type(exc).__name__}
 
     # ----------------------------------------------------------------- routing
     def do_OPTIONS(self):
@@ -271,6 +295,26 @@ class ItcHandler(BaseHTTPRequestHandler):
             return self._scoped_requester(snap, user)
         if role == "technician":
             return self._scoped_technician(snap, user)
+        if role == "management":
+            return self._scoped_management(snap)
+        return snap
+
+    def _scoped_management(self, snap):
+        """The administrator lane is Administration plus the read-only audit
+        viewer (role scope 5).  Operational records are not its data to read,
+        so none enter its snapshot: the workflow stays in the three diagram
+        lanes, and the audit trail keeps the evidence the administrator does
+        need.  The keys stay as empty lists because the Workflow Guide paints
+        from them for every signed-in role.
+        """
+        for key in ("tickets", "jobs", "schedules"):
+            snap[key] = []
+        # A notice is addressed by role.  The lane reads its own notices and
+        # the ones sent to everyone signed in, exactly as the bell does, so
+        # another lane's traffic never reaches this session either.
+        snap["notifications"] = [
+            n for n in snap.get("notifications", [])
+            if n.get("role") in ("any", "management")]
         return snap
 
     def _scoped_requester(self, snap, user):
@@ -314,6 +358,13 @@ class ItcHandler(BaseHTTPRequestHandler):
             {k: v for k, v in j.items() if k != "technician"}
             for j in snap.get("jobs", []) if j.get("office") == scope
         ]
+        visible_jobs = set(j.get("id") for j in snap["jobs"])
+        # Attachment metadata follows the same scope as the record it belongs
+        # to: the office never learns the name or size of another office's file.
+        snap["files"] = [
+            f for f in snap.get("files", [])
+            if f.get("ticketId") in visible or f.get("jobId") in visible_jobs
+        ]
         snap["notifications"] = [
             n for n in snap.get("notifications", [])
             if n.get("role") == "any"
@@ -342,7 +393,10 @@ class ItcHandler(BaseHTTPRequestHandler):
         mine = set()
         for t in snap.get("tickets", []):
             if t.get("technician") == name:
-                tickets.append(t)
+                # Priority is the coordinator's assessment (D29); the technician
+                # lane hides it, so the trusted snapshot never ships it either.
+                tickets.append({k: v for k, v in t.items()
+                                if k not in ("priority", "impact", "urgency")})
                 mine.add(t.get("id"))
         jobs = [j for j in snap.get("jobs", []) if j.get("technician") == name]
         job_ids = set(j.get("id") for j in jobs)
@@ -350,6 +404,10 @@ class ItcHandler(BaseHTTPRequestHandler):
         snap["tickets"] = tickets
         snap["jobs"] = jobs
         snap["schedules"] = [s for s in snap.get("schedules", []) if s.get("id") in schedules]
+        snap["files"] = [
+            f for f in snap.get("files", [])
+            if f.get("ticketId") in mine or f.get("jobId") in job_ids
+        ]
         # The audit trail is a management screen; a technician only sees the
         # entries about the records they own.
         snap["audit"] = [
@@ -377,11 +435,12 @@ class ItcHandler(BaseHTTPRequestHandler):
         if not demo and (body.get("role") or body.get("username") in auth.DEMO_USERNAMES):
             return self._json({"ok": False, "code": "demo_disabled",
                                "msg": "Demo sign-in is disabled on this server."}, 403)
-        res = auth.login(self.server.state.conn, username=body.get("username"),
-                         password=body.get("password"), role=body.get("role"))
+        with self.server.state.lock:
+            res = auth.login(self.server.state.conn, username=body.get("username"),
+                             password=body.get("password"), role=body.get("role"))
+            state = self._scoped(dict(self.server.state.data), res["user"]) if res.get("ok") else None
         if not res.get("ok"):
             return self._json(res, 401)
-        state = self._scoped(dict(self.server.state.data), res["user"])
         state["role"] = res["user"]["role"]
         state["user"] = {"name": res["user"]["name"], "role": res["user"]["role"],
                          "office": res["user"]["office"], "email": res["user"].get("email")}
@@ -398,10 +457,11 @@ class ItcHandler(BaseHTTPRequestHandler):
                                           cfg.get("domains"), jwks=cfg.get("jwks"))
         except oidc.OidcError as exc:
             return self._json({"ok": False, "msg": "Google sign-in failed: %s" % exc}, 401)
-        res = auth.login_google(self.server.state.conn, claims)
+        with self.server.state.lock:
+            res = auth.login_google(self.server.state.conn, claims)
+            state = self._scoped(dict(self.server.state.data), res["user"]) if res.get("ok") else None
         if not res.get("ok"):
             return self._json(res, 403 if res.get("code") == "not_provisioned" else 401)
-        state = self._scoped(dict(self.server.state.data), res["user"])
         state["role"] = res["user"]["role"]
         state["user"] = {"name": res["user"]["name"], "role": res["user"]["role"],
                          "office": res["user"]["office"], "email": res["user"].get("email")}
@@ -409,14 +469,16 @@ class ItcHandler(BaseHTTPRequestHandler):
         return self._json(res)
 
     def _api_logout(self):
-        auth.logout(self.server.state.conn, self._token())
+        with self.server.state.lock:
+            auth.logout(self.server.state.conn, self._token())
         return self._json({"ok": True})
 
     def _api_state(self):
         user = self._require()
         if not user:
             return
-        snap = self._scoped(dict(self.server.state.data), user)
+        with self.server.state.lock:
+            snap = self._scoped(dict(self.server.state.data), user)
         snap["role"] = user["role"]
         snap["user"] = {"name": user["name"], "role": user["role"],
                         "office": user["office"], "email": user.get("email")}
@@ -433,6 +495,9 @@ class ItcHandler(BaseHTTPRequestHandler):
         user = self._require()
         if not user:
             return
+        if user["role"] == "management":
+            # No service-record screen in the administrator lane (role scope 5).
+            return self._json({"ok": False, "msg": "Blocked by role-based access (28.2)."}, 403)
         qs = urllib.parse.urlparse(self.path).query
         params = {k: v[0] for k, v in urllib.parse.parse_qs(qs).items()}
         if user["role"] == "requester" and "mine" not in params:
@@ -473,7 +538,7 @@ class ItcHandler(BaseHTTPRequestHandler):
         return self._json({"ok": True, "users": people, "total": len(people)})
 
     def _api_users_post(self):
-        """REST wrapper over engine.savePerson  --  same guards, same audit."""
+        """REST wrapper over engine.savePerson: same guards, same audit."""
         user = self._require()
         if not user:
             return
@@ -483,7 +548,7 @@ class ItcHandler(BaseHTTPRequestHandler):
         state = self.server.state
         with state.lock:
             before = state.data.get("rev")
-            res = engine.call(state.data, user["role"], "savePerson", [body], user=user)
+            res = self._engine_call(state, user["role"], "savePerson", [body], user)
             changed = state.data.get("rev") != before
             if changed:
                 state.save()
@@ -501,7 +566,7 @@ class ItcHandler(BaseHTTPRequestHandler):
     def _api_profile(self):
         """Own record: e-mail/phone/prefs + password change (auth.py owns hashes).
 
-        Names are intentionally not editable here  --  a person's name is the
+        Names are intentionally not editable here; a person's name is the
         identity written on service records (requester/technician references);
         an administrator renames people through the Users screen, which cascades.
         """
@@ -563,6 +628,65 @@ class ItcHandler(BaseHTTPRequestHandler):
     MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB per file (D21)
     MAX_FILES_PER_RECORD = 10  # 10 files per record (D21)
 
+    # A browser sends no type at all for some of these files, so the extension
+    # fills the gap here on the trusted layer; the bytes are still checked
+    # against whatever type is finally used.
+    UPLOAD_EXT_MIMES = {
+        ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
+        ".webp": "image/webp", ".pdf": "application/pdf",
+        ".txt": "text/plain", ".csv": "text/csv",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }
+
+    # The browser-declared type is only trusted once the bytes agree with it,
+    # so a renamed executable cannot be filed as a picture.  Text has no
+    # signature, so it is checked by what it must not contain.
+    @staticmethod
+    def _text_is_text(data):
+        if b"\x00" not in data:
+            return True
+        # A spreadsheet export can be UTF-16, whose ASCII text is full of NUL
+        # bytes.  Those are text too, so the BOM decides whether they decode.
+        if data[:2] in (b"\xff\xfe", b"\xfe\xff"):
+            try:
+                data.decode("utf-16")
+                return True
+            except UnicodeDecodeError:
+                return False
+        return False
+
+    @classmethod
+    def _zip_is_office(cls, mime, data):
+        if data[:4] != b"PK\x03\x04":
+            return False
+        try:
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                names = zf.namelist()
+        except (zipfile.BadZipFile, OSError, ValueError):
+            return False
+        if "[Content_Types].xml" not in names:
+            return False
+        folder = "word/" if mime.endswith("wordprocessingml.document") else "xl/"
+        return any(n.startswith(folder) for n in names)
+
+    @classmethod
+    def _content_matches_type(cls, mime, data):
+        if mime == "image/jpeg":
+            return data[:3] == b"\xff\xd8\xff"
+        if mime == "image/png":
+            return data[:8] == b"\x89PNG\r\n\x1a\n"
+        if mime == "image/webp":
+            return data[:4] == b"RIFF" and data[8:12] == b"WEBP"
+        if mime == "application/pdf":
+            return data[:5] == b"%PDF-"
+        if mime in ("application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):
+            return cls._zip_is_office(mime, data)
+        if mime in ("text/plain", "text/csv"):
+            return cls._text_is_text(data)
+        return False
+
     def _api_upload(self):
         """Store attachment bytes in SQLite; metadata joins state["files"]."""
         user = self._require()
@@ -571,6 +695,8 @@ class ItcHandler(BaseHTTPRequestHandler):
         body = self._read_json()
         name = os.path.basename(str(body.get("name") or "").strip()).strip()
         mime = (body.get("mime") or "application/octet-stream").split(";")[0].strip().lower()
+        if mime == "application/octet-stream":
+            mime = self.UPLOAD_EXT_MIMES.get(os.path.splitext(name)[1].lower(), mime)
         ticket_id = body.get("ticketId") or None
         job_id = body.get("jobId") or None
         if not name:
@@ -586,6 +712,9 @@ class ItcHandler(BaseHTTPRequestHandler):
         limit = self.MAX_UPLOAD_BYTES
         if len(data) > limit:
             return self._json({"ok": False, "msg": "File exceeds the %d MB limit." % (limit // 1048576)}, 400)
+        if not self._content_matches_type(mime, data):
+            return self._json({"ok": False,
+                               "msg": "The file contents do not match the %s type it claims." % mime}, 400)
 
         state = self.server.state
         with state.lock:
@@ -767,7 +896,7 @@ class ItcHandler(BaseHTTPRequestHandler):
         state = self.server.state
         with state.lock:
             before = state.data.get("rev")
-            res = engine.call(state.data, user["role"], method, args, user=user)
+            res = self._engine_call(state, user["role"], method, args, user)
             changed = state.data.get("rev") != before
             if changed:
                 state.save()
@@ -834,15 +963,23 @@ class ItcHandler(BaseHTTPRequestHandler):
         PROTECTED = ("status", "technician", "confirmation", "closure", "authorizedReason",
                      "cancelReason", "resolvedAt", "closedAt", "dependency", "holdReturn",
                      "approval", "tests", "reminders", "impact", "urgency", "priority",
-                     "target", "reviewed", "recurring", "diagnosis", "withdrawal")
+                     "target", "reviewed", "recurring", "diagnosis", "withdrawal",
+                     # Evidence names only ever come from /api/upload, so a merge
+                     # cannot list a file whose bytes the server does not hold.
+                     "attachments")
         with state.lock:
             cur = state.data
             merged = dict(cur)
             # Validate and merge only allowed fields
+            created = []
             if isinstance(incoming, dict) and "tickets" in incoming and isinstance(incoming["tickets"], list):
-                merged_tickets = []
-                # index current
-                cur_t = {t["id"]: t for t in cur.get("tickets", [])}
+                # Start from the live collection: a merge edits content and may
+                # add a record, but it never deletes one.  Dropping a ticket
+                # would erase its record and its audit trail without a guarded
+                # workflow action, so an omitted id is simply left alone.
+                merged_tickets = list(cur.get("tickets", []))
+                cur_t = {t["id"]: t for t in merged_tickets if t.get("id")}
+                index = {t["id"]: i for i, t in enumerate(merged_tickets) if t.get("id")}
                 seen_ids = set()
                 for t in incoming["tickets"]:
                     if not isinstance(t, dict) or not t.get("id"):
@@ -880,7 +1017,7 @@ class ItcHandler(BaseHTTPRequestHandler):
                             if k in PROTECTED or k in ("id", "history", "comments", "createdAt", "dateReported"):
                                 continue
                             mt[k] = v
-                        merged_tickets.append(mt)
+                        merged_tickets[index[tid]] = mt
                     else:
                         # creating tickets via state merge? only coordinator/management
                         if role not in ("coordinator", "management"):
@@ -888,19 +1025,55 @@ class ItcHandler(BaseHTTPRequestHandler):
                         ob = engine._office_block({"role": role, "_user": user}, t.get("office"))
                         if ob:
                             return self._json(ob, 403)
-                        # a new ticket must already carry one of the eight statuses
-                        nt = dict(t)
-                        if nt.get("status") not in engine._LABELS:
-                            return self._json({"ok": False, "msg": "New tickets must start with one of the "
-                                                                   "eight workflow statuses (Submitted, ...)."}, 400)
+                        # A new record enters at Submitted.  Resolved, Closed or
+                        # any other advanced state is only reachable through the
+                        # guarded workflow methods, never by crafting a record.
+                        # The key or the display label both read as Submitted,
+                        # and an omitted status is not a reason to lose the batch.
+                        stated = str(t.get("status") or "submitted").strip().lower().replace(" ", "_")
+                        if stated != "submitted":
+                            return self._json({"ok": False, "msg": "New tickets must start as Submitted "
+                                                                   "and advance through the workflow."}, 400)
+                        for field in ("office", "requester", "category", "issue"):
+                            if not t.get(field):
+                                return self._json({"ok": False, "msg": "A new ticket needs office, requester, "
+                                                                       "category and issue."}, 400)
+                        now = engine.now_iso()
+                        nt = {k: v for k, v in t.items() if k not in PROTECTED and k != "id"}
+                        # Ticket numbers are minted by the server (D19).  The id
+                        # in a create payload is ignored, so a crafted number
+                        # like IT-9999-000099 can never enter the register.
+                        tid = engine.next_id(cur, "ticket")
+                        nt["id"] = tid
+                        nt.update({
+                            "status": "submitted", "reviewed": False, "priority": "medium",
+                            "createdAt": now, "updatedAt": now,
+                            "history": [{"at": now, "by": user["name"], "role": role,
+                                         "status": "submitted", "kind": "status",
+                                         "text": "Request recorded. Status: Submitted."}],
+                            "comments": [], "tests": [], "reminders": []})
+                        for key in ("technician", "confirmation", "closure", "authorizedReason",
+                                    "cancelReason", "resolvedAt", "closedAt", "dependency",
+                                    "holdReturn", "approval", "target", "impact", "urgency",
+                                    "withdrawal", "recurring"):
+                            nt.pop(key, None)
                         merged_tickets.append(nt)
+                        index[tid] = len(merged_tickets) - 1
+                        created.append(nt)
                 merged["tickets"] = merged_tickets
             else:
                 merged["tickets"] = cur.get("tickets", [])
             # The client audit log is ignored: the audit trail is append-only
             # and written by the engine, so an incoming list can never add,
-            # rewrite or remove entries.
-            merged["audit"] = cur.get("audit") or []
+            # rewrite or remove entries.  New records get a server-written
+            # creation entry, since their history was server-built above.
+            merged["audit"] = list(cur.get("audit") or [])
+            for nt in created:
+                merged["audit"].append({
+                    "at": nt["createdAt"], "by": user["name"], "role": role,
+                    "subjectType": "ticket", "subjectId": nt["id"],
+                    "status": "Submitted", "kind": "create",
+                    "text": "Ticket created through the offline state merge."})
             # settings merge if provided (coordinator/management)
             if "settings" in incoming and isinstance(incoming["settings"], dict):
                 if role not in ("coordinator", "management"):
@@ -908,12 +1081,15 @@ class ItcHandler(BaseHTTPRequestHandler):
                 ms = dict(cur.get("settings") or {})
                 ms.update(incoming["settings"])
                 merged["settings"] = ms
-        merged["rev"] = cur.get("rev", 1) + 1
-        merged["updatedAt"] = engine.now_iso()
-        state.data = merged
-        state.save()
+            # Still inside the lock: the merge was built from the snapshot taken
+            # above, so publishing it must not interleave with another write.
+            merged["rev"] = cur.get("rev", 1) + 1
+            merged["updatedAt"] = engine.now_iso()
+            state.data = merged
+            state.save()
         self.server.hub.publish({"type": "state", "rev": state.data.get("rev"), "by": user["name"], "method": "state"})
-        snap = self._scoped(dict(state.data), user)
+        with state.lock:
+            snap = self._scoped(dict(state.data), user)
         snap["role"] = user["role"]
         snap["user"] = {"name": user["name"], "role": user["role"],
                         "office": user["office"], "email": user.get("email")}
@@ -959,11 +1135,26 @@ class ItcHandler(BaseHTTPRequestHandler):
                     ob = engine._office_block({"role": role, "_user": user}, old.get("office"))
                     if ob:
                         return self._json(ob, 403)
-                    if len(t.get("history") or []) < len(old.get("history") or []):
-                        return self._json({"ok": False, "msg": "History cannot be removed."}, 400)
-                    if len(t.get("comments") or []) < len(old.get("comments") or []):
-                        return self._json({"ok": False, "msg": "Comments cannot be removed."}, 400)
-                    mt = dict(old); mt.update(t); new_t.append(mt)
+                    oldhist = old.get("history") or []
+                    newhist = t.get("history") or []
+                    if len(newhist) < len(oldhist) or newhist[:len(oldhist)] != oldhist:
+                        return self._json({"ok": False, "msg": "History can only be appended to."}, 400)
+                    oldcom = old.get("comments") or []
+                    newcom = t.get("comments") or []
+                    if len(newcom) < len(oldcom) or newcom[:len(oldcom)] != oldcom:
+                        return self._json({"ok": False, "msg": "Comments can only be appended to."}, 400)
+                    # An import restores content; it never moves a live record
+                    # through the workflow.  Status transitions stay with the
+                    # guarded methods even for management (D14).
+                    if t.get("status") != old.get("status"):
+                        return self._json({"ok": False, "msg": "Status changes go through the guarded "
+                                                               "workflow methods, not a dataset import (%s)." % tid}, 400)
+                    mt = dict(old)
+                    for k, v in t.items():
+                        if k in ("id", "status", "history", "comments", "createdAt", "audit"):
+                            continue
+                        mt[k] = v
+                    new_t.append(mt)
                 else:
                     ob = engine._office_block({"role": role, "_user": user}, t.get("office"))
                     if ob:
@@ -975,8 +1166,9 @@ class ItcHandler(BaseHTTPRequestHandler):
                     return self._json({"ok": False, "msg": "Invalid audit payload."}, 400)
                 cura = cur.get("audit") or []
                 ina = incoming["audit"] or []
-                if len(ina) < len(cura):
-                    return self._json({"ok": False, "msg": "Audit log cannot be removed."}, 400)
+                if len(ina) < len(cura) or ina[:len(cura)] != cura:
+                    return self._json({"ok": False, "msg": "The audit log is append-only: existing "
+                                                           "entries cannot be changed or removed."}, 400)
                 merged["audit"] = ina
             for k in ("schedules", "jobs", "notifications", "offices", "people", "ref", "seq", "files"):
                 if k in incoming:
@@ -1005,10 +1197,15 @@ class ItcHandler(BaseHTTPRequestHandler):
         user = self._require()
         if not user:
             return
+        if user["role"] == "management":
+            # CSV export belongs to the register and report screens, which the
+            # administrator lane does not hold (role scope 5).
+            return self._json({"ok": False, "msg": "Blocked by role-based access (28.2)."}, 403)
         data = self.server.state.data
         # The export carries the same scope as the screens: an office user
         # exports their own office, a technician exports their own workload,
-        # the coordinator and the administrator export everything they may see.
+        # the coordinator exports every office.  The administrator lane holds
+        # neither the register nor the reports, so it is refused above.
         tickets = self._scoped({"tickets": data.get("tickets", [])}, user)["tickets"]
         import io, csv
         buf = io.StringIO()
@@ -1030,6 +1227,10 @@ class ItcHandler(BaseHTTPRequestHandler):
         user = self._require()
         if not user:
             return
+        if user["role"] == "management":
+            # Reports belong to the three diagram lanes; the administrator lane
+            # holds Administration and the audit viewer only (role scope 5).
+            return self._json({"ok": False, "msg": "Blocked by role-based access (28.2)."}, 403)
         data = self.server.state.data
         # Reports follow the caller's data scope: an office user sees its own
         # office, a technician sees their own workload and completed work, and
@@ -1314,7 +1515,7 @@ def main():
     host, port = httpd.server_address[:2]
     view = "127.0.0.1" if host in ("0.0.0.0", "::") else host
     site = "http://%s:%d/" % (view, port)
-    print("ITC Maintenance System  --  serving %s" % site)
+    print("ITC Maintenance System: serving %s" % site)
     print("  site      : %s" % site)
     print("  health    : http://%s:%d/api/health" % (view, port))
     print("  storage   : %s" % (args.db or database.DB_PATH))

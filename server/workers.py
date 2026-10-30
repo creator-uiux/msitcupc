@@ -6,6 +6,7 @@ publishes change notifications to the SSE hub so connected browsers refresh.
 """
 import threading
 
+import db as database
 import engine
 
 
@@ -22,6 +23,10 @@ class Worker(threading.Thread):
             try:
                 self.tick()
             except Exception as exc:  # never kill the worker
+                # A tick that fails partway leaves the dataset in memory ahead
+                # of the saved copy, so drop the half-tick rather than persist it.
+                with self.state.lock:
+                    self.state.data = database.load_state(self.state.conn)
                 self.hub.publish({"type": "error", "message": str(exc)})
 
     def tick(self):

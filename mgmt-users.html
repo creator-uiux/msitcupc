@@ -18,7 +18,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#1E3A5F">
-<script>(function(){var P="mgmt",R="management",F="users.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["mgmt"];try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace((ALLOW.indexOf(o)>-1?o:"or")+"-"+F);return;}window.ITC_URL_ROLE=P;})();</script>
+<script>(function(){var P="mgmt",R="management",F="users.html";var OWN={requester:"or",technician:"itc",coordinator:"ic",management:"mgmt"};var ALLOW=["mgmt"];var HOME={"requester": "or-dashboard.html", "technician": "itc-dashboard.html", "coordinator": "ic-dashboard.html", "management": "mgmt-users.html"};try{var tm=/[?&]theme=(dark|light)\b/.exec(location.search);var t=tm?tm[1]:(localStorage.getItem("itc_theme")||"light");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");else document.documentElement.setAttribute("data-theme","light");}catch(e){}var d=null;try{d=JSON.parse(localStorage.getItem("itc_db_v3"));}catch(e){}var a=d&&d.auth&&d.auth.role;if(a&&a!==R){var o=OWN[a]||"or";location.replace(ALLOW.indexOf(o)>-1?(o+"-"+F):(HOME[a]||("or-"+F)));return;}window.ITC_URL_ROLE=P;})();</script>
 </head>
 <body>
 <div class="app">
@@ -30,7 +30,7 @@
     <main class="content">
       <div class="sec-title">
         <h2>Users &amp; roles</h2>
-        <span class="hint">Accounts, roles and office assignment  --  the identity written on service records</span>
+        <span class="hint">Accounts, roles and office assignment, the identity written on service records.</span>
       </div>
 
       <div class="card">
@@ -51,7 +51,7 @@
       <section class="grid grid-kpi mt" id="uKpi"></section>
 
       <div class="card mt">
-        <div class="card-head"><h3>Accounts</h3><span class="chip" id="uCount"> -- </span>
+        <div class="card-head"><h3>Accounts</h3><span class="chip" id="uCount">0</span>
           <span class="hint">new accounts sign in with the initial password <code>itc</code></span></div>
         <table class="table">
           <thead><tr><th>Person</th><th>Role</th><th>Office</th><th>Contact</th><th>State</th><th>Actions</th></tr></thead>
@@ -148,10 +148,10 @@ function render() {
     var off = p.active === false;
     return '<tr style="--row-index:' + i + '">' +
       '<td data-label="Person"><div class="row row-tight"><span class="avatar sm">' + UI.initials(p.name) + '</span>' +
-      '<div><div class="t-title">' + UI.esc(p.name) + '</div><div class="t-sub mono">' + UI.esc(p.username || p.id || ' -- ') + '</div></div></div></td>' +
+      '<div><div class="t-title">' + UI.esc(p.name) + '</div><div class="t-sub mono">' + UI.esc(p.username || p.id || 'Not set') + '</div></div></div></td>' +
       '<td data-label="Role"><span class="chip">' + UI.esc((UI.ROLES[p.role] || {}).title || p.role) + '</span></td>' +
-      '<td data-label="Office"><div class="t-title">' + UI.esc(p.office || ' -- ') + '</div></td>' +
-      '<td data-label="Contact"><div class="t-title">' + (p.email ? UI.mailLink(p.email) : ' -- ') + '</div><div class="t-sub">' + (p.phone ? UI.telLink(p.phone) : '') + '</div></td>' +
+      '<td data-label="Office"><div class="t-title">' + UI.esc(p.office || 'Not set') + '</div></td>' +
+      '<td data-label="Contact"><div class="t-title">' + (p.email ? UI.mailLink(p.email) : 'Not set') + '</div><div class="t-sub">' + (p.phone ? UI.telLink(p.phone) : '') + '</div></td>' +
       '<td data-label="State"><span class="badge ' + (off ? 'b-cancelled' : 'b-resolved') + '">' + (off ? 'Inactive' : 'Active') + '</span></td>' +
       '<td data-label="Actions"><div class="chip-row">' +
       '<button class="btn btn-ghost btn-sm" data-uedit="' + UI.attr(p.id != null ? p.id : p.username) + '">Edit</button>' +
@@ -185,7 +185,7 @@ function officesFor() {
 function userModal(p) {
   p = p || {};
   var isNew = p.id == null && !p.username;
-  UI.openModal(isNew ? 'New user account' : 'Edit user  --  ' + p.name,
+  UI.openModal(isNew ? 'New user account' : 'Edit user: ' + p.name,
     '<div class="grid grid-form">' +
     UI.field('Full name', UI.input('name', 'e.g. J. Dela Cruz', p.name || '', { required: true })) +
     UI.field('Role', UI.select('role', UI.ROLE_ORDER.map(function (r) { return [r, UI.ROLES[r].title]; }), p.role || 'requester', true)) +

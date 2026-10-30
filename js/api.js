@@ -1,4 +1,4 @@
-/* api.js  --  live-backend adapter for the ITC Maintenance System front end.
+/* api.js: live-backend adapter for the ITC Maintenance System front end.
  *
  * When a page is served by server/app.py the backend injects window.ITC_API,
  * so the site is live against the backend at http://127.0.0.1:8787/.  When the
@@ -27,6 +27,8 @@
   var role = null;
   var scoped = null;      /* office name when the server scopes the dataset (requester tenancy) */
   var live = null;
+  var lastStatus = 0;     /* HTTP status of the most recent request */
+  var leaving = false;    /* a return to sign-in was already started */
   var SESSION_KEY = 'itc_session';
 
   window.ApiMode = true;
@@ -37,6 +39,7 @@
     try {
       x.open(method, BASE + path, false); /* sync: the UI is synchronous by design */
     } catch (e) {
+      lastStatus = 0;
       return { status: 0, data: null };
     }
     if (token) x.setRequestHeader('Authorization', 'Bearer ' + token);
@@ -44,11 +47,28 @@
     try {
       x.send(body !== undefined && body !== null ? JSON.stringify(body) : null);
     } catch (e) {
+      lastStatus = 0;
       return { status: 0, data: null };
     }
     var data = null;
     try { data = JSON.parse(x.responseText); } catch (e) { data = null; }
+    lastStatus = x.status;
     return { status: x.status, data: data };
+  }
+
+  /* A refused token is not an absent backend.  The session expired, or this
+     server does not sign people in by role, and in both cases the page has to
+     go back to sign-in rather than fall through to the bundled demo data. */
+  function refused(status) { return status === 401 || status === 403; }
+
+  function backToSignIn() {
+    if (leaving) return false;
+    leaving = true;
+    clearSession();
+    var page = location.pathname.split('/').pop() || 'dashboard.html';
+    if (/^login\.html$/i.test(page)) return false;
+    location.replace('login.html?next=' + encodeURIComponent(page));
+    return false;
   }
 
   /* ------------------------------------------------------- session storage */
@@ -92,6 +112,7 @@
       applyAuth(r.data, nextRole);
       return true;
     }
+    if (refused(r.status)) return backToSignIn();
     return false;
   }
 
@@ -122,6 +143,7 @@
       window.Store.adopt(r.data);
       return true;
     }
+    if (refused(r.status)) return backToSignIn();
     return false;
   }
 
@@ -134,7 +156,22 @@
       return;
     }
     if (role === 'requester') return;  /* a scoped dataset must never overwrite the server */
-    xhr('POST', '/api/state', { state: sanitize(db) });
+    var r = xhr('POST', '/api/state', { state: sanitize(db) });
+    if (r.status === 200 && r.data && r.data.ok) {
+      /* The answer carries the stored dataset, exactly as /api/call does, so the
+         server stays authoritative after a merge.  That matters for a record the
+         browser drafted offline: the merge mints its ticket number, and adopting
+         the answer replaces the number the browser invented with the real one
+         instead of offering it again on the next push. */
+      if (r.data.state) window.Store.adopt(r.data.state);
+      return;
+    }
+    if (refused(r.status)) { backToSignIn(); return; }
+    /* A refused merge means the screen is showing edits the server does not
+       hold.  Say so and show the stored dataset instead of a phantom change. */
+    var why = (r.data && r.data.msg) || ('HTTP ' + r.status);
+    if (window.UI && UI.toast) UI.toast('The server did not accept these changes: ' + why, 'err');
+    pull();
   }
 
   /* Never send client-only keys the server shouldn't store verbatim. */
@@ -154,6 +191,10 @@
     var r = xhr('POST', '/api/call', { method: method, args: args });
     if (r.status === 401 && login(role || 'coordinator')) {
       r = xhr('POST', '/api/call', { method: method, args: args });
+    }
+    if (refused(r.status)) {
+      backToSignIn();
+      return { ok: false, msg: 'Your session ended. Sign in again to continue.' };
     }
     if (r.status !== 200 || !r.data) return { ok: false, msg: 'Backend unavailable.' };
     if (r.data.state) window.Store.adopt(r.data.state);
@@ -258,12 +299,13 @@
   if (m) initialRole = m[1];
 
   var ready = useStoredSession() && pull();
-  if (!ready) {
+  if (!ready && !leaving) {
     clearSession();
     ready = login(initialRole) && pull();
   }
   if (!ready) {
-    /* Server unreachable  --  degrade gracefully to the pure local prototype. */
+    if (leaving) return;   /* already heading back to the sign-in screen */
+    /* Server unreachable: degrade gracefully to the pure local prototype. */
     window.ApiMode = false;
     window.__itcPersistHook = null;
     if (window.console) console.warn('[api] backend unavailable; running in local demo mode.');

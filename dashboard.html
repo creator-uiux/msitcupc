@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dashboard  --  ITC Maintenance System</title>
+<title>Dashboard | ITC Maintenance System</title>
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/green.css">
 <link rel="stylesheet" href="css/kit.css">
@@ -48,7 +48,7 @@
               <div class="card">
                 <div class="card-head">
                   <h3>Ticket activity</h3>
-                  <span class="hint" id="actUpdated"> -- </span>
+                  <span class="hint" id="actUpdated">Loading</span>
                 </div>
                 <div class="card-pad">
                   <div class="row row-between">
@@ -129,7 +129,7 @@
           <div class="card actor-only">
             <div class="card-head">
               <h3>Needs your action</h3>
-              <span class="chip" id="mineCount"> -- </span>
+              <span class="chip" id="mineCount">0</span>
               <span class="hint" id="mineHint">the records waiting on your role</span>
             </div>
             <ul class="list" id="mineList"></ul>
@@ -154,7 +154,7 @@
         <div class="card">
           <div class="card-head">
             <h3>Active ticket queue</h3>
-            <span class="chip" id="queueCount"> -- </span>
+            <span class="chip" id="queueCount">0</span>
             <span class="hint">Sorted by target completion date · click a row</span>
           </div>
           <table class="table">
@@ -167,7 +167,7 @@
             <tbody id="queueBody"></tbody>
           </table>
           <div id="queuePagination"></div>
-          <div class="empty" id="queueEmpty" hidden><img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No active tickets  --  every request has reached a terminal state.</div>
+          <div class="empty" id="queueEmpty" hidden><img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No active tickets. Every request has reached a terminal state.</div>
         </div>
       </section>
 
@@ -595,7 +595,7 @@ function render() {
   var minePg = UI.paginate(mine, minePage, MINE_PER_PAGE);
   document.getElementById('mineList').innerHTML = minePg.items.map(function (m) {
     return '<li><span class="ico ok">' + UI.icon(m.kind === 'Ticket' ? 'ticket' : 'toolbox') + '</span>' +
-      '<a class="body" href="' + m.href + '"><strong>' + UI.esc(m.id) + '  --  ' + UI.esc(m.title) + '</strong>' +
+      '<a class="body" href="' + m.href + '"><strong>' + UI.esc(m.id) + ': ' + UI.esc(m.title) + '</strong>' +
       '<span>' + UI.esc(m.kind) + ' · ' + UI.esc(m.where) + ' · ' + statusLabel(m.status) + '</span>' +
       UI.waitingOn(m.status, m.kind === 'Maintenance') + '</a></li>';
   }).join('');
@@ -617,8 +617,8 @@ function render() {
       '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div><div class="t-sub">' + UI.esc(t.requester) + '</div></td>' +
       '<td data-label="Status">' + UI.badge(t.status) + UI.waitingOn(t.status) + '</td>' +
       '<td class="lead-only" data-label="Priority">' + UI.prio(t.priority) + '</td>' +
-      '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : ' -- ') + '</td>' +
-      '<td class="tech-only" data-label="Technician"><div class="t-title">' + UI.esc(t.technician || ' -- ') + '</div></td></tr>';
+      '<td class="nowrap" data-label="Target">' + (t.target ? UI.dateOnly(t.target) : 'Not set') + '</td>' +
+      '<td class="tech-only" data-label="Technician"><div class="t-title">' + UI.esc(t.technician || 'Unassigned') + '</div></td></tr>';
   }).join('');
   document.querySelectorAll('#queueBody tr[data-href]').forEach(function (tr) {
     tr.addEventListener('click', function () { location.href = tr.dataset.href; });
@@ -919,7 +919,7 @@ function avg(list) {
   return sum / list.length;
 }
 function fmtHours(h) {
-  if (h === null) return ' -- ';
+  if (h === null) return 'None';
   if (h < 24) return Math.round(h) + 'h';
   return (h / 24).toFixed(1) + 'd';
 }

@@ -101,7 +101,7 @@ CREATE INDEX IF NOT EXISTS idx_jobs_schedule ON jobs(schedule_id, occurrence);
 CREATE INDEX IF NOT EXISTS idx_attach_ticket ON attachments(ticket_id);
 
 CREATE TABLE IF NOT EXISTS sessions (
-  token TEXT PRIMARY KEY, user_id INTEGER, role TEXT, created_at TEXT
+  token TEXT PRIMARY KEY, user_id INTEGER, role TEXT, created_at TEXT, last_seen TEXT
 );
 
 CREATE TABLE IF NOT EXISTS deliveries (
@@ -129,6 +129,9 @@ def _j(v, default):
 def connect(path=DB_PATH):
     conn = sqlite3.connect(path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    # Another process (a test run or a second server on the same file) can hold
+    # the write lock briefly; wait instead of failing the request.
+    conn.execute("PRAGMA busy_timeout=5000")
     conn.executescript(SCHEMA)
     _migrate(conn)
     return conn
@@ -142,6 +145,10 @@ def _migrate(conn):
             conn.execute("ALTER TABLE users ADD COLUMN %s TEXT" % name)
     if "active" not in cols:
         conn.execute("ALTER TABLE users ADD COLUMN active INTEGER DEFAULT 1")
+    scols = {r["name"] for r in conn.execute("PRAGMA table_info(sessions)")}
+    if "last_seen" not in scols:
+        conn.execute("ALTER TABLE sessions ADD COLUMN last_seen TEXT")
+        conn.execute("UPDATE sessions SET last_seen = created_at WHERE last_seen IS NULL")
     if "prefs" not in cols:
         conn.execute("ALTER TABLE users ADD COLUMN prefs TEXT")
     ncols = {r["name"] for r in conn.execute("PRAGMA table_info(notifications)")}
@@ -217,9 +224,10 @@ DEFAULT_REF = {
                    ["critical", "Critical"]],
     # key -> (label, days until the next occurrence).  The next due date is
     # always "previous due date + days", so a late visit never drifts the plan.
-    "frequencies": [["weekly", "Weekly", 7], ["monthly", "Monthly", 30],
-                    ["quarterly", "Quarterly", 91], ["semiannual", "Semi-annual", 182],
-                    ["annual", "Annual", 365]],
+    "frequencies": [["daily", "Daily", 1], ["weekly", "Weekly", 7],
+                    ["biweekly", "Every 2 weeks", 14], ["monthly", "Monthly", 30],
+                    ["quarterly", "Quarterly", 91], ["semiannual", "Every 6 months", 182],
+                    ["annual", "Yearly", 365], ["custom", "Custom", 30]],
 }
 
 # Operational defaults editable on the settings screen.  Kept here so a fresh

@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -30,10 +31,16 @@ CHROME = shots.CHROME
 OUT = os.path.join(ROOT, "docs", "audit-screenshots")
 
 ROLE_PAGES = {
-    "requester": {"prefix": "or", "forbidden": "mgmt-users.html", "ticket_page": "or-ticket.html"},
-    "technician": {"prefix": "itc", "forbidden": "ic-review.html", "ticket_page": "itc-ticket.html"},
-    "coordinator": {"prefix": "ic", "forbidden": "mgmt-users.html", "ticket_page": "ic-ticket.html"},
-    "management": {"prefix": "mgmt", "forbidden": "or-request.html", "ticket_page": "mgmt-ticket.html"},
+    "requester": {"prefix": "or", "landing": "or-dashboard.html",
+                  "forbidden": "mgmt-users.html", "ticket_page": "or-ticket.html"},
+    "technician": {"prefix": "itc", "landing": "itc-dashboard.html",
+                   "forbidden": "ic-review.html", "ticket_page": "itc-ticket.html"},
+    "coordinator": {"prefix": "ic", "landing": "ic-dashboard.html",
+                    "forbidden": "mgmt-users.html", "ticket_page": "ic-ticket.html"},
+    # Role scope 5: the administrator lane holds Administration and the audit
+    # viewer only, so it has no dashboard and no ticket page to walk.
+    "management": {"prefix": "mgmt", "landing": "mgmt-users.html",
+                   "forbidden": "or-request.html", "ticket_page": None},
 }
 
 
@@ -48,6 +55,16 @@ def get_json(url, token):
     req = urllib.request.Request(url, headers={"Authorization": "Bearer " + token})
     with urllib.request.urlopen(req, timeout=10) as r:
         return json.loads(r.read())
+
+
+def get_json_allowed(url, token):
+    """A 403 is the documented answer for a route the lane does not serve."""
+    try:
+        return get_json(url, token)
+    except urllib.error.HTTPError as e:
+        if e.code == 403:
+            return {"items": []}
+        raise
 
 
 def wait_ready(ws, timeout=20):
@@ -156,26 +173,25 @@ def main():
             login = post_json(base + "/api/login", {"role": role})
             token, user = login["token"], login["user"]
             state = get_json(base + "/api/state", token)
-            tickets = get_json(base + "/api/tickets?size=100", token)["items"]
-            pfx = cfg["prefix"]
+            tickets = get_json_allowed(base + "/api/tickets?size=100", token)["items"]
 
             # sign in on the real login page so sessionStorage matches the app
             goto(ws, base + "/login.html")
-            js(ws, sign_in_js(token, user, "/%s-dashboard.html" % pfx))
+            js(ws, sign_in_js(token, user, "/%s" % cfg["landing"]))
             wait_ready(ws)
 
             nav = visible_links(ws, ".side-link[href], .bottomnav a[href], .top-tab[href]")
             dash = headings(ws)
-            capture(ws, os.path.join(OUT, "%s-dashboard-1440.png" % role), 1440, 900)
+            capture(ws, os.path.join(OUT, "%s-landing-1440.png" % role), 1440, 900)
             ws.command("Emulation.setDeviceMetricsOverride",
                        {"width": 390, "height": 844, "deviceScaleFactor": 1, "mobile": True})
             time.sleep(0.4)
-            capture(ws, os.path.join(OUT, "%s-dashboard-390.png" % role), 390, 844)
+            capture(ws, os.path.join(OUT, "%s-landing-390.png" % role), 390, 844)
             ws.command("Emulation.setDeviceMetricsOverride",
                        {"width": 1440, "height": 900, "deviceScaleFactor": 1, "mobile": False})
 
             actions = {}
-            for t in tickets:
+            for t in (tickets if cfg["ticket_page"] else []):
                 st = t["status"]
                 if st in actions:
                     continue
@@ -188,7 +204,7 @@ def main():
                                            "function(o){return o.text;}).filter(function(x){return x&&x.indexOf("
                                            "'Choose')===-1;}):[];})()"),
                 }
-            if tickets:
+            if tickets and cfg["ticket_page"]:
                 goto(ws, base + "/%s?id=%s" % (cfg["ticket_page"], urllib.parse.quote(tickets[0]["id"])))
                 capture(ws, os.path.join(OUT, "%s-ticket-1440.png" % role), 1440, 900)
 
