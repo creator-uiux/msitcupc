@@ -21,7 +21,8 @@ for deterministic frames; there they use the bundled seed dataset.)
 
 The repository root is the served tree. `server/app.py` serves the pages and
 the API on one origin, and there is no build step and no `public/` assembly in
-V5.
+V5. For a host that other people sign in to, `docs/DEPLOYMENT.md` is the
+runbook: configuration, TLS, provisioning the people, backup and restore.
 
 For a static host, publish only the site files at the root: the pages, `css/`,
 `js/`, `img/`, `icons/`, `manifest.webmanifest`, `sw.js` and `offline.html`.
@@ -247,6 +248,7 @@ All suites should end with `PASSED` / `0 failed` / `0 problems`.
 | `docs/IMPLEMENTATION_CHECKLIST.md` | the live progress against the specification |
 | `docs/TRACEABILITY.md` | the requirement to code to test map, with verified and unverified separated |
 | `docs/KNOWN_LIMITATIONS.md` | what this system does not do, and what could not be checked |
+| `docs/DEPLOYMENT.md` | the runbook for a real host: configuration, HTTPS, provisioning the people, backup and restore, and what a deployment still does not cover |
 | `docs/ASSUMPTIONS.md` | the smaller implementation assumptions, all configurable |
 | `docs/DESIGN_SYSTEM.md` | the tokens for both themes, the components, the page patterns and the PWA rules |
 | `docs/screenshots/` | the visual quality gate captures, light and dark at 390, 768 and 1440 px |

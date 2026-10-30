@@ -17,3 +17,9 @@ shots/
 *.log
 .DS_Store
 Thumbs.db
+
+# Deployment secrets (the template .env.example is tracked, the filled-in file
+# never is)
+.env
+.env.*
+!.env.example

@@ -79,7 +79,9 @@ current commit. Blocked or unverified items are listed first.
 - No holiday calendar. Business day maths treats Monday to Friday as working
   days and ignores public holidays (assumption A5).
 - No virus scanning on attachments. Files are size limited, type limited and
-  stored outside the web root; they are not scanned.
+  kept as BLOBs inside the database, reachable only through the authorised
+  download route (the `server/` path prefix is never served as a static file);
+  they are not scanned.
 - No password sign-in. Production uses UPMail Google sign-in restricted to
   `@upcebu.edu.ph`; the demo account list on the sign-in page is always
   available and labelled "Demo only".

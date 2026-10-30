@@ -50,6 +50,11 @@ browser for you. When the backend is not running, the same pages still work as a
 pure `localStorage` demo  --  the backend is never required. See `../BACKEND.md` for
 the design narrative.
 
+For a host other people sign in to, `docs/DEPLOYMENT.md` is the runbook and
+`.env.example` at the repository root is the configuration template: sign-in,
+the demo gate, the delivery channels and the process flags, with no secret
+filled in.
+
 ---
 
 ## Layout
@@ -64,7 +69,7 @@ the design narrative.
 | `delivery.py` | Notification delivery: outbox / console / SMTP e-mail / SMS webhook |
 | `workers.py` | Background world-clock thread |
 | `app.py` | `ThreadingHTTPServer`: static files + REST + SSE hub + CLI |
-| `tests.py` | 457 assertions: engine, RBAC, tenancy, OIDC, delivery, persistence, HTTP, SSE, seed shape, site serving |
+| `tests.py` | 538 assertions: engine, RBAC, tenancy, OIDC, delivery, persistence, HTTP, SSE, seed shape, site serving |
 
 The engine keeps the prototype's method names (camelCase), status strings, guard
 messages, history `kind`s and notification wording **verbatim**, so the existing
@@ -208,8 +213,9 @@ breaks the workflow.
   lock. The engine mutates the in-memory dataset and `save_state` rewrites the
   normalised tables  --  fine for the tiny prototype dataset, and it keeps the
   engine a straight port of the JS. Swap for row-level writes when scaling.
-- **IDs** stay `TKT-YYYY-NNNN`, `SCH-YYYY-NNN`, `MNT-YYYY-NNNN` (sequences in the
-  `seq` table).
+- **IDs** stay `IT-YYYY-NNNNNN`, `SCH-2026-NNN`, `MNT-2026-NNNN` and `AST-NNNN`
+  (the counters live in the `sequences` table). The ticket number carries the
+  current year; the schedule and visit numbers are still pinned to 2026.
 - **History** is append-only; cancelled tickets are preserved, never deleted.
 - Re-running the seed / `--reset` rebuilds the canonical demo dataset.
 
@@ -218,7 +224,7 @@ breaks the workflow.
 ## Tests
 
 ```bash
-python server/tests.py        # 457 assertions (quiet); add -v to list each
+python server/tests.py        # 538 assertions (quiet); add -v to list each
 ```
 
 Covers the full ticket lifecycle and guards, dependency hold/resolve/cancel,
