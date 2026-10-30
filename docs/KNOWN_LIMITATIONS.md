@@ -48,13 +48,21 @@ current commit. Blocked or unverified items are listed first.
   equivalent guarantees are enforced on the trusted backend instead:
   transitions, role checks, office tenancy, validation and append only audit
   all live in `server/engine.py` and `server/app.py`.
-- **No Cloud Functions or Cloud Scheduler**, so there is no server side cron.
-  The world clock advances on `POST /api/tick`, which is restricted to the IT
-  Coordinator and System Administrator. A deployment would schedule that
-  call, or move the schedule check into a scheduled function.
-- **Email delivery is an external dependency.** In-app notifications are the
-  working default and `server/delivery.py` records an outbox. No credentials
-  ship with this repository and no email is claimed to work.
+- **The world clock is advanced by an in-process worker, not by a cloud
+  scheduler.** `server/workers.py` runs one daemon thread that ticks on a fixed
+  interval (`--interval`, default 9 seconds, `--no-worker` to disable), which is
+  what advances schedule checks, confirmation reminders, dependency follow-ups
+  and rescheduled visits. `POST /api/tick` does the same thing on demand and is
+  restricted to the IT Coordinator and System Administrator. The consequence is
+  that the clock only moves while the server process is running: there is no
+  external cron, and a restart with no traffic resumes the tick rather than
+  replaying the missed ones.
+- **Email and SMS delivery are configured, not proven.** `server/delivery.py`
+  routes notifications over the channels named in `ITC_NOTIFY_CHANNELS`: the
+  always-on outbox, console, SMTP (`ITC_SMTP_*`) and a generic JSON webhook for
+  SMS (`ITC_SMS_*`). In-app notifications are the working default. No
+  credentials ship with this repository and no live SMTP or SMS send has been
+  tested from here, so the channels are unverified rather than broken.
 - **Push notifications are not wired.** The in-app notification centre is
   complete; a push service integration is the boundary to add.
 - **The web font is fetched from a CDN.** `css/app.css` imports Sora and
@@ -75,15 +83,6 @@ current commit. Blocked or unverified items are listed first.
 - No password sign-in. Production uses UPMail Google sign-in restricted to
   `@upcebu.edu.ph`; the demo account list on the sign-in page is always
   available and labelled "Demo only".
-- **No asset register.** The role scope matrix names assets inside
-  Administration, and the product keeps an asset as free text on a ticket
-  (`asset`, `server/engine.py` `create_ticket`) and as a list of names on a
-  maintenance schedule (`assets`, `server/engine.py` `create_schedule`). A
-  name is typed where it is used. There is no asset record with an identifier,
-  a location, an owner or a lifecycle, no asset page and no administration
-  action for one, so an asset cannot be searched across the offices that hold
-  it. Adding it is a data model change, not a screen
-  (`docs/DECISIONS.md` D43).
 - **One navigation column, not a rail plus a contextual menu.** Section 25.5B
   suggests a narrow rail with a collapsible contextual menu between 1024 and
   1919 px. The owner asked for the double navigation to be removed, so the
@@ -98,6 +97,14 @@ current commit. Blocked or unverified items are listed first.
   demo stores state in the browser and is not the production database.
 - **Seed data is demo data.** It is marked as such, but it has the same shape
   as live records.
+- **The asset register records a unit, not its whole life.** Administration
+  keeps the number, the name, the category, the office that holds it, its
+  location and whether it is in service or retired
+  (`assets.html`, `docs/DECISIONS.md` D43). It does not hold a purchase date, a
+  cost, a warranty or a serial number, and retiring a unit does not close the
+  tickets that name it. A ticket and a schedule still carry the number as free
+  text, and intake offers the register as suggestions rather than as a
+  constraint, so a unit that was never registered remains writable.
 - **The offline demo keeps only the name of an attachment.** The bytes live
   with the server, so in the browser-only demo the attachment list shows the
   name and the details and the viewer says that the file itself is not kept

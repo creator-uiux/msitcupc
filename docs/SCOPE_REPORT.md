@@ -96,6 +96,7 @@ lane, and the generated `mgmt-*` files exist only for the pages it may open.
 | Workflow Guide | A process documentation | KEPT, read-only, no lane filter without a swimlane | none | `flow.html` |
 | Users | C administration provisioning | KEPT | none | `users.html` |
 | Offices | C administration provisioning | KEPT | none | `offices.html` |
+| Assets | C administration provisioning (the matrix names assets inside Administration) | KEPT as its own register; a ticket and a schedule still carry the number as text | none | `assets.html`, `permissions.json`, `server/engine.py` |
 | Configuration | C administration configuration | KEPT, demo simulation switch off | `demoIntakeSimulation` | `settings.html` |
 | Audit Log | A status and audit history | KEPT | none | `audit.html` |
 | Notifications and profile | A notifications, B E.0 | KEPT, pop-up toggle and password card off | two flags | `notifications.html`, `profile.html`, `js/ui.js` |

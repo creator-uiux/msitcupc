@@ -46,7 +46,7 @@
       return o;
     };
     var out = {
-      v: V, rev: 1, updatedAt: NOW(), seq: { ticket: 144, sched: 33, job: 62, notif: 40, hist: 500 },
+      v: V, rev: 1, updatedAt: NOW(), seq: { ticket: 144, sched: 33, job: 62, notif: 40, hist: 500, asset: 14 },
       role: 'coordinator', auth: null, lastSim: 0,
       settings: {
         reminderMinutes: 2, reminderMode: 'business', tickMs: 9000,
@@ -75,6 +75,26 @@
         { name: 'Library', code: 'LIB', location: 'Library Bldg, 2nd Floor', contactPerson: 'M. Bataller', contactEmail: 'm.bataller@upcebu.edu.ph', contactPhone: '', active: true, createdAt: days(-40), updatedAt: days(-40) },
         { name: 'SDG', code: 'SDG', location: 'Research Annex, Room 3', contactPerson: 'C. Yap', contactEmail: 'c.yap@upcebu.edu.ph', contactPhone: '', active: true, createdAt: days(-40), updatedAt: days(-40) },
         { name: 'Office of the Director', code: 'DIR', location: 'Admin Building, Room 201', contactPerson: 'M. Reyes', contactEmail: 'm.reyes@upcebu.edu.ph', contactPhone: '+63 917 000 0004', active: true, createdAt: days(-40), updatedAt: days(-40) }
+      ],
+      /* Demo register.  Most numbers are already typed by hand on a seed
+         ticket or schedule, so the register agrees with the records that name
+         them.  A unit no ticket has named yet is normal too: the register
+         holds what an office owns, not only what has broken. */
+      assets: [
+        { id: 'AST-0001', tag: 'PC-OF-118', name: 'Dell OptiPlex 7090 SFF', category: 'Hardware Repair', office: 'Records Office', location: 'Records Bldg, Room 2, encoding desk', active: true, createdAt: days(-38), updatedAt: days(-38) },
+        { id: 'AST-0002', tag: 'PC-OF-119', name: 'Dell OptiPlex 7090 SFF', category: 'Hardware Repair', office: 'Records Office', location: 'Records Bldg, Room 2, encoding desk', active: true, createdAt: days(-38), updatedAt: days(-38) },
+        { id: 'AST-0003', tag: 'AP-OF-01', name: 'Ubiquiti U6-Pro access point', category: 'Network and Connectivity', office: 'Records Office', location: 'Records Bldg, Room 2, ceiling', active: true, createdAt: days(-38), updatedAt: days(-38) },
+        { id: 'AST-0004', tag: 'PRN-REG-02', name: 'Epson L3250 bulk-ink printer', category: 'Printer and Peripheral', office: 'Registrar', location: 'Registrar Bldg, Ground Floor, counter 3', active: true, createdAt: days(-38), updatedAt: days(-38) },
+        { id: 'AST-0005', tag: 'PRN-ACC-01', name: 'HP LaserJet Pro M404dn', category: 'Printer and Peripheral', office: 'Accounting', location: 'Admin Building, Room 105', active: true, createdAt: days(-38), updatedAt: days(-38) },
+        { id: 'AST-0006', tag: 'UPS-HR-01', name: 'APC Smart-UPS 1500VA', category: 'Hardware Repair', office: 'HR', location: 'Admin Building, Room 108, rack', active: true, createdAt: days(-38), updatedAt: days(-38) },
+        { id: 'AST-0007', tag: 'AP-LIB-01', name: 'Ubiquiti U6-Lite access point', category: 'Network and Connectivity', office: 'Library', location: 'Library Bldg, 2nd Floor, periodicals', active: true, createdAt: days(-38), updatedAt: days(-38) },
+        { id: 'AST-0008', tag: 'AP-LIB-02', name: 'Ubiquiti U6-Lite access point', category: 'Network and Connectivity', office: 'Library', location: 'Library Bldg, 2nd Floor, reference', active: true, createdAt: days(-38), updatedAt: days(-38) },
+        { id: 'AST-0009', tag: 'AP-LIB-04', name: 'Ubiquiti U6-Lite access point', category: 'Network and Connectivity', office: 'Library', location: 'Library Bldg, 2nd Floor, periodicals shelf', active: true, createdAt: days(-38), updatedAt: days(-38) },
+        { id: 'AST-0010', tag: 'PC-SDG-02', name: 'Lenovo ThinkCentre M70q', category: 'Hardware Repair', office: 'SDG', location: 'Research Annex, Room 3', active: true, createdAt: days(-38), updatedAt: days(-38) },
+        { id: 'AST-0011', tag: 'PC-IT-01', name: 'Dell OptiPlex 7010 SFF', category: 'Hardware Repair', office: 'IT Office', location: 'Admin Building, Room 101, tech bench', active: true, createdAt: days(-38), updatedAt: days(-38) },
+        { id: 'AST-0012', tag: 'AP-IT-01', name: 'Ubiquiti U6-Pro access point', category: 'Network and Connectivity', office: 'IT Office', location: 'Admin Building, Room 101, ceiling', active: true, createdAt: days(-38), updatedAt: days(-38) },
+        { id: 'AST-0013', tag: 'PRN-IT-01', name: 'HP LaserJet Pro M404dn', category: 'Printer and Peripheral', office: 'IT Office', location: 'Admin Building, Room 101, print corner', active: true, createdAt: days(-38), updatedAt: days(-38) },
+        { id: 'AST-0014', tag: 'PC-DIR-01', name: 'HP EliteDesk 800 G6 SFF', category: 'Hardware Repair', office: 'Office of the Director', location: 'Admin Building, Room 201', active: true, createdAt: days(-38), updatedAt: days(-38) }
       ],
       people: [
         { username: 'areyes', name: 'A. Delos Reyes', role: 'requester', office: 'Records Office', email: 'a.delosreyes@upcebu.edu.ph', phone: '+63 917 000 0001', active: true, prefs: {} },
@@ -401,6 +421,7 @@
   function migrate(d) {
     if (!d || typeof d !== 'object') return d;
     if (!Array.isArray(d.offices)) d.offices = [];
+    if (!Array.isArray(d.assets)) d.assets = [];
     if (!Array.isArray(d.people)) d.people = [];
     if (!Array.isArray(d.files)) d.files = [];
     if (!Array.isArray(d.audit)) d.audit = [];
@@ -452,6 +473,7 @@
       }
       if (kind === 'sched') { s.sched++; return 'SCH-2026-' + String(s.sched).padStart(3, '0'); }
       if (kind === 'job') { s.job++; return 'MNT-2026-' + String(s.job).padStart(4, '0'); }
+      if (kind === 'asset') { s.asset = (s.asset || 0) + 1; return 'AST-' + String(s.asset).padStart(4, '0'); }
       s.notif++; return String(s.notif);
     },
     notify: function (role, text, kind, extra) {

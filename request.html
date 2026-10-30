@@ -90,7 +90,8 @@
               <div class="help">Leave empty. A value here stops a repeated submit from creating a second ticket.</div>
             </div>
             <div class="field"><label for="fAsset">Asset tag (optional)</label>
-              <input type="text" name="asset" id="fAsset" placeholder="e.g. PC-OF-118, PRN-REG-02" pattern="[A-Z]{2,4}-[A-Z]{2,4}-\d{2,4}">
+              <input type="text" name="asset" id="fAsset" list="assetTags" placeholder="e.g. PC-OF-118, PRN-REG-02" pattern="[A-Z]{2,4}-[A-Z]{2,4}-\d{2,4}" autocomplete="off">
+              <datalist id="assetTags"></datalist>
               <div class="help">The asset the request concerns, written on the service record (format XX-XX-000).</div>
             </div>
             <div class="field span-2"><label for="fFiles">Photos and files</label>
@@ -243,6 +244,29 @@ function fillPrevious() {
 }
 fillPrevious();
 F('office').addEventListener('change', fillPrevious);
+
+/* ---------- the register offers the number it already holds ----------
+   A unit is typed here by hand, so the register is offered as a suggestion
+   rather than a constraint: an unregistered unit is still writable, and a
+   mistyped number is what made an asset impossible to search before. */
+function fillAssets() {
+  var box = document.getElementById('assetTags');
+  if (!box) return;
+  var office = F('office').value;
+  var list = (Store.db.assets || []).filter(function (a) {
+    if (a.active === false) return false;
+    return !office || a.office === office;
+  });
+  var sig = list.map(function (a) { return a.tag; }).join(',');
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  box.innerHTML = list.map(function (a) {
+    return '<option value="' + UI.attr(a.tag) + '">' +
+      UI.esc(a.name + ' - ' + a.office) + '</option>';
+  }).join('');
+}
+/* No call here: the office is not settled until the lane, the draft and the
+   directory have all had their say, so the bottom of the page fills it. */
 
 /* ---------- draft kept while typing ----------
    A request can be interrupted, and losing a finished description is the
@@ -479,6 +503,7 @@ function resetControlled() {
   fillSources();
   fillOffices();
   fillPrevious();
+  fillAssets();
 }
 document.getElementById('btnReset').addEventListener('click', function () {
   form.reset(); clearDraft(); applyRequesterLock(); setDateDefault(); resetControlled();
@@ -498,11 +523,14 @@ document.getElementById('sucAgain').addEventListener('click', function () {
 Store.subscribe(function () {
   if (lockedFor !== Store.db.role) applyRequesterLock();
   fillPrevious();
+  fillAssets();
   renderSide();
 });
 applyRequesterLock();
 restoreDraft();
 fillPrevious();
+F('office').addEventListener('change', fillAssets);
+fillAssets();
 setMode(); renderSide(); Live.start();
 </script>
 <script src="js/pwa.js"></script>

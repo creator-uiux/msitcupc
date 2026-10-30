@@ -101,6 +101,9 @@
     "offices.html": [
       "management"
     ],
+    "assets.html": [
+      "management"
+    ],
     "settings.html": [
       "management"
     ],
@@ -230,6 +233,12 @@
       "management"
     ],
     "set_office_active": [
+      "management"
+    ],
+    "save_asset": [
+      "management"
+    ],
+    "set_asset_active": [
       "management"
     ],
     "save_person": [

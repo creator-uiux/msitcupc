@@ -25,7 +25,7 @@ split into tables so the append-only tables really are append-only:
 | `notifications` | the in-app notification centre | the engine and the workers |
 | `audit_events` | the append-only audit trail | every mutating action |
 | `attachments` | the uploaded evidence, with the bytes | the upload endpoint |
-| `users`, `offices`, `sessions`, `deliveries`, `settings`, `sequences` | people, places, sign-ins, the delivery outbox, the configuration and the counters | the administration actions |
+| `users`, `offices`, `assets`, `sessions`, `deliveries`, `settings`, `sequences` | people, places, the units they hold, sign-ins, the delivery outbox, the configuration and the counters | the administration actions |
 
 The dataset is also serialised as one JSON snapshot, which is what the
 browser receives over `GET /api/state` and what the audit trail checks
@@ -43,6 +43,28 @@ against.
 | `contactPerson`, `contactEmail`, `contactPhone` | The office contact |
 | `active` | An inactive office stays on the historical records but is not offered for new work |
 | `createdAt`, `updatedAt` | Server timestamps |
+
+### Asset
+
+| Field | Notes |
+|---|---|
+| `id` | `AST-0001`, minted by the register and never reused |
+| `tag` | The number a person types on a ticket (`AA-AA-00`). Unique, upper-cased on save |
+| `name` | What the unit is, shown under the number |
+| `category` | One of the service categories, so a unit and a request share a vocabulary |
+| `office` | The office that holds it. Renaming an office carries its units with it |
+| `location` | Free text: the room, the shelf, the rack |
+| `active` | A retired unit leaves the pick list and stays on every record that named it |
+| `createdAt`, `updatedAt` | Server timestamps, Administration only |
+
+The register links to a ticket or a schedule by `tag`, never by a foreign key.
+A ticket holds the number as text, so a record written before the register
+existed, or one that names an unregistered unit, still resolves to the same
+machine, and retiring a unit never rewrites history.
+
+Only Administration reads the full record. The other lanes receive the pick
+list through `app._asset_ref`: the tag, the name, the category, the office, the
+location and the state, with no `id` and no record-keeping timestamps.
 
 ### Person (user)
 
@@ -239,6 +261,8 @@ MaintenanceSchedule 1 --- n MaintenanceJob 1 --- n MaintenanceChecklistResult
 
 Ticket n --- 1 Ticket (previousRecord, the recurrence chain)
 Ticket 1 --- 1 Ticket (linkedTo, the corrective ticket)
+Asset  n --- 1 Office (the holding office, by name)
+Ticket n --- 1 Asset (by tag, as text, never a key)
 ```
 
 ## Indexes
@@ -252,6 +276,7 @@ Ticket 1 --- 1 Ticket (linkedTo, the corrective ticket)
 | `idx_notif_role` | the notification centre |
 | `idx_jobs_schedule` on `(schedule_id, occurrence)` | the duplicate prevention on the occurrence key |
 | `idx_attach_ticket` | the attachment list |
+| `idx_assets_office` | the register filter by holding office and the intake pick list |
 
 The list screen adds the filters the specification names, applied on the
 server: ticket number, subject, requester and asset tag for the quick

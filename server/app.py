@@ -317,6 +317,17 @@ class ItcHandler(BaseHTTPRequestHandler):
             if n.get("role") in ("any", "management")]
         return snap
 
+    @staticmethod
+    def _asset_ref(a):
+        """The part of an asset record another lane may read.
+
+        The register itself belongs to Administration.  The other lanes only
+        name a unit on a ticket or a plan, so they get the pick list and nothing
+        else: no internal id and no record-keeping timestamps.
+        """
+        return {k: a.get(k) for k in ("tag", "name", "category", "office",
+                                      "location", "active")}
+
     def _scoped_requester(self, snap, user):
         if not user.get("office"):
             return snap
@@ -371,6 +382,10 @@ class ItcHandler(BaseHTTPRequestHandler):
             or (n.get("role") == "requester"
                 and (not n.get("office") or n.get("office") == scope
                      or (n.get("ticketId") and n.get("ticketId") in visible)))]
+        # The office reads the units held in its own office, never another's.
+        snap["assets"] = [
+            self._asset_ref(a) for a in snap.get("assets", [])
+            if a.get("office") == scope]
         # The audit log is an administration screen; an office user never reads it
         snap["audit"] = []
         snap["scope"] = scope
@@ -424,6 +439,10 @@ class ItcHandler(BaseHTTPRequestHandler):
                 and (n.get("to") == name
                      or (n.get("ticketId") and n.get("ticketId") in mine)
                      or (n.get("jobId") and n.get("jobId") in job_ids)))]
+        # A technician works in every office, so the whole pick list is readable,
+        # but only as a reference: the register and its record-keeping stay with
+        # Administration.
+        snap["assets"] = [self._asset_ref(a) for a in snap.get("assets", [])]
         snap["scope"] = name
         return snap
 

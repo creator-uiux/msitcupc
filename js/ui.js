@@ -1091,6 +1091,7 @@
       add('Administration', [
         { href: 'users.html', label: 'Users', ic: 'users' },
         { href: 'offices.html', label: 'Offices', ic: 'building' },
+        { href: 'assets.html', label: 'Assets', ic: 'case' },
         { href: 'settings.html', label: 'Configuration', ic: 'sliders' },
         { href: 'audit.html', label: 'Audit Log', ic: 'shield' }
       ]);

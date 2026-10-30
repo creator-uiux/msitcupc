@@ -43,7 +43,7 @@ move the map does not allow.
 | Office Requester (Office Representative) | Office Requester or Office Representative | only the offices the user belongs to |
 | IT Technician | IT Technician | tickets and maintenance jobs assigned to them, plus read-only office and asset history for those offices |
 | IT Coordinator | IT Coordinator | all offices |
-| System Administrator | not a swimlane | Administration only (role scope 5, `DECISIONS.md` D14): users, roles and office membership, offices, categories, configuration, and the read-only audit trail. No ticket, maintenance, scheduling or closure work, and no operational read surface: the ticket, job and schedule keys of its snapshot are empty and the ticket, report and export routes are refused |
+| System Administrator | not a swimlane | Administration only (role scope 5, `DECISIONS.md` D14): users, roles and office membership, offices, the asset register, categories, configuration, and the read-only audit trail. No ticket, maintenance, scheduling or closure work, and no operational read surface: the ticket, job and schedule keys of its snapshot are empty and the ticket, report and export routes are refused |
 | System | System lane (automated, no screens) | n/a |
 
 ## Pages
@@ -67,6 +67,7 @@ move the map does not allow.
 | Confirmation and Closure | yes | no | yes | no |
 | Users | no | no | no | yes |
 | Offices | no | no | no | yes |
+| Assets | no | no | no | yes |
 | Settings | no | no | no | yes |
 | Audit Log | no | no | no | yes |
 
@@ -129,6 +130,7 @@ role may use in the current status, and it reads the same map through
 | `updateSchedule` | no | no | yes | no |
 | `setScheduleActive` | no | no | yes | no |
 | `saveOffice`, `setOfficeActive` | no | no | no | yes |
+| `saveAsset`, `setAssetActive` | no | no | no | yes |
 | `savePerson`, `setPersonActive` | no | no | no | yes |
 | `saveRef` | no | no | no | yes |
 | `saveSettings` | no | no | no | yes |
@@ -157,8 +159,9 @@ a reason is always required.  `closeJob` is the same rule for a maintenance
 visit.
 
 The System Administrator administers, it does not operate.  Its actions are
-`saveOffice`, `setOfficeActive`, `savePerson`, `setPersonActive`, `saveRef`
-and `saveSettings`.  Role scope 5 keeps it out of the operational screens as
+`saveOffice`, `setOfficeActive`, `saveAsset`, `setAssetActive`, `savePerson`,
+`setPersonActive`, `saveRef` and `saveSettings`.  Role scope 5 keeps it out of
+the operational screens as
 well as out of the workflow: it holds no dashboard, ticket, register, report or
 maintenance page, `/api/tickets`, `/api/reports` and `/api/export` answer 403
 for the lane, and its snapshot carries no ticket, job or schedule record.  It

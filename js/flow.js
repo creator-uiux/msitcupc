@@ -1037,7 +1037,7 @@
   /* ================= System administration (users, offices, reference data) ================= */
 
   function renameOffice(oldName, newName) {
-    ['tickets', 'schedules', 'jobs', 'notifications', 'people'].forEach(function (coll) {
+    ['tickets', 'schedules', 'jobs', 'notifications', 'people', 'assets'].forEach(function (coll) {
       (S.db[coll] || []).forEach(function (r) { if (r.office === oldName) r.office = newName; });
     });
   }
@@ -1055,6 +1055,18 @@
   }
 
   var REF_GROUPS = ['categories', 'sources', 'priorities', 'frequencies'];
+
+  /* The asset number is the one the other lanes already type by hand, so the
+     register holds it to the same documented shape. */
+  var ASSET_TAG = /^[A-Z]{2,4}-[A-Z]{2,4}-\d{2,4}$/;
+  function findAsset(ident) {
+    var key = String(ident === undefined || ident === null ? '' : ident).trim().toLowerCase();
+    var hit = null;
+    (S.db.assets || []).forEach(function (a) {
+      if (String(a.id).toLowerCase() === key || String(a.tag).toLowerCase() === key) hit = a;
+    });
+    return hit;
+  }
 
   var Admin = {
     // Per-user notification read state (readBy[])
@@ -1125,6 +1137,69 @@
       var word = active ? 'activated' : 'deactivated';
       S.update(function () { audit('office', office.name, 'office', "Office '" + office.name + "' " + word + "."); });
       return { ok: true, msg: "Office '" + office.name + "' " + word + "." };
+    },
+
+    // Register or amend one asset (Administration, role scope 5)
+    saveAsset: function (d) {
+      var g = guardRole(['management']); if (!g.ok) return g;
+      d = d || {};
+      var tag = String(d.tag || '').trim().toUpperCase();
+      var name = String(d.name || '').trim();
+      var category = String(d.category || '').trim();
+      var office = String(d.office || '').trim();
+      if (!tag) return { ok: false, msg: 'Asset number is required.' };
+      if (!ASSET_TAG.test(tag)) return { ok: false, msg: 'Asset number needs the documented shape, e.g. PC-OF-118.' };
+      if (!name) return { ok: false, msg: 'Asset name is required.' };
+      if (!category) return { ok: false, msg: 'Choose a category.' };
+      var holder = null;
+      (S.db.offices || []).forEach(function (o) { if ((o.name || '').toLowerCase() === office.toLowerCase()) holder = o; });
+      if (!office || !holder) return { ok: false, msg: 'Choose the office that holds this asset.' };
+      if (!S.db.assets) S.db.assets = [];
+      var assets = S.db.assets;
+      var wanted = (d.id === undefined || d.id === null || d.id === '');
+      var asset = wanted ? null : findAsset(d.id);
+      if (!wanted && !asset) return { ok: false, msg: 'Asset not found.' };
+      if (!asset) {
+        var dupe = false;
+        assets.forEach(function (a) { if (String(a.tag).toUpperCase() === tag) dupe = true; });
+        if (dupe) return { ok: false, msg: 'An asset with that number already exists.' };
+        asset = { id: S.nextId('asset'), tag: tag, name: name, category: category,
+                  office: holder.name, location: String(d.location || '').trim(),
+                  active: true, createdAt: NOW(), updatedAt: NOW() };
+        assets.push(asset);
+        S.update(function () { audit('asset', tag, 'asset', "Asset '" + tag + "' (" + name + ") registered to " + holder.name + "."); });
+        return { ok: true, msg: "Asset '" + tag + "' registered.", asset: asset };
+      }
+      var clash = false;
+      assets.forEach(function (a) { if (a !== asset && String(a.tag).toUpperCase() === tag) clash = true; });
+      if (clash) return { ok: false, msg: 'An asset with that number already exists.' };
+      var changed = [];
+      var next = { tag: tag, name: name, category: category, office: holder.name,
+                   location: String(d.location || '').trim() };
+      var labels = { tag: 'number', name: 'name', category: 'category', office: 'office', location: 'location' };
+      Object.keys(next).forEach(function (key) {
+        if (next[key] !== String(asset[key] || '')) { asset[key] = next[key]; changed.push(labels[key]); }
+      });
+      if (d.active !== undefined && !!d.active !== !!asset.active) {
+        asset.active = !!d.active; changed.push(d.active ? 'active' : 'retired');
+      }
+      if (!changed.length) return { ok: false, msg: 'Nothing to update.' };
+      asset.updatedAt = NOW();
+      S.update(function () { audit('asset', asset.tag, 'asset', "Asset '" + asset.tag + "' updated (" + changed.join(', ') + ")."); });
+      return { ok: true, msg: "Asset '" + asset.tag + "' updated (" + changed.join(', ') + ").", asset: asset };
+    },
+
+    setAssetActive: function (ident, active) {
+      var g = guardRole(['management']); if (!g.ok) return g;
+      var asset = findAsset(ident);
+      if (!asset) return { ok: false, msg: 'Asset not found.' };
+      if (!!active === !!asset.active) return { ok: false, msg: 'Nothing to update.' };
+      /* Retiring keeps the record: a ticket or a visit that names the number
+         still resolves to the same unit. */
+      asset.active = !!active; asset.updatedAt = NOW();
+      var word = active ? 'restored' : 'retired';
+      S.update(function () { audit('asset', asset.tag, 'asset', "Asset '" + asset.tag + "' " + word + "."); });
+      return { ok: true, msg: "Asset '" + asset.tag + "' " + word + "." };
     },
 
     // Create or update a user account

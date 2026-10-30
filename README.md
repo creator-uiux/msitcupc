@@ -59,6 +59,7 @@ the shell changes, so a release reaches the phones that installed it.
 | `audit.html` | **Audit log**: tamper-evident "who did what, when" history with actor/subject/event filters and CSV export | 26, 28 |
 | `users.html` | **Accounts** (System Administrator): create / edit people, set role, office and active state; rename cascades to every record | 28, 28.1 |
 | `offices.html` | **Offices** (System Administrator): office records, codes, contacts, active state; renaming cascades everywhere | 28.2 |
+| `assets.html` | **Assets** (System Administrator): the unit register  --  number, name, category, holding office, location, retire or restore; intake offers these numbers as suggestions | D43 |
 | `settings.html` | **Settings & reference data** (System Administrator): categories, priorities, sources, maintenance frequencies, reminder interval |  --  |
 | `profile.html` | **My profile**: contact details, password change, appearance / session preferences |  --  |
 | `flow.html` | Swimlane flowchart rebuilt from the PDF: 81 nodes in four lanes (one legend artifact excluded) and 106 connectors, with every Yes/No branch and a node-by-node coverage proof | all steps (reference) |

@@ -34,7 +34,7 @@ parity check `python tools/permission_parity_check.py` proves it.
 
 | Operation | Roles | Requires | Effect |
 |---|---|---|---|
-| `createTicket` | Office Requester, IT Coordinator | office, requester, category, issue; date reported and source default in; asset optional | Records the request, issues the ticket number, sets status Submitted, links a previous service record when one is given. An idempotency key makes a double submission harmless |
+| `createTicket` | Office Requester, IT Coordinator | office, requester, category, issue; date reported and source default in; asset optional, offered from the register as a suggestion and still free to type | Records the request, issues the ticket number, sets status Submitted, links a previous service record when one is given. An idempotency key makes a double submission harmless |
 | `requestInfo` | IT Coordinator | the missing details to ask for | Sets status Needs Information, asks the office, notifies the requester |
 | `submitInfo` | Office Requester, IT Coordinator | the information supplied | Updates the **same** ticket and returns it to Submitted for review. No new ticket is created |
 | `assess` | IT Coordinator | impact, urgency, priority, target completion date | Records the assessment, derives the priority from the matrix, marks the request reviewed |
@@ -98,6 +98,7 @@ parity check `python tools/permission_parity_check.py` proves it.
 | `GET /api/attachment` | every role | The download, authorised on every request |
 | `POST /api/state` | every role, except the office requester | A content edit only. A status change over this endpoint is refused outright, the client audit list is ignored, and the workflow-protected fields always keep the server copy |
 | `saveOffice`, `setOfficeActive` | System Administrator | The office record. A rename cascades to every record that names it |
+| `saveAsset`, `setAssetActive` | System Administrator | The asset register: the number, the name, the category, the office that holds it and its location. A number must fit `AA-AA-00` and may be registered once; retiring keeps the record so an older ticket still resolves to the same unit. A rename of an office carries the units with it |
 | `savePerson`, `setPersonActive` | System Administrator | The person record. A rename cascades the same way |
 | `saveRef` | System Administrator | One reference row: a category, a source, a priority or a frequency |
 | `saveSettings` | System Administrator | The operational settings: the reminder interval, the approval categories, the priority matrix and the authorized closure roles |

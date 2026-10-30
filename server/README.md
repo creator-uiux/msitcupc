@@ -103,8 +103,8 @@ POST /api/reset                  bearer            → re-seed (coordinator/mana
 
 The role key `management` is presented throughout the UI as **System
 Administrator** (persona M. Reyes): it is read-only on the ticket/job workflow
-and owns the administrative screens  --  `/api/users`, offices, reference data and
-the audit log.
+and owns the administrative screens  --  `/api/users`, offices, the asset
+register, reference data and the audit log.
 
 ### `POST /api/call`
 
@@ -131,11 +131,17 @@ another office's record returns
 
 The **System Administrator** is the administration lane, not an oversight
 reader (role scope 5, `docs/DECISIONS.md` D14). Its `/api/state` carries the
-offices, the people, the reference data, the settings and the audit trail, and
+offices, the people, the full asset register, the reference data, the settings
+and the audit trail, and
 the `tickets`, `jobs` and `schedules` keys come back empty, because the
 workflow lives in the three diagram lanes. `/api/tickets`, `/api/reports` and
 `/api/export` return the 403 message above for that role, and every workflow
 method is refused by the action guards.
+
+The other lanes read the register only as a pick list. `app._asset_ref` keeps
+the tag, name, category, holding office, location and state, and drops the
+record id and the timestamps; a requester additionally receives only the units
+of their own offices.
 
 Methods mirror `js/flow.js`: `createTicket`, `submitInfo`, `requestInfo`,
 `assess`, `assign`, `coordinate`, `cancel`, `followUp`, `resolveDependency`,

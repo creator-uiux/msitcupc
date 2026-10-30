@@ -360,11 +360,16 @@ def test_persistence(tmp):
     auth.ensure_users(st.conn)
     with st.lock:
         engine.call(st.data, "coordinator", "requestInfo", ["IT-2026-000143", "missing serial"])
+        engine.call(st.data, "management", "saveAsset", [{
+            "tag": "pc-prs-01", "name": "Persisted workstation",
+            "category": "Hardware Repair", "office": "HR"}])
         st.save()
     st2 = database.State(path=path, seed_fn=seed_mod.seed)
     check("persisted ticket status", engine.get_ticket(st2.data, "IT-2026-000143")["status"] == "needs_info")
     check("persisted notifications", len(st2.data["notifications"]) >= 4)
     check("persisted seq", st2.data["seq"]["notif"] >= 40)
+    kept = [a for a in st2.data["assets"] if a["tag"] == "PC-PRS-01"]
+    check("asset register persisted", len(kept) == 1 and kept[0]["office"] == "HR", kept)
     # the seed mirrors every person (4 personas + office staff) onto the users table
     check("users persisted", st2.conn.execute("SELECT COUNT(*) c FROM users").fetchone()["c"] == 10)
     roles = {r["role"] for r in st2.conn.execute("SELECT DISTINCT role FROM users")}
@@ -1309,6 +1314,16 @@ def test_seed_shape():
     for key in ("id", "scheduleId", "occurrence", "office", "assets", "technician", "checklist",
                 "items", "status", "reschedules", "additionalFault", "confirmation"):
         check("job has key %s" % key, key in j, list(j.keys()))
+    a = st["assets"][0]
+    for key in ("id", "tag", "name", "category", "office", "location", "active", "createdAt", "updatedAt"):
+        check("asset has key %s" % key, key in a, list(a.keys()))
+    # Intake offers the units of the office in hand, so a demo office with no
+    # registered unit would show an empty pick list.
+    held = set(x["office"] for x in st["assets"] if x.get("active") is not False)
+    unheld = [o["name"] for o in st["offices"] if o.get("active") is not False and o["name"] not in held]
+    check("every active office holds a registered unit", not unheld, unheld)
+    check("asset ids are unique", len(set(x["id"] for x in st["assets"])) == len(st["assets"]))
+    check("asset tags are unique", len(set(x["tag"] for x in st["assets"])) == len(st["assets"]))
 
 
 # ----------------------------------------------------------------- oidc
@@ -1561,6 +1576,49 @@ def test_technician_notification_scope():
     out = appmod.ItcHandler._scoped_technician(Dummy(), snap, user)
     check("technician scope keeps only their notices",
           [n["id"] for n in out["notifications"]] == [1, 3, 5, 7], out["notifications"])
+
+
+def test_asset_scope():
+    """The register belongs to Administration; other lanes get a pick list."""
+
+    class Dummy:
+        """Stands in for the handler; the scoping helpers are pure."""
+
+        _asset_ref = staticmethod(appmod.ItcHandler._asset_ref)
+        _redact_costs = staticmethod(appmod.ItcHandler._redact_costs)
+
+    snap = {
+        "tickets": [], "schedules": [], "jobs": [], "audit": [], "files": [],
+        "notifications": [],
+        "assets": [
+            {"id": "AST-0001", "tag": "PC-OF-118", "name": "Dell OptiPlex",
+             "category": "Hardware Repair", "office": "Records Office",
+             "location": "Room 2", "active": True,
+             "createdAt": "x", "updatedAt": "x"},
+            {"id": "AST-0004", "tag": "PRN-REG-02", "name": "Epson L3250",
+             "category": "Printer and Peripheral", "office": "Registrar",
+             "location": "Ground Floor", "active": True,
+             "createdAt": "x", "updatedAt": "x"},
+        ],
+    }
+
+    out = appmod.ItcHandler._scoped_requester(
+        Dummy(), dict(snap, tickets=[]), {"office": "Records Office", "name": "A. Delos Reyes"})
+    tags = [a["tag"] for a in out["assets"]]
+    check("an office reads only its own units", tags == ["PC-OF-118"], tags)
+    check("the office copy carries no internal id",
+          all("id" not in a and "createdAt" not in a for a in out["assets"]), out["assets"])
+
+    tech = appmod.ItcHandler._scoped_technician(
+        Dummy(), dict(snap), {"name": "J. Tan"})
+    check("a technician reads the whole pick list",
+          [a["tag"] for a in tech["assets"]] == ["PC-OF-118", "PRN-REG-02"], tech["assets"])
+    check("the technician copy carries no internal id",
+          all("id" not in a and "updatedAt" not in a for a in tech["assets"]), tech["assets"])
+
+    admin = appmod.ItcHandler._scoped_management(Dummy(), dict(snap))
+    check("Administration keeps the full register records",
+          all("id" in a and "createdAt" in a for a in admin["assets"]), admin["assets"])
 
 
 # ------------------------------------------------------------- intake fields
@@ -1835,6 +1893,86 @@ def test_admin_engine():
     check("the cadence maths never reaches an impossible date", crashed is None, crashed)
 
 
+def test_asset_register():
+    st = fresh()
+
+    for role in ("coordinator", "technician", "requester"):
+        r = engine.call(st, role, "saveAsset", [{
+            "tag": "PC-X-01", "name": "n", "category": "Hardware Repair",
+            "office": "HR"}])
+        check("saveAsset blocked for %s" % role, not r.get("ok"), r)
+        r = engine.call(st, role, "setAssetActive", ["AST-0001", False])
+        check("setAssetActive blocked for %s" % role, not r.get("ok"), r)
+
+    r = engine.call(st, "management", "saveAsset", [{
+        "tag": "pc-new-07", "name": "Lenovo ThinkCentre M70q",
+        "category": "Hardware Repair", "office": "HR", "location": "Room 108"}])
+    check("asset registered", r.get("ok"), r)
+    check("asset number normalised to upper case", r["asset"]["tag"] == "PC-NEW-07", r)
+    check("asset id minted by the register", r["asset"]["id"].startswith("AST-"), r)
+    check("seeded register arrives with the demo records",
+          any(a["tag"] == "PC-OF-118" for a in st["assets"]))
+
+    r = engine.call(st, "management", "saveAsset", [{
+        "tag": "PC NEW 07", "name": "n", "category": "Hardware Repair", "office": "HR"}])
+    check("a malformed asset number is refused", not r.get("ok"), r)
+    r = engine.call(st, "management", "saveAsset", [{
+        "tag": "PC-NEW-99999", "name": "n", "category": "Hardware Repair", "office": "HR"}])
+    check("an out-of-shape asset number is refused", not r.get("ok"), r)
+    r = engine.call(st, "management", "saveAsset", [{
+        "tag": "pc-new-07", "name": "dupe", "category": "Hardware Repair", "office": "HR"}])
+    check("a duplicate asset number is refused", not r.get("ok"), r)
+    r = engine.call(st, "management", "saveAsset", [{
+        "tag": "PC-NEW-08", "name": "n", "category": "Hardware Repair",
+        "office": "Atlantis"}])
+    check("an unknown holding office is refused", not r.get("ok"), r)
+    r = engine.call(st, "management", "saveAsset", [{
+        "tag": "PC-NEW-08", "name": "", "category": "Hardware Repair", "office": "HR"}])
+    check("an unnamed asset is refused", not r.get("ok"), r)
+
+    ident = r and next(a["id"] for a in st["assets"] if a["tag"] == "PC-NEW-07")
+    r = engine.call(st, "management", "saveAsset", [{
+        "id": ident, "tag": "PC-NEW-07", "name": "Lenovo ThinkCentre M90q",
+        "category": "Hardware Repair", "office": "HR", "location": "Room 109"}])
+    check("asset updated", r.get("ok"), r)
+    held = next(a for a in st["assets"] if a["id"] == ident)
+    check("updated fields applied",
+          held["name"] == "Lenovo ThinkCentre M90q" and held["location"] == "Room 109", held)
+    r = engine.call(st, "management", "saveAsset", [{
+        "id": ident, "tag": "PC-NEW-07", "name": "Lenovo ThinkCentre M90q",
+        "category": "Hardware Repair", "office": "HR", "location": "Room 109"}])
+    check("a no-op asset update is refused", not r.get("ok"), r)
+
+    r = engine.call(st, "management", "setAssetActive", [ident, False])
+    check("asset retired", r.get("ok") and not held["active"], r)
+    r = engine.call(st, "management", "setAssetActive", [ident, False])
+    check("retiring twice is refused", not r.get("ok"), r)
+    r = engine.call(st, "management", "setAssetActive", [ident, True])
+    check("asset restored", r.get("ok") and held["active"], r)
+    r = engine.call(st, "management", "setAssetActive", ["AST-9999", False])
+    check("an unknown asset is refused", not r.get("ok"), r)
+
+    # A retired number still resolves: the register keeps the record so a ticket
+    # written last month names the same unit it always did.
+    r = engine.call(st, "management", "setAssetActive", [ident, False])
+    r = engine.call(st, "management", "saveAsset", [{
+        "tag": "PC-NEW-07", "name": "reused", "category": "Hardware Repair", "office": "HR"}])
+    check("a retired number is never reissued", not r.get("ok"), r)
+    engine.call(st, "management", "setAssetActive", [ident, True])
+
+    # The office name is the natural key, so a rename carries the register with it.
+    r = engine.call(st, "management", "saveOffice", [{"id": "HR", "name": "Human Resources"}])
+    check("office rename reaches the register", r.get("ok") and all(
+        a["office"] != "HR" for a in st["assets"] if a["tag"] == "PC-NEW-07"), r)
+    check("renamed office applied", next(
+        a for a in st["assets"] if a["tag"] == "PC-NEW-07")["office"] == "Human Resources")
+
+    audit = [a for a in st["audit"] if a.get("subjectType") == "asset"]
+    check("asset actions are audited", len(audit) >= 5, len(audit))
+    check("the audit names the actor role",
+          all(a.get("role") == "management" for a in audit))
+
+
 def test_audit_trail():
     st = fresh()
     base = len(st["audit"])
@@ -2106,10 +2244,12 @@ def main():
     test_tenancy()
     test_requester_scope_includes_own_requests()
     test_technician_notification_scope()
+    test_asset_scope()
     test_intake_priority()
     test_conversation()
     test_notifications_read()
     test_admin_engine()
+    test_asset_register()
     test_audit_trail()
     test_role_scope_and_policy()
     test_reassign_and_no_response()

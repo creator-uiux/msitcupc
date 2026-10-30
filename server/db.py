@@ -79,6 +79,14 @@ CREATE TABLE IF NOT EXISTS offices (
   created_at TEXT, updated_at TEXT
 );
 
+-- The asset register (Administration).  A ticket or a schedule still carries
+-- the number as text, so the link is by tag, never by a foreign key: a record
+-- keeps naming the same unit even after the register entry is retired.
+CREATE TABLE IF NOT EXISTS assets (
+  id TEXT PRIMARY KEY, tag TEXT UNIQUE, name TEXT, category TEXT, office TEXT,
+  location TEXT, active INTEGER DEFAULT 1, created_at TEXT, updated_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS ticket_comments (
   ticket_id TEXT, seq INTEGER, at TEXT, by TEXT, role TEXT,
   visibility TEXT, text TEXT, attachments TEXT, PRIMARY KEY (ticket_id, seq)
@@ -99,6 +107,7 @@ CREATE INDEX IF NOT EXISTS idx_comments_ticket ON ticket_comments(ticket_id);
 CREATE INDEX IF NOT EXISTS idx_notif_role ON notifications(role);
 CREATE INDEX IF NOT EXISTS idx_jobs_schedule ON jobs(schedule_id, occurrence);
 CREATE INDEX IF NOT EXISTS idx_attach_ticket ON attachments(ticket_id);
+CREATE INDEX IF NOT EXISTS idx_assets_office ON assets(office);
 
 CREATE TABLE IF NOT EXISTS sessions (
   token TEXT PRIMARY KEY, user_id INTEGER, role TEXT, created_at TEXT, last_seen TEXT
@@ -285,9 +294,9 @@ def load_state(conn):
     st = {"v": 3, "rev": 1, "updatedAt": now_iso(), "role": "coordinator",
           "lastSim": 0,
           "settings": dict(DEFAULT_SETTINGS),
-          "seq": {"ticket": 144, "sched": 33, "job": 62, "notif": 40, "hist": 500},
+          "seq": {"ticket": 144, "sched": 33, "job": 62, "notif": 40, "hist": 500, "asset": 0},
           "tickets": [], "schedules": [], "jobs": [], "notifications": [],
-          "audit": [], "people": [], "offices": [], "files": []}
+          "audit": [], "people": [], "offices": [], "assets": [], "files": []}
     for k, v in conn.execute("SELECT k, v FROM settings"):
         try:
             st["settings"][k] = json.loads(v)
@@ -351,6 +360,12 @@ def load_state(conn):
             "contactPerson": r["contact_person"] or "", "contactEmail": r["contact_email"] or "",
             "contactPhone": r["contact_phone"] or "", "active": bool(r["active"]),
             "createdAt": r["created_at"], "updatedAt": r["updated_at"]})
+    for r in conn.execute("SELECT * FROM assets ORDER BY tag"):
+        st["assets"].append({
+            "id": r["id"], "tag": r["tag"], "name": r["name"] or "",
+            "category": r["category"] or "", "office": r["office"] or "",
+            "location": r["location"] or "", "active": bool(r["active"]),
+            "createdAt": r["created_at"], "updatedAt": r["updated_at"]})
     for r in conn.execute(
             "SELECT id, ticket_id, job_id, name, mime, size, uploaded_by, at "
             "FROM attachments ORDER BY at"):
@@ -385,6 +400,7 @@ def save_state(conn, st):
     conn.execute("DELETE FROM notifications")
     conn.execute("DELETE FROM settings")
     conn.execute("DELETE FROM sequences")
+    conn.execute("DELETE FROM assets")
 
     for t in st["tickets"]:
         conn.execute(
@@ -446,6 +462,14 @@ def save_state(conn, st):
         conn.execute("INSERT INTO settings VALUES (?,?)", (k, json.dumps(v)))
     for name, value in st["seq"].items():
         conn.execute("INSERT INTO sequences VALUES (?,?)", (name, value))
+
+    for a in st.get("assets", []):
+        conn.execute(
+            "INSERT OR REPLACE INTO assets VALUES (?,?,?,?,?,?,?,?,?)",
+            (a["id"], a.get("tag"), a.get("name", ""), a.get("category", ""),
+             a.get("office", ""), a.get("location", ""),
+             1 if a.get("active", True) else 0,
+             a.get("createdAt") or now_iso(), a.get("updatedAt") or now_iso()))
 
     save_offices(conn, st)
     save_people(conn, st)

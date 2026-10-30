@@ -1415,6 +1415,7 @@ var NEW_SCREENS = [
   ['notifications.html', 'management', '#nBody'],
   ['audit.html', 'management', '#aBody'],
   ['offices.html', 'management', '#oBody'],
+  ['assets.html', 'management', '#aBody'],
   ['users.html', 'management', '#uBody'],
   ['settings.html', 'management', '#refGroups'],
   ['profile.html', 'coordinator', '#pCard'],
@@ -1805,6 +1806,160 @@ tests.push(async function urlFilters() {
   close(o);
 });
 
+/* The asset register (decision D43 resolved): Administration keeps the units,
+   the other lanes only ever see the number offered at intake. */
+tests.push(async function assetRegister() {
+  var p = await open(BASE + 'assets.html');
+  asRole(p, 'management');
+  ok(p.errors.length === 0, 'the register loads with no script errors' +
+    (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));
+  ok($('#accessPanel') === null, 'the register is not blocked for its own lane');
+
+  var seeded = p.w.Store.db.assets || [];
+  ok(seeded.length >= 14, 'the register starts with the demo units (' + seeded.length + ')');
+  var rows = $$('#aBody tr');
+  ok(rows.length > 0, 'the register lists rows');
+  ok(rows.every(function (tr) { return /[A-Z]{2,4}-[A-Z]{2,4}-\d{2,4}/.test(tr.textContent); }),
+    'every row carries an asset number');
+  ok($('#aPagination') !== null && $('#aPagination').innerHTML.indexOf('page') > -1,
+    'a growing list is paginated rather than endless');
+
+  /* filters */
+  var office = $('#aOffice');
+  office.value = 'Records Office';
+  office.dispatchEvent(new p.w.Event('change'));
+  var filtered = $$('#aBody tr');
+  ok(filtered.length > 0, 'the office filter matches rows');
+  ok(filtered.every(function (tr) { return tr.textContent.indexOf('Records Office') > -1; }),
+    'the office filter lists only that office');
+  office.value = '';
+  office.dispatchEvent(new p.w.Event('change'));
+  close(p);
+
+  /* a debounced input handler needs the timer to elapse before it repaints */
+  var p2 = await open(BASE + 'assets.html');
+  asRole(p2, 'management');
+  await new Promise(function (r) { setTimeout(r, 320); });
+  var q2 = $('#aQ');
+  q2.value = 'PRN';
+  q2.dispatchEvent(new p2.w.Event('input'));
+  await new Promise(function (r) { setTimeout(r, 320); });
+  var printerRows = $$('#aBody tr');
+  ok(printerRows.length > 0 && printerRows.every(function (tr) {
+    return tr.textContent.indexOf('PRN') > -1;
+  }), 'the search narrows the register to the matching numbers');
+
+  /* create */
+  var before = p2.w.Store.db.assets.length;
+  $('#btnNewAsset').click();
+  ok($('.modal-host') !== null, 'the register opens an editor');
+  var set = function (name, value) {
+    var el = $('.modal-host [name="' + name + '"]');
+    ok(el !== null, 'the editor offers a ' + name + ' field');
+    if (el) el.value = value;
+  };
+  set('tag', 'pc-tec-77');
+  set('name', 'Test workstation');
+  set('category', 'Hardware Repair');
+  set('office', 'IT Office');
+  set('location', 'Room 101');
+  $('#mGo').click();
+  ok(p2.w.Store.db.assets.length === before + 1, 'a new unit enters the register');
+  var made = p2.w.Store.db.assets[p2.w.Store.db.assets.length - 1];
+  ok(made.tag === 'PC-TEC-77', 'the number is normalised to upper case (' + made.tag + ')');
+  ok(/^AST-\d{4}$/.test(made.id), 'the register mints its own id (' + made.id + ')');
+
+  /* the register is paginated, so the newest unit is found by search  --  the
+     debounced input handler needs its timer to elapse before it repaints */
+  var q3 = $('#aQ');
+  q3.value = 'TEC-77';
+  q3.dispatchEvent(new p2.w.Event('input'));
+  await new Promise(function (r) { setTimeout(r, 320); });
+  ok($$('#aBody tr').some(function (tr) { return tr.textContent.indexOf('PC-TEC-77') > -1; }),
+    'the new unit appears in the list');
+
+  /* a malformed number is refused and nothing is stored */
+  var refused = p2.w.Store.db.assets.length;
+  $('#btnNewAsset').click();
+  set('tag', 'not a number');
+  set('name', 'Bad');
+  set('category', 'Hardware Repair');
+  set('office', 'IT Office');
+  $('#mGo').click();
+  ok(p2.w.Store.db.assets.length === refused, 'a malformed number stores nothing');
+  ok($('.modal-host') !== null, 'the editor stays open so the number can be fixed');
+
+  /* an unknown office is refused */
+  set('tag', 'PC-TEC-78');
+  set('name', 'Bad office');
+  set('category', 'Hardware Repair');
+  set('office', 'Atlantis');
+  $('#mGo').click();
+  ok(p2.w.Store.db.assets.length === refused, 'an office that does not exist stores nothing');
+  p2.w.UI.closeModal();
+
+  /* retire keeps the record */
+  var target = p2.w.Store.db.assets.filter(function (a) { return a.tag === 'PC-TEC-77'; })[0];
+  var btn = $('[data-atoggle="' + target.id + '"]');
+  ok(btn !== null, 'a listed unit offers a retire control');
+  if (btn) {
+    ok(btn.textContent.indexOf('Retire') > -1, 'a live unit offers retirement');
+    btn.click();
+    ok(target.active === false, 'retiring clears the flag but keeps the record');
+    var again = $('[data-atoggle="' + target.id + '"]');
+    ok(again && again.textContent.indexOf('Restore') > -1, 'a retired unit offers restoration');
+    again.click();
+    ok(target.active === true, 'restoring returns the unit to service');
+  }
+  close(p2);
+
+  /* the lane never reaches another lane's screen */
+  ok(p.w.UI.can('assets.html', 'management') === true, 'the register is open to Administration');
+  ['requester', 'technician', 'coordinator'].forEach(function (role) {
+    ok(p.w.UI.can('assets.html', role) === false, 'the register is closed to ' + role);
+  });
+});
+
+/* Intake offers the registered number instead of leaving it to be retyped. */
+tests.push(async function intakeOffersRegisteredAssets() {
+  var p = await open(BASE + 'request.html');
+  asRole(p, 'requester');
+  ok(p.errors.length === 0, 'intake loads with the register wired' +
+    (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));
+  var box = $('#assetTags');
+  ok(box !== null, 'the asset field is bound to a suggestion list');
+  ok($('#fAsset').getAttribute('list') === 'assetTags', 'the asset field points at that list');
+
+  /* the office is settled by the lane before the list is built, so a
+     suggestion is always a unit the office actually holds */
+  var office = $('#fOffice');
+  var scoped = Array.prototype.map.call(box.querySelectorAll('option'), function (o) { return o.value; });
+  var heldBy = function (name) {
+    return p.w.Store.db.assets.filter(function (a) { return a.active !== false && a.office === name; });
+  };
+  ok(scoped.length > 0, 'the office in hand offers its units (' + scoped.length + ' for ' + office.value + ')');
+  ok(scoped.length === heldBy(office.value).length,
+    'the suggestions are exactly the in-service units of that office');
+  ok(scoped.every(function (v) {
+    var a = p.w.Store.db.assets.filter(function (x) { return x.tag === v; })[0];
+    return a && a.office === office.value;
+  }), 'the suggestions name only units held by the chosen office');
+
+  office.value = 'Records Office';
+  office.dispatchEvent(new p.w.Event('change'));
+  var again = Array.prototype.map.call(box.querySelectorAll('option'), function (o) { return o.value; });
+  ok(again.length === heldBy('Records Office').length, 'choosing another office narrows the suggestions');
+  ok(again.every(function (v) {
+    return /^[A-Z]{2,4}-[A-Z]{2,4}-\d{2,4}$/.test(v);
+  }), 'a suggestion always fits the documented number shape');
+
+  /* a suggestion is a help, never a constraint */
+  var free = $('#fAsset');
+  free.value = 'PC-XX-999';
+  ok(free.value === 'PC-XX-999', 'an unregistered unit is still writable at intake');
+  close(p);
+});
+
 /* Section 25.5A: the register opens with an office health strip and a
    readable service timeline built from the append-only audit trail. */
 tests.push(async function registerHealthAndTimeline() {
@@ -2032,8 +2187,8 @@ tests.push(async function scopeAcrossWidths() {
     coordinator: ['confirm.html', 'dashboard.html', 'flow.html', 'maintenance.html',
       'notifications.html', 'profile.html', 'register.html', 'reports.html',
       'request.html', 'review.html', 'tickets.html'],
-    management: ['audit.html', 'flow.html', 'notifications.html', 'offices.html',
-      'profile.html', 'settings.html', 'users.html']
+    management: ['assets.html', 'audit.html', 'flow.html', 'notifications.html',
+      'offices.html', 'profile.html', 'settings.html', 'users.html']
   };
   /* Each lane is opened at its own landing page: the administrator has no
      dashboard, so its lane opens at the users directory (role scope 5). */

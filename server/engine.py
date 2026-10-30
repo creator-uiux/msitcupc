@@ -7,6 +7,7 @@ methods take the shared `state` dict (server/db.py) and the acting `role`.
 from db import now_iso
 import json
 import os
+import re
 
 # --------------------------------------------------------------------------
 # Single permission map (specification 4A.1)
@@ -354,6 +355,9 @@ def next_id(state, kind):
     if kind == "job":
         s["job"] += 1
         return "MNT-2026-%04d" % s["job"]
+    if kind == "asset":
+        s["asset"] = s.get("asset", 0) + 1
+        return "AST-%04d" % s["asset"]
     s["notif"] += 1
     return str(s["notif"])
 
@@ -2008,6 +2012,9 @@ def _rename_office(state, old, new):
     for p in state.get("people", []):
         if p.get("office") == old:
             p["office"] = new
+    for a in state.get("assets", []):
+        if a.get("office") == old:
+            a["office"] = new
 
 
 def save_office(state, role, d):
@@ -2082,6 +2089,102 @@ def set_office_active(state, role, name, active):
     _audit(state, "office", office["name"], "office", "Office '%s' %s." % (office["name"], state_word))
     _touch(state)
     return {"ok": True, "msg": "Office '%s' %s." % (office["name"], state_word)}
+
+
+ASSET_TAG = re.compile(r"^[A-Z]{2,4}-[A-Z]{2,4}-\d{2,4}$")
+
+
+def _find_asset(state, ident):
+    key = str(ident or "").strip().lower()
+    return next((a for a in state.get("assets", [])
+                 if a.get("id", "").lower() == key or a.get("tag", "").lower() == key), None)
+
+
+def save_asset(state, role, d):
+    """Create or update one asset record (Administration, role scope 5).
+
+    d = {id?, tag, name, category, office, location?, active?}.  The tag is the
+    property number the other lanes already type by hand on a ticket and a
+    schedule, so it is held to the same documented shape and is unique across
+    the register, retired records included: a number must never name two units.
+    """
+    state["role"] = role
+    g = _guard(state, ["management"])
+    if not g["ok"]:
+        return g
+    d = d or {}
+    tag = str(d.get("tag") or "").strip().upper()
+    name = str(d.get("name") or "").strip()
+    category = str(d.get("category") or "").strip()
+    office = str(d.get("office") or "").strip()
+    if not tag:
+        return {"ok": False, "msg": "Asset number is required."}
+    if not ASSET_TAG.match(tag):
+        return {"ok": False, "msg": "Asset number needs the documented shape, e.g. PC-OF-118."}
+    if not name:
+        return {"ok": False, "msg": "Asset name is required."}
+    if not category:
+        return {"ok": False, "msg": "Choose a category."}
+    known = [o for o in state.get("offices", [])]
+    holder = next((o for o in known if (o.get("name") or "").lower() == office.lower()), None)
+    if not office or not holder:
+        return {"ok": False, "msg": "Choose the office that holds this asset."}
+    assets = state.setdefault("assets", [])
+    current = _find_asset(state, d.get("id")) if d.get("id") not in (None, "") else None
+    if d.get("id") not in (None, "") and current is None:
+        return {"ok": False, "msg": "Asset not found."}
+    if current is None:
+        if any(a.get("tag", "").upper() == tag for a in assets):
+            return {"ok": False, "msg": "An asset with that number already exists."}
+        asset = {"id": next_id(state, "asset"), "tag": tag, "name": name,
+                 "category": category, "office": holder["name"],
+                 "location": str(d.get("location") or "").strip(),
+                 "active": True, "createdAt": now_iso(), "updatedAt": now_iso()}
+        assets.append(asset)
+        _audit(state, "asset", tag, "asset", "Asset '%s' (%s) registered to %s." % (tag, name, holder["name"]))
+        _touch(state)
+        return {"ok": True, "msg": "Asset '%s' registered." % tag, "asset": asset}
+    if any(a is not current and a.get("tag", "").upper() == tag for a in assets):
+        return {"ok": False, "msg": "An asset with that number already exists."}
+    changed = []
+    for key, label, value in (("tag", "number", tag), ("name", "name", name),
+                              ("category", "category", category),
+                              ("office", "office", holder["name"]),
+                              ("location", "location", str(d.get("location") or "").strip())):
+        if value != str(current.get(key) or ""):
+            current[key] = value
+            changed.append(label)
+    if "active" in d and bool(d["active"]) != bool(current.get("active", True)):
+        current["active"] = bool(d["active"])
+        changed.append("active" if d["active"] else "retired")
+    if not changed:
+        return {"ok": False, "msg": "Nothing to update."}
+    current["updatedAt"] = now_iso()
+    _audit(state, "asset", current["tag"], "asset",
+           "Asset '%s' updated (%s)." % (current["tag"], ", ".join(changed)))
+    _touch(state)
+    return {"ok": True, "msg": "Asset '%s' updated (%s)." % (current["tag"], ", ".join(changed)),
+            "asset": current}
+
+
+def set_asset_active(state, role, ident, active):
+    """Retire or restore an asset.  Retiring keeps the record: a ticket or a
+    visit that names the number still resolves to the same unit."""
+    state["role"] = role
+    g = _guard(state, ["management"])
+    if not g["ok"]:
+        return g
+    asset = _find_asset(state, ident)
+    if not asset:
+        return {"ok": False, "msg": "Asset not found."}
+    if bool(active) == bool(asset.get("active", True)):
+        return {"ok": False, "msg": "Nothing to update."}
+    asset["active"] = bool(active)
+    asset["updatedAt"] = now_iso()
+    word = "restored" if active else "retired"
+    _audit(state, "asset", asset["tag"], "asset", "Asset '%s' %s." % (asset["tag"], word))
+    _touch(state)
+    return {"ok": True, "msg": "Asset '%s' %s." % (asset["tag"], word)}
 
 
 def _slug_username(name, taken):
@@ -2463,6 +2566,8 @@ METHODS = {
     "savePerson": (save_person, ["d"]),
     "setPersonActive": (set_person_active, ["id", "active"]),
     "saveRef": (save_ref, ["d"]),
+    "saveAsset": (save_asset, ["d"]),
+    "setAssetActive": (set_asset_active, ["id", "active"]),
     "updateSchedule": (update_schedule, ["id", "d"]),
     "setScheduleActive": (set_schedule_active, ["id", "active"]),
     "saveSettings": (save_settings, ["d"]),
@@ -2485,6 +2590,7 @@ NAMESPACE = {
     "addComment": "Flow", "updateTicket": "Flow", "markNotificationsRead": "Admin",
     "saveOffice": "Admin", "setOfficeActive": "Admin", "savePerson": "Admin",
     "setPersonActive": "Admin", "saveRef": "Admin", "saveSettings": "Admin",
+    "saveAsset": "Admin", "setAssetActive": "Admin",
     "updateSchedule": "Maint", "setScheduleActive": "Maint",
 }
 
