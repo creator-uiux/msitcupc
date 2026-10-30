@@ -531,7 +531,8 @@ class ItcHandler(BaseHTTPRequestHandler):
                     tt["comments"] = [c for c in tt.get("comments") or [] if c.get("visibility") != "internal"]
                 cleaned.append(tt)
             tickets = cleaned
-        res = query_mod.query_tickets(tickets, params, user_name=user["name"])
+        res = query_mod.query_tickets(tickets, params, user_name=user["name"],
+                                     settings=self.server.state.data.get("settings"))
         res["ok"] = True
         res["scope"] = user.get("office") if user["role"] == "requester" else None
         return self._json(res)
@@ -1288,7 +1289,7 @@ class ItcHandler(BaseHTTPRequestHandler):
 
         tickets = [t for t in tickets if keep(t)]
         jobs = [j for j in jobs if keep(j)]
-        summary = query_mod.summarize(tickets)
+        summary = query_mod.summarize(tickets, settings=self.server.state.data.get("settings"))
         jobs_due = sum(1 for j in jobs if j.get("status") != "closed")
         jobs_completed = sum(1 for j in jobs if j.get("status") == "closed" and j.get("outcome") == "success")
         prev_compliance = round(jobs_completed / jobs_due * 100, 1) if jobs_due else 0

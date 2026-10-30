@@ -56,10 +56,10 @@ function load(f) {
   var src = fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8');
   vm.runInContext(src, sandbox, { filename: f });
 }
-['store.js', 'ui.js', 'flow.js', 'live.js'].forEach(load);
+['store.js', 'ui.js', 'flow.js', 'live.js', 'query.js'].forEach(load);
 
 var S = sandbox.Store, F = sandbox.Flow, M = sandbox.Maint, U = sandbox.UI;
-var A = sandbox.Admin;
+var A = sandbox.Admin, Q = sandbox.Query;
 var pass = 0, fail = 0;
 function ok(cond, label) {
   if (cond) { pass++; console.log('  ok  ' + label); }
@@ -323,8 +323,39 @@ var rh = A.saveSettings({ holidays: ['2026-12-25', '2026-12-25', '2027-01-01'] }
 ok(rh.ok && S.db.settings.holidays.join(',') === '2026-12-25,2027-01-01',
    'the closed-date calendar dedupes and sorts');
 ok(!A.saveSettings({ reminderRepeatDays: 90 }).ok, 'a repeat interval past 60 days is refused');
+ok(!A.saveSettings({ slaDays: 0 }).ok, 'a service level window below one day is refused');
+ok(!A.saveSettings({ slaDays: 400 }).ok, 'a service level window past a year is refused');
+ok(!A.saveSettings({ slaDays: 'weekly' }).ok, 'a service level window that is not a number is refused');
+var rsw = A.saveSettings({ slaDays: 9 });
+ok(rsw.ok && S.db.settings.slaDays === 9, 'the System Administrator sets the service level window');
+ok(A.saveSettings({ slaDays: 9 }).msg === 'Nothing to update.', 'an unchanged window reports nothing to update');
 setRole('coordinator');
-ok(!A.saveSettings({ workdays: [1] }).ok, 'only the System Administrator edits the reminder clock');
+ok(!A.saveSettings({ slaDays: 4 }).ok, 'only the System Administrator edits the window');
+
+console.log('--- service level window (assumption A1) ---');
+setRole('management');
+ok(Q.slaDays() === 9, 'the query module reads the saved window');
+S.db.settings.slaDays = 400;
+ok(Q.slaDays() === Q.DEFAULT_SLA_DAYS, 'a stored window out of range falls back to the default');
+S.db.settings.slaDays = 9;
+var aged = { id: 'IT-SLA-1', status: 'assigned', createdAt: new Date(Date.now() - 8 * 864e5).toISOString() };
+S.db.settings.slaDays = 5;
+ok(Q.isOverdue(aged) === true, 'the shipped window flags an eight-day record');
+S.db.settings.slaDays = 20;
+ok(Q.isOverdue(aged) === false, 'a wider window clears the flag');
+var aimed = {
+  id: 'IT-SLA-2', status: 'assigned',
+  createdAt: new Date(Date.now() - 30 * 864e5).toISOString(),
+  target: new Date(Date.now() - 864e5).toISOString()
+};
+ok(Q.isOverdue(aimed) === true, 'a target date from the coordinator outranks the window');
+S.db.settings.slaDays = 3;
+ok(Q.queryTickets([aged], { overdue: '1' }).total === 1, 'the overdue filter follows a short window');
+S.db.settings.slaDays = 30;
+ok(Q.queryTickets([aged], { overdue: '1' }).total === 0, 'the overdue filter follows a wide window');
+ok(Q.summarize([aged]).default_sla_days === 30, 'the summary reports the window in force');
+S.db.settings.slaDays = 5;
+setRole('requester');
 
 console.log('--- reminder loop (15.3) ---');
 setRole('coordinator');

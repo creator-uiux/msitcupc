@@ -1361,6 +1361,12 @@
           changed.push('holiday calendar = ' + dates.length + ' closed date(s)');
         }
       }
+      if (d.slaDays !== undefined) {
+        var sla = parseInt(d.slaDays, 10);
+        if (isNaN(sla)) return { ok: false, msg: 'The service level window must be a whole number of days.' };
+        if (sla < 1 || sla > 365) return { ok: false, msg: 'The service level window must be 1-365 days.' };
+        if (settings.slaDays !== sla) { settings.slaDays = sla; changed.push('service level window = ' + sla + ' days'); }
+      }
       if (d.approvalCategories !== undefined) {
         var cats = (d.approvalCategories || []).map(String);
         var known = (settings.categories || []).map(String);

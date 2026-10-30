@@ -8,6 +8,7 @@ from db import now_iso
 import json
 import os
 import re
+from query import SLA_MAX_DAYS, SLA_MIN_DAYS
 
 # --------------------------------------------------------------------------
 # Single permission map (specification 4A.1)
@@ -2547,6 +2548,17 @@ def save_settings(state, role, d):
         if settings.get("holidays") != dates:
             settings["holidays"] = dates
             changed.append("holiday calendar = %d closed date(s)" % len(dates))
+    if "slaDays" in d:
+        try:
+            val = int(d["slaDays"])
+        except (TypeError, ValueError):
+            return {"ok": False, "msg": "The service level window must be a whole number of days."}
+        if val < SLA_MIN_DAYS or val > SLA_MAX_DAYS:
+            return {"ok": False, "msg": "The service level window must be %d-%d days."
+                    % (SLA_MIN_DAYS, SLA_MAX_DAYS)}
+        if settings.get("slaDays") != val:
+            settings["slaDays"] = val
+            changed.append("service level window = %d days" % val)
     if "authorizedClosureRoles" in d:
         val = d["authorizedClosureRoles"]
         if not isinstance(val, (list, tuple)) or not val:

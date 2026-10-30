@@ -21,10 +21,19 @@
   ALL_STATES.forEach(function (s, i) { STATUS_ORDER[s] = i; });
 
   /* One definition of "overdue": a target date when the coordinator set one,
-     otherwise intake + the default SLA window. */
+     otherwise intake plus the service level window the office configured
+     (assumption A1). */
   var DEFAULT_SLA_DAYS = 5;
+  var SLA_MIN_DAYS = 1, SLA_MAX_DAYS = 365;
   var SORT_KEYS = ['updated', 'created', 'status', 'priority', 'id', 'target'];
   var MAX_SIZE = 100;
+
+  /* The window in force: what the settings hold, else the shipped default. */
+  function slaDays() {
+    var s = (window.Store && window.Store.db && window.Store.db.settings) || {};
+    var v = parseInt(s.slaDays, 10);
+    return (v >= SLA_MIN_DAYS && v <= SLA_MAX_DAYS) ? v : DEFAULT_SLA_DAYS;
+  }
 
   function parseMs(iso) {
     if (!iso) return 0;
@@ -46,11 +55,11 @@
   }
 
   function dueMs(t) {
-    /* When the ticket is considered overdue: target, else intake + default SLA. */
+    /* When the ticket is considered overdue: target, else intake + the SLA window. */
     if (t.target) return parseMs(t.target);
     var created = parseMs(t.createdAt);
     if (!created) return 0;
-    return created + DEFAULT_SLA_DAYS * 86400000;
+    return created + slaDays() * 86400000;
   }
 
   function isOverdue(t, at) {
@@ -192,7 +201,7 @@
       turnaround_samples: turnarounds.length,
       resolved_within_target: withinTarget,
       resolved_with_target: resolvedWithTarget,
-      default_sla_days: DEFAULT_SLA_DAYS,
+      default_sla_days: slaDays(),
       closure_hours: null,
       resolved_awaiting: byStatus.resolved || 0
     };
@@ -213,6 +222,7 @@
   window.Query = {
     OPEN_STATES: OPEN_STATES, TERMINAL_STATES: TERMINAL_STATES, ALL_STATES: ALL_STATES,
     SORT_KEYS: SORT_KEYS, MAX_SIZE: MAX_SIZE, DEFAULT_SLA_DAYS: DEFAULT_SLA_DAYS,
+    slaDays: slaDays,
     PRIORITY_ORDER: PRIORITY_ORDER, STATUS_ORDER: STATUS_ORDER,
     parseMs: parseMs, turnaroundHours: turnaroundHours, dueMs: dueMs,
     isOverdue: isOverdue, decorate: decorate,

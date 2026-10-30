@@ -79,8 +79,10 @@ current commit. Blocked or unverified items are listed first.
 - The reminder interval counts the working week the administrator ticks and
   skips the closed dates they enter (assumption A5), but nothing imports a
   holiday list: the office types its own dates, and a date nobody entered is
-  treated as a working day. The service level window is calendar days, so an
-  unanswered deadline can still fall across a break.
+  treated as a working day. The service level window the overdue column counts
+  (assumption A1) is calendar days and is one number for the whole service, not
+  a per-category or per-priority target, so an unanswered deadline can still
+  fall across a break.
 - No virus scanning on attachments. Files are size limited, type limited and
   kept as BLOBs inside the database, reachable only through the authorised
   download route (the `server/` path prefix is never served as a static file);

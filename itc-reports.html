@@ -482,7 +482,7 @@ function renderCatalogue(rows, jobsFiltered) {
   }).join('');
 
   var sla = document.getElementById('rSla');
-  if (sla) sla.textContent = Query.DEFAULT_SLA_DAYS;
+  if (sla) sla.textContent = Query.slaDays();
 
   document.querySelectorAll('[data-rcat]').forEach(function (b) {
     b.onclick = function () {

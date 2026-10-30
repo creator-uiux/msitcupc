@@ -101,7 +101,7 @@ parity check `python tools/permission_parity_check.py` proves it.
 | `saveAsset`, `setAssetActive` | System Administrator | The asset register: the number, the name, the category, the office that holds it and its location. A number must fit `AA-AA-00` and may be registered once; retiring keeps the record so an older ticket still resolves to the same unit. A rename of an office carries the units with it |
 | `savePerson`, `setPersonActive` | System Administrator | The person record. A rename cascades the same way |
 | `saveRef` | System Administrator | One reference row: a category, a source, a priority or a frequency |
-| `saveSettings` | System Administrator | The operational settings: the reminder clock and its interval, the working week, the closed dates, the approval categories, the priority matrix and the authorized closure roles |
+| `saveSettings` | System Administrator | The operational settings: the reminder clock and its interval, the working week, the closed dates, the service level window, the approval categories, the priority matrix and the authorized closure roles |
 | `markNotificationsRead` | every role | The per-user read state of the notification centre |
 | `POST /api/tick` | IT Coordinator, System Administrator | One turn of the world clock: the schedule check, the reminder loop and the dependency nudges |
 | `POST /api/reset` | IT Coordinator, System Administrator | Re-seeds the development dataset |

@@ -13,7 +13,7 @@ frequencies) is likewise editable on `settings.html`.
 
 | # | Assumption | Default | Where configured |
 |---|---|---|---|
-| A1 | Default service level window used when the coordinator sets no target date | 5 calendar days from intake | `settings.slaDays`, `query.DEFAULT_SLA_DAYS` |
+| A1 | Default service level window used when the coordinator sets no target date | 5 calendar days from intake | `settings.slaDays` (1 to 365, on Settings), `query.DEFAULT_SLA_DAYS` |
 | A2 | Priority is derived from an impact by urgency matrix, but the coordinator may override | matrix default, override allowed | `settings.priorityMatrix` |
 | A3 | Certain categories require coordinator or office approval before work starts | disabled per category | `settings.approvalCategories` |
 | A4 | Confirmation reminder cadence while a ticket waits at Resolved | 3 working days, then every 7 | `settings.reminderMode`, `settings.reminderBusinessDays`, `settings.reminderRepeatDays` |

@@ -30,7 +30,7 @@ outstanding.
 | Open tickets | Count of tickets whose status is one of the six open states |
 | Completed | Count of tickets with status Closed |
 | Awaiting confirmation | Count of tickets with status Resolved and confirmation state pending |
-| Overdue | Count of open tickets past their due point. Due point is the target date when set, otherwise intake plus the default service level window. Resolved tickets are excluded because the technician work is done |
+| Overdue | Count of open tickets past their due point. Due point is the target date when set, otherwise intake plus the service level window the System Administrator configured on Settings (5 calendar days by default). Resolved tickets are excluded because the technician work is done |
 | Turnaround hours | resolvedAt minus createdAt in hours, averaged over tickets that have a resolvedAt. Cancelled tickets are excluded because they have no resolvedAt |
 | Time to closure hours | closedAt minus createdAt in hours, averaged over Closed tickets |
 | Resolved within target | Count of tickets with both a target date and a resolvedAt where the resolved date is on or before the target date |

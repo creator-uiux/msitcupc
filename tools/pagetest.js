@@ -1389,6 +1389,23 @@ tests.push(async function roleScoping() {
   $('#saveOp').click();
   ok(ps.w.Store.db.settings.holidays.length === 2,
      'a date that does not read YYYY-MM-DD is refused');
+  $('[name="holidays"]').value = '2026-12-25, 2027-01-01';
+
+  /* the service level window that drives the overdue column is set here too */
+  ok($('#opSettings [name="slaDays"]') !== null, 'the service level window is configurable');
+  ok($('#opSettings').textContent.indexOf('overdue once it is older than that many days') > -1,
+     'the screen says the window counts calendar days');
+  $('[name="slaDays"]').value = '9';
+  $('#saveOp').click();
+  ok(ps.w.Store.db.settings.slaDays === 9, 'the saved window is stored');
+  ok(ps.w.Store.db.settings.holidays.length === 2, 'the rest of the card saved with it');
+  $('[name="slaDays"]').value = '400';
+  $('#saveOp').click();
+  ok(ps.w.Store.db.settings.slaDays === 9,
+     'a window past a year is refused without half-saving');
+  $('[name="slaDays"]').value = '5';
+  $('#saveOp').click();
+  ok(ps.w.Store.db.settings.slaDays === 5, 'the window is restored for the screens that follow');
   asRole(ps, 'coordinator');
   ok($('#accessPanel') !== null, 'the coordinator is blocked from the system settings');
   close(ps);

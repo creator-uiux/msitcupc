@@ -145,11 +145,12 @@ function render() {
     UI.field('First reminder after (working days)', UI.numberInput('reminderBusinessDays', s.reminderBusinessDays || 3, { min: 1, max: 60 })) +
     UI.field('Then repeat every (working days)', UI.numberInput('reminderRepeatDays', s.reminderRepeatDays || 7, { min: 1, max: 60 })) +
     UI.field('Reminder interval (minutes)', UI.numberInput('reminderMinutes', s.reminderMinutes || 2, { min: 1, max: 1440 })) +
+    UI.field('Service level window (days)', UI.numberInput('slaDays', s.slaDays || 5, { min: 1, max: 365 })) +
     (SIM
       ? UI.field('Simulation (demo intake)', UI.select('simulate', [['1', 'On'], ['0', 'Off']], s.simulate ? '1' : '0', true))
       : '<input type="hidden" name="simulate" value="' + (s.simulate ? '1' : '0') + '">') +
     '</div>' +
-    '<p class="card-sub mt">A reminder chases a Resolved record the office has not confirmed. The working-day clock counts only the days ticked below and skips the closed dates, so a reminder never lands on a rest day. The minute clock ignores the calendar and is what the demo runs on.</p>' +
+    '<p class="card-sub mt">A reminder chases a Resolved record the office has not confirmed. The working-day clock counts only the days ticked below and skips the closed dates, so a reminder never lands on a rest day. The minute clock ignores the calendar and is what the demo runs on. The service level window is a different rule and counts calendar days, not working days: with no target date from the coordinator, an active record is overdue once it is older than that many days.</p>' +
     '<div class="ref-cols mt-md">' +
     '<div><div class="card-title mb-sm">Working week</div><ul class="policy-list">' +
     WORKWEEK.map(function (w) {
@@ -278,6 +279,7 @@ function render() {
       reminderMinutes: document.querySelector('[name="reminderMinutes"]').value,
       reminderBusinessDays: document.querySelector('[name="reminderBusinessDays"]').value,
       reminderRepeatDays: document.querySelector('[name="reminderRepeatDays"]').value,
+      slaDays: document.querySelector('[name="slaDays"]').value,
       workdays: days,
       holidays: (holEl ? holEl.value : '').split(/[\s,;]+/).filter(Boolean),
       simulate: simEl ? simEl.value === '1' : false

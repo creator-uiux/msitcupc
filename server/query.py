@@ -20,10 +20,20 @@ PRIORITY_ORDER = {"critical": 4, "high": 3, "medium": 2, "low": 1}
 STATUS_ORDER = {s: i for i, s in enumerate(ALL_STATES)}
 
 # One definition of "overdue": a target date when the coordinator set one,
-# otherwise intake + the default SLA window.
+# otherwise intake plus the configured service level window (assumption A1).
 DEFAULT_SLA_DAYS = 5
+SLA_MIN_DAYS, SLA_MAX_DAYS = 1, 365
 SORT_KEYS = ("updated", "created", "status", "priority", "id", "target")
 MAX_SIZE = 100
+
+
+def sla_days(settings=None):
+    """The service level window in force: what the office set, else the shipped default."""
+    try:
+        val = int((settings or {}).get("slaDays", DEFAULT_SLA_DAYS))
+    except (TypeError, ValueError):
+        return DEFAULT_SLA_DAYS
+    return val if SLA_MIN_DAYS <= val <= SLA_MAX_DAYS else DEFAULT_SLA_DAYS
 
 
 def parse_ms(iso):
@@ -58,35 +68,35 @@ def closure_hours(t):
     return round(delta / 3600000.0, 2) if delta >= 0 else None
 
 
-def due_ms(t):
-    """When the ticket is considered overdue: target, else intake + default SLA."""
+def due_ms(t, settings=None):
+    """When the ticket is considered overdue: target, else intake + the SLA window."""
     if t.get("target"):
         return parse_ms(t["target"])
     created = parse_ms(t.get("createdAt"))
     if not created:
         return 0.0
-    return created + DEFAULT_SLA_DAYS * 86400000.0
+    return created + sla_days(settings) * 86400000.0
 
 
-def is_overdue(t, now_ms=None):
+def is_overdue(t, now_ms=None, settings=None):
     """Active ticket past its due point (terminal tickets are never overdue)."""
     if t.get("status") not in OPEN_STATES:
         return False
-    due = due_ms(t)
+    due = due_ms(t, settings)
     if not due:
         return False
     return due < (now_ms if now_ms is not None else datetime.now(timezone.utc).timestamp() * 1000)
 
 
-def decorate(t, now_ms=None):
+def decorate(t, now_ms=None, settings=None):
     """Derived list fields appended per row (kept small  --  no history payload)."""
     row = dict(t)
     row["turnaroundHours"] = turnaround_hours(t)
-    row["overdue"] = is_overdue(t, now_ms)
+    row["overdue"] = is_overdue(t, now_ms, settings)
     return row
 
 
-def _matches(t, params, user_name=None):
+def _matches(t, params, user_name=None, settings=None):
     q = (params.get("q") or "").strip().lower()
     if q:
         hay = " ".join(str(t.get(k) or "") for k in
@@ -118,16 +128,16 @@ def _matches(t, params, user_name=None):
     if created_to and (t.get("createdAt") or "")[:10] > created_to:
         return False
     if (params.get("overdue") or "").strip() in ("1", "true", "yes"):
-        if not is_overdue(t):
+        if not is_overdue(t, settings=settings):
             return False
     return True
 
 
-def _sort_value(t, key):
+def _sort_value(t, key, settings=None):
     if key == "created":
         return parse_ms(t.get("createdAt"))
     if key == "target":
-        return due_ms(t)
+        return due_ms(t, settings)
     if key == "priority":
         return PRIORITY_ORDER.get(t.get("priority"), 0)
     if key == "status":
@@ -137,27 +147,29 @@ def _sort_value(t, key):
     return parse_ms(t.get("updatedAt") or t.get("createdAt"))  # updated (default)
 
 
-def query_tickets(tickets, params, user_name=None):
+def query_tickets(tickets, params, user_name=None, settings=None):
     """Filter -> sort -> paginate. Returns the envelope the list screen needs.
 
     params: dict of query-string values (strings). Keys:
       q, status (csv | "open"), office, requester, technician, priority,
       category, source, mine, from, to, overdue, sort, order, page, size.
+    `settings` is the operational block, so the overdue point follows the
+    service level window the office configured rather than the shipped default.
     """
     now_ms = datetime.now(timezone.utc).timestamp() * 1000
-    rows = [t for t in tickets if _matches(t, params, user_name)]
+    rows = [t for t in tickets if _matches(t, params, user_name, settings)]
 
     sort = (params.get("sort") or "updated").strip()
     if sort not in SORT_KEYS:
         sort = "updated"
     order = (params.get("order") or "desc").strip().lower()
-    rows.sort(key=lambda t: (_sort_value(t, sort), t.get("id") or ""),
+    rows.sort(key=lambda t: (_sort_value(t, sort, settings), t.get("id") or ""),
               reverse=(order != "asc"))
 
     counts = {}
     for t in rows:
         counts[t.get("status")] = counts.get(t.get("status"), 0) + 1
-    overdue_count = sum(1 for t in rows if is_overdue(t, now_ms))
+    overdue_count = sum(1 for t in rows if is_overdue(t, now_ms, settings))
 
     size = min(max(_int(params.get("size"), 20), 1), MAX_SIZE)
     total = len(rows)
@@ -166,7 +178,7 @@ def query_tickets(tickets, params, user_name=None):
     slice_ = rows[(page - 1) * size: page * size]
 
     return {
-        "items": [decorate(t, now_ms) for t in slice_],
+        "items": [decorate(t, now_ms, settings) for t in slice_],
         "total": total,
         "page": page,
         "pages": pages,
@@ -178,7 +190,7 @@ def query_tickets(tickets, params, user_name=None):
     }
 
 
-def summarize(tickets, now_ms=None):
+def summarize(tickets, now_ms=None, settings=None):
     """Shared aggregation used by the reports endpoint and the dashboard."""
     now_ms = now_ms if now_ms is not None else datetime.now(timezone.utc).timestamp() * 1000
     by_status, by_office, by_priority, by_category, by_source = {}, {}, {}, {}, {}
@@ -197,7 +209,7 @@ def summarize(tickets, now_ms=None):
         cl_hours = closure_hours(t)
         if cl_hours is not None:
             closure_hours_list.append(cl_hours)
-        if t.get("status") in OPEN_STATES and is_overdue(t, now_ms):
+        if t.get("status") in OPEN_STATES and is_overdue(t, now_ms, settings):
             overdue += 1
         # Costs
         diag = t.get("diagnosis") or {}
@@ -222,7 +234,7 @@ def summarize(tickets, now_ms=None):
         "turnaround_samples": len(turnarounds),
         "resolved_within_target": within_target,
         "resolved_with_target": resolved_with_target,
-        "default_sla_days": DEFAULT_SLA_DAYS,
+        "default_sla_days": sla_days(settings),
         "closure_hours": round(sum(closure_hours_list) / len(closure_hours_list), 2) if closure_hours_list else None,
         "resolved_awaiting": sum(1 for t in tickets if t.get("status") == "resolved"),
         "completed": by_status.get("closed", 0),

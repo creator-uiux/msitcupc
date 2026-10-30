@@ -433,12 +433,16 @@ def test_persistence(tmp):
     auth.ensure_users(st.conn)
     with st.lock:
         engine.call(st.data, "coordinator", "requestInfo", ["IT-2026-000143", "missing serial"])
+        engine.call(st.data, "management", "saveSettings", [{"slaDays": 9}])
         engine.call(st.data, "management", "saveAsset", [{
             "tag": "pc-prs-01", "name": "Persisted workstation",
             "category": "Hardware Repair", "office": "HR"}])
         st.save()
     st2 = database.State(path=path, seed_fn=seed_mod.seed)
     check("persisted ticket status", engine.get_ticket(st2.data, "IT-2026-000143")["status"] == "needs_info")
+    check("persisted service level window", st2.data["settings"]["slaDays"] == 9,
+          st2.data["settings"].get("slaDays"))
+    check("the reloaded window is the one in force", query_mod.sla_days(st2.data["settings"]) == 9)
     check("persisted notifications", len(st2.data["notifications"]) >= 4)
     check("persisted seq", st2.data["seq"]["notif"] >= 40)
     kept = [a for a in st2.data["assets"] if a["tag"] == "PC-PRS-01"]
@@ -1355,6 +1359,34 @@ def test_http_records(httpd):
           s == 200 and crep["jobs_total"] < rep["jobs_total"], crep["jobs_total"])
 
 
+def test_http_sla_window(httpd):
+    """The service level window the administrator saves is what the endpoints use."""
+    host, port = httpd.server_address[:2]
+    c = Client(host, port)
+    mtok = c.request("POST", "/api/login", {"role": "management"})[1]["token"]
+    ctok = c.request("POST", "/api/login", {"role": "coordinator"})[1]["token"]
+    rtok = c.request("POST", "/api/login", {"role": "requester"})[1]["token"]
+
+    s, rep = c.request("GET", "/api/reports", token=ctok)
+    check("reports start on the shipped window",
+          s == 200 and rep.get("default_sla_days") == query_mod.DEFAULT_SLA_DAYS, rep)
+    s, r = c.request("POST", "/api/call", {"method": "saveSettings", "args": [{"slaDays": 9}]}, token=mtok)
+    check("the administrator can save the window over HTTP", s == 200 and r.get("ok"), r)
+    s, rep = c.request("GET", "/api/reports", token=ctok)
+    check("reports follow the saved window", rep.get("default_sla_days") == 9, rep)
+    s, r = c.request("POST", "/api/call", {"method": "saveSettings", "args": [{"slaDays": 900}]}, token=mtok)
+    check("an out of range window is refused over HTTP", s in (200, 400) and not r.get("ok"), r)
+    s, rep = c.request("GET", "/api/reports", token=ctok)
+    check("a refused window leaves the reports figure alone", rep.get("default_sla_days") == 9, rep)
+    s, r = c.request("POST", "/api/call", {"method": "saveSettings", "args": [{"slaDays": 3}]}, token=ctok)
+    check("a coordinator cannot save the window over HTTP", not r.get("ok"), r)
+    s, rep = c.request("GET", "/api/reports", token=rtok)
+    check("a scoped office report carries the window in force",
+          s == 200 and rep.get("default_sla_days") == 9, rep)
+    c.request("POST", "/api/call", {"method": "saveSettings", "args": [{"slaDays": query_mod.DEFAULT_SLA_DAYS}]},
+              token=mtok)
+
+
 def test_http_outbox(httpd):
     host, port = httpd.server_address[:2]
     c = Client(host, port)
@@ -1402,9 +1434,11 @@ def test_seed_shape():
     # settings screen uses; a no-op answer also proves they agree with the seed.
     probe = {k: database.DEFAULT_SETTINGS[k] for k in
              ("reminderMode", "reminderMinutes", "reminderBusinessDays", "reminderRepeatDays",
-              "workdays", "holidays", "authorizedClosureRoles", "priorityMatrix")}
+              "slaDays", "workdays", "holidays", "authorizedClosureRoles", "priorityMatrix")}
     r = engine.call(fresh(), "management", "saveSettings", [probe])
     check("the shipped defaults pass the settings guards", r.get("msg") == "Nothing to update.", r)
+    check("the seed ships the same window the query module defaults to",
+          st["settings"]["slaDays"] == query_mod.DEFAULT_SLA_DAYS, st["settings"].get("slaDays"))
 
 
 # ----------------------------------------------------------------- oidc
@@ -2151,6 +2185,69 @@ def test_query_module():
 
 
 # ----------------------------------------------------------------- main
+def test_sla_window():
+    """Assumption A1: the overdue point follows the configured service level window."""
+    from datetime import datetime, timedelta, timezone
+    st = fresh()
+    check("the shipped default is the window when nothing is set",
+          query_mod.sla_days() == query_mod.DEFAULT_SLA_DAYS
+          and query_mod.sla_days(st["settings"]) == st["settings"]["slaDays"])
+    check("a configured window is honoured", query_mod.sla_days({"slaDays": 12}) == 12)
+    check("a window outside the bounds falls back",
+          query_mod.sla_days({"slaDays": 0}) == query_mod.DEFAULT_SLA_DAYS
+          and query_mod.sla_days({"slaDays": query_mod.SLA_MAX_DAYS + 1}) == query_mod.DEFAULT_SLA_DAYS)
+    check("a window that is not a number falls back",
+          query_mod.sla_days({"slaDays": "weekly"}) == query_mod.DEFAULT_SLA_DAYS
+          and query_mod.sla_days({"slaDays": None}) == query_mod.DEFAULT_SLA_DAYS)
+
+    now = datetime.now(timezone.utc)
+    eight_days = dict(status="assigned", createdAt=(now - timedelta(days=8)).isoformat().replace("+00:00", "Z"))
+    check("a record older than the shipped window is overdue",
+          query_mod.is_overdue(eight_days) is True)
+    check("a longer window clears the flag",
+          query_mod.is_overdue(eight_days, settings={"slaDays": 365}) is False)
+    check("a shorter window keeps the flag",
+          query_mod.is_overdue(eight_days, settings={"slaDays": 1}) is True)
+    aimed = dict(eight_days, target=(now - timedelta(days=1)).isoformat().replace("+00:00", "Z"))
+    check("a target date from the coordinator outranks the window",
+          query_mod.is_overdue(aimed, settings={"slaDays": 365}) is True)
+
+    res = query_mod.query_tickets([eight_days], {"overdue": "1"}, settings={"slaDays": 365})
+    check("the overdue filter follows the window", res["total"] == 0, res["total"])
+    res = query_mod.query_tickets([eight_days], {"overdue": "1"}, settings={"slaDays": 3})
+    check("the overdue filter follows a short window", res["total"] == 1, res["total"])
+    check("the list envelope counts overdue with the window in force",
+          query_mod.query_tickets([eight_days], {}, settings={"slaDays": 365})["overdue"] == 0
+          and query_mod.query_tickets([eight_days], {}, settings={"slaDays": 1})["overdue"] == 1)
+    summ = query_mod.summarize([eight_days], settings={"slaDays": 20})
+    check("the summary reports the window in force",
+          summ["default_sla_days"] == 20 and summ["overdue"] == 0, summ)
+
+    r = engine.call(st, "management", "saveSettings", [{"slaDays": 12}])
+    check("the service level window is editable", r.get("ok") and st["settings"]["slaDays"] == 12, r)
+    check("the window change is audited",
+          any("service level window = 12 days" in e.get("text", "") for e in st["audit"][-5:]),
+          st["audit"][-3:])
+    for bad, label in ((0, "a window below one day"), (query_mod.SLA_MAX_DAYS + 1, "a window past a year"),
+                       ("five", "a window that is not a number"), (None, "an empty window")):
+        r = engine.call(st, "management", "saveSettings", [{"slaDays": bad}])
+        check("the window rejects %s" % label, not r.get("ok"), r)
+    check("a refused window change leaves the setting alone",
+          st["settings"]["slaDays"] == 12, st["settings"]["slaDays"])
+    r = engine.call(st, "coordinator", "saveSettings", [{"slaDays": 4}])
+    check("only the System Administrator edits the window", not r.get("ok"), r)
+    r = engine.call(st, "management", "saveSettings", [{"slaDays": 12}])
+    check("an unchanged window reports nothing to update",
+          r.get("msg") == "Nothing to update.", r)
+    # The engine and the browser share one overdue definition, so a wide window
+    # must move the seeded records out of the overdue column.
+    narrow = query_mod.query_tickets(fresh()["tickets"], {"overdue": "1"},
+                                     settings={"slaDays": 1})["total"]
+    wide = query_mod.query_tickets(st["tickets"], {"overdue": "1"},
+                                   settings={"slaDays": query_mod.SLA_MAX_DAYS})["total"]
+    check("a wider window never reports more overdue records", narrow >= wide, (narrow, wide))
+
+
 def test_role_scope_and_policy():
     """The data scope and the configurable policy the specification names."""
     st = fresh()
@@ -2338,6 +2435,7 @@ def main():
     test_management_readonly()
     print("query:")
     test_query_module()
+    test_sla_window()
     print("oidc:")
     test_oidc()
     print("delivery:")
@@ -2357,6 +2455,7 @@ def main():
         test_http_concurrency(httpd)
         test_http_tenancy(httpd)
         test_http_records(httpd)
+        test_http_sla_window(httpd)
         test_http_outbox(httpd)
         test_sse(httpd)
         test_http_transition_matrix(httpd)

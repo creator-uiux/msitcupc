@@ -434,6 +434,8 @@
     // The working week the reminder interval counts (assumption A5).  Monday is 0.
     if (!Array.isArray(d.settings.workdays) || !d.settings.workdays.length) d.settings.workdays = [0, 1, 2, 3, 4];
     if (!Array.isArray(d.settings.holidays)) d.settings.holidays = [];
+    // The service level window the overdue column counts (assumption A1).
+    if (!(parseInt(d.settings.slaDays, 10) >= 1)) d.settings.slaDays = 5;
     var maxAudit = 0;
     d.audit.forEach(function (a) { if (typeof a.id === 'number' && a.id > maxAudit) maxAudit = a.id; });
     d.audit.forEach(function (a) { if (typeof a.id !== 'number') a.id = ++maxAudit; });
