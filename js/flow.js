@@ -5,6 +5,10 @@
   var S = window.Store;
   var NOW = S.NOW;
 
+  /* The workweek numbering the reminder interval counts, matching
+     server/engine.py: Monday is 0. */
+  var WEEKDAYS_LONG = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
   function hist(t, status, kind, text, by, role) {
     t.history.push({ at: NOW(), by: by, role: role, status: status, kind: kind, text: text });
     t.updatedAt = NOW();
@@ -1311,6 +1315,51 @@
         var bd = parseInt(d.reminderBusinessDays, 10);
         if (isNaN(bd) || bd < 1 || bd > 60) return { ok: false, msg: 'The reminder interval must be 1-60 business days.' };
         if (settings.reminderBusinessDays !== bd) { settings.reminderBusinessDays = bd; changed.push('first reminder = ' + bd + ' business days'); }
+      }
+      if (d.reminderRepeatDays !== undefined) {
+        var rd = parseInt(d.reminderRepeatDays, 10);
+        if (isNaN(rd) || rd < 1 || rd > 60) return { ok: false, msg: 'repeat reminder (business days) must be 1-60 days.' };
+        if (settings.reminderRepeatDays !== rd) { settings.reminderRepeatDays = rd; changed.push('repeat reminder (business days) = ' + rd); }
+      }
+      if (d.reminderMode !== undefined) {
+        var mode = String(d.reminderMode || '').trim().toLowerCase();
+        if (mode !== 'business' && mode !== 'minutes') return { ok: false, msg: 'Reminder mode must be business or minutes.' };
+        if (settings.reminderMode !== mode) { settings.reminderMode = mode; changed.push('reminder mode = ' + mode); }
+      }
+      if (d.workdays !== undefined) {
+        if (!Array.isArray(d.workdays)) return { ok: false, msg: 'The workweek must be a list of weekdays.' };
+        var nums = [];
+        var badDay = d.workdays.some(function (x) {
+          var n = Number(x);
+          if (x === '' || x === null || isNaN(n) || n !== Math.round(n) || n < 0 || n > 6) return true;
+          if (nums.indexOf(n) === -1) nums.push(n);
+          return false;
+        });
+        if (badDay) return { ok: false, msg: 'The workweek takes weekday numbers 0 to 6 (Monday is 0).' };
+        if (!nums.length) return { ok: false, msg: 'The workweek needs at least one working day.' };
+        nums.sort(function (a, b) { return a - b; });
+        if ((settings.workdays || []).join('|') !== nums.join('|')) {
+          settings.workdays = nums;
+          changed.push('workweek = ' + nums.map(function (n) { return WEEKDAYS_LONG[n]; }).join(', '));
+        }
+      }
+      if (d.holidays !== undefined) {
+        if (!Array.isArray(d.holidays)) return { ok: false, msg: 'The holiday calendar must be a list of dates.' };
+        var dates = [];
+        for (var hi = 0; hi < d.holidays.length; hi++) {
+          var hs = String(d.holidays[hi]).trim();
+          if (!hs) continue;
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(hs)) return { ok: false, msg: 'A holiday date must read YYYY-MM-DD, not ' + hs + '.' };
+          var hp = new Date(hs + 'T00:00:00Z');
+          if (isNaN(hp.getTime()) || hs !== hp.toISOString().slice(0, 10)) return { ok: false, msg: hs + ' is not a real date.' };
+          if (dates.indexOf(hs) === -1) dates.push(hs);
+        }
+        if (dates.length > 400) return { ok: false, msg: 'The holiday calendar holds at most 400 dates.' };
+        dates.sort();
+        if ((settings.holidays || []).join('|') !== dates.join('|')) {
+          settings.holidays = dates;
+          changed.push('holiday calendar = ' + dates.length + ' closed date(s)');
+        }
       }
       if (d.approvalCategories !== undefined) {
         var cats = (d.approvalCategories || []).map(String);

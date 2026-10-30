@@ -59,6 +59,7 @@ function load(f) {
 ['store.js', 'ui.js', 'flow.js', 'live.js'].forEach(load);
 
 var S = sandbox.Store, F = sandbox.Flow, M = sandbox.Maint, U = sandbox.UI;
+var A = sandbox.Admin;
 var pass = 0, fail = 0;
 function ok(cond, label) {
   if (cond) { pass++; console.log('  ok  ' + label); }
@@ -308,18 +309,61 @@ setRole('technician');
 r = F.assign(S.db.tickets[1].id, 'J. Tan');
 ok(!r.ok, 'technician cannot assign tickets');
 
+console.log('--- reminder settings (20.2) ---');
+setRole('management');
+ok(!A.saveSettings({ reminderMode: 'fortnight' }).ok, 'an unknown reminder clock is refused');
+ok(!A.saveSettings({ workdays: [] }).ok, 'an empty workweek is refused');
+ok(!A.saveSettings({ workdays: [7] }).ok, 'a weekday past Sunday is refused');
+ok(!A.saveSettings({ workdays: ['Mon'] }).ok, 'a named weekday is refused');
+var rw = A.saveSettings({ workdays: [6, 0, 1] });
+ok(rw.ok && S.db.settings.workdays.join(',') === '0,1,6', 'the workweek sorts and dedupes');
+ok(!A.saveSettings({ holidays: ['25/12/2026'] }).ok, 'a date that does not read YYYY-MM-DD is refused');
+ok(!A.saveSettings({ holidays: ['2026-02-30'] }).ok, 'a date that does not exist is refused');
+var rh = A.saveSettings({ holidays: ['2026-12-25', '2026-12-25', '2027-01-01'] });
+ok(rh.ok && S.db.settings.holidays.join(',') === '2026-12-25,2027-01-01',
+   'the closed-date calendar dedupes and sorts');
+ok(!A.saveSettings({ reminderRepeatDays: 90 }).ok, 'a repeat interval past 60 days is refused');
+setRole('coordinator');
+ok(!A.saveSettings({ workdays: [1] }).ok, 'only the System Administrator edits the reminder clock');
+
 console.log('--- reminder loop (15.3) ---');
 setRole('coordinator');
 var res = null;
-S.db.tickets.forEach(function (x) { if (!res && x.status === 'resolved') res = x; });
+S.db.tickets.forEach(function (x) { if (!res && x.status === 'resolved' && x.confirmation.state === 'pending') res = x; });
 if (res) {
-  res.resolvedAt = new Date(Date.now() - 10 * 60000).toISOString(); // long ago
+  var before;
   res.reminders = [];
-  var before = S.db.notifications.length;
+  // 20.2 / assumption A4+A5: on the working-day clock a fresh answer waits for
+  // the interval, and the interval counts only the ticked days.
+  S.db.settings.reminderMode = 'business';
+  S.db.settings.reminderBusinessDays = 3;
+  S.db.settings.workdays = [0, 1, 2, 3, 4];
+  S.db.settings.holidays = [];
+  res.resolvedAt = new Date().toISOString();
   sandbox.Live.start();
-  // can't wait for interval; call runOnce
   sandbox.Live.runOnce();
-  ok(S.db.notifications.length > before || res.reminders.length > 0, 'auto follow-up reminder sent for unanswered Resolved ticket');
+  ok(!res.reminders.length, 'no reminder while the working days have not passed');
+  res.resolvedAt = new Date(Date.now() - 40 * 864e5).toISOString();
+  before = S.db.notifications.length;
+  sandbox.Live.runOnce();
+  ok(res.reminders.length === 1, 'reminder sent once the working days have passed');
+  ok(S.db.notifications.length > before, 'the office is notified of the reminder');
+
+  // The minute clock ignores the calendar: what the demo and the tests run on.
+  S.db.settings.reminderMode = 'minutes';
+  S.db.settings.reminderMinutes = 2;
+  res.resolvedAt = new Date(Date.now() - 10 * 60000).toISOString();
+  sandbox.Live.runOnce();
+  ok(res.reminders.length === 2, 'the minute clock keeps reminding');
+
+  // A closed date pushes the reminder to the next working day, not into the holiday
+  S.db.settings.reminderMode = 'business';
+  S.db.settings.workdays = [0];
+  S.db.settings.reminderBusinessDays = 1;
+  res.resolvedAt = new Date(Date.now() - 3 * 864e5).toISOString();
+  res.reminders = [];
+  sandbox.Live.runOnce();
+  ok(!res.reminders.length, 'a Monday-only week holds the reminder back');
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

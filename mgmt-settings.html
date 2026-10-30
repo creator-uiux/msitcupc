@@ -132,14 +132,40 @@ function render() {
   });
 
   /* operational settings */
+  // Weekday numbers match the backend: Monday is 0, Sunday is 6.
+  var WORKWEEK = [[0, 'Monday'], [1, 'Tuesday'], [2, 'Wednesday'], [3, 'Thursday'],
+                  [4, 'Friday'], [5, 'Saturday'], [6, 'Sunday']];
+  var workdays = Array.isArray(s.workdays) && s.workdays.length ? s.workdays : [0, 1, 2, 3, 4];
+  var holidays = Array.isArray(s.holidays) ? s.holidays : [];
+  var mode = (s.reminderMode === 'minutes') ? 'minutes' : 'business';
+
   document.getElementById('opSettings').innerHTML =
     '<div class="grid grid-form">' +
-    UI.field('Follow-up reminder interval (minutes)', UI.numberInput('reminderMinutes', s.reminderMinutes || 2, { min: 1, max: 1440 })) +
-    UI.field('First reminder after (business days)', UI.numberInput('reminderBusinessDays', s.reminderBusinessDays || 3, { min: 1, max: 60 })) +
+    UI.field('Reminder clock', UI.select('reminderMode', [['business', 'Working days'], ['minutes', 'Minutes']], mode, true)) +
+    UI.field('First reminder after (working days)', UI.numberInput('reminderBusinessDays', s.reminderBusinessDays || 3, { min: 1, max: 60 })) +
+    UI.field('Then repeat every (working days)', UI.numberInput('reminderRepeatDays', s.reminderRepeatDays || 7, { min: 1, max: 60 })) +
+    UI.field('Reminder interval (minutes)', UI.numberInput('reminderMinutes', s.reminderMinutes || 2, { min: 1, max: 1440 })) +
     (SIM
       ? UI.field('Simulation (demo intake)', UI.select('simulate', [['1', 'On'], ['0', 'Off']], s.simulate ? '1' : '0', true))
       : '<input type="hidden" name="simulate" value="' + (s.simulate ? '1' : '0') + '">') +
-    '</div><div class="form-actions">' +
+    '</div>' +
+    '<p class="card-sub mt">A reminder chases a Resolved record the office has not confirmed. The working-day clock counts only the days ticked below and skips the closed dates, so a reminder never lands on a rest day. The minute clock ignores the calendar and is what the demo runs on.</p>' +
+    '<div class="ref-cols mt-md">' +
+    '<div><div class="card-title mb-sm">Working week</div><ul class="policy-list">' +
+    WORKWEEK.map(function (w) {
+      return '<li><label class="row" for="wd_' + w[0] + '">' +
+        '<input type="checkbox" class="policy-check" id="wd_' + w[0] + '" data-workday="' + w[0] + '"' +
+        (workdays.indexOf(w[0]) > -1 ? ' checked' : '') + '>' +
+        '<span class="body">' + w[1] + '</span></label></li>';
+    }).join('') + '</ul></div>' +
+    '<div><div class="card-title mb-sm">Closed dates</div>' +
+    UI.field('Office holidays (YYYY-MM-DD, comma separated)',
+      UI.input('holidays', '2026-12-25, 2027-01-01', holidays.join(', '))) +
+    '<p class="card-sub">' +
+    (holidays.length ? holidays.length + ' date(s) on the calendar.'
+                      : 'Nothing entered, so only the rest days of the working week are skipped.') +
+    '</p></div></div>' +
+    '<div class="form-actions">' +
     '<button class="btn btn-primary" id="saveOp">Save settings</button></div>';
 
   /* policy: approval categories, priority matrix, authorized closure roles */
@@ -242,9 +268,18 @@ function render() {
   var so = document.getElementById('saveOp');
   if (so) so.onclick = function () {
     var simEl = document.querySelector('[name="simulate"]');
+    var days = [];
+    document.querySelectorAll('[data-workday]').forEach(function (el) {
+      if (el.checked) days.push(Number(el.dataset.workday));
+    });
+    var holEl = document.querySelector('[name="holidays"]');
     var r = window.Admin.saveSettings({
+      reminderMode: document.querySelector('[name="reminderMode"]').value,
       reminderMinutes: document.querySelector('[name="reminderMinutes"]').value,
       reminderBusinessDays: document.querySelector('[name="reminderBusinessDays"]').value,
+      reminderRepeatDays: document.querySelector('[name="reminderRepeatDays"]').value,
+      workdays: days,
+      holidays: (holEl ? holEl.value : '').split(/[\s,;]+/).filter(Boolean),
       simulate: simEl ? simEl.value === '1' : false
     });
     UI.toast(r.msg, r.ok ? 'ok' : 'err');

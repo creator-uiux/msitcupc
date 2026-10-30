@@ -53,6 +53,7 @@ def seed():
             {"reminderMinutes": 2, "reminderMode": "business", "tickMs": 9000,
              "simulate": False, "slaDays": 5, "reminderBusinessDays": 3,
              "reminderRepeatDays": 7, "timezone": "Asia/Manila",
+             "workdays": [0, 1, 2, 3, 4], "holidays": [],
              "maxUploadBytes": 10 * 1024 * 1024,
              "authorizedClosureRoles": ["coordinator"],
              "approvalCategories": [],

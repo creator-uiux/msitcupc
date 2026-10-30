@@ -246,15 +246,22 @@ DEFAULT_SETTINGS = {
     "reminderMode": "business",
     "reminderBusinessDays": 3,
     "reminderRepeatDays": 7,
+    # Assumption A5: the working week the reminder interval counts.  Monday to
+    # Friday (Python weekday numbers, so Monday is 0), no closed dates until the
+    # office enters its own holidays.
+    "workdays": [0, 1, 2, 3, 4],
+    "holidays": [],
     "tickMs": 9000,
     "simulate": False,
     "slaDays": 5,
     "timezone": "Asia/Manila",
     "maxUploadBytes": 10 * 1024 * 1024,
-    "authorizedClosureRoles": ["coordinator", "management"],
+    # These two mirror the seed and the engine's own guards: the System
+    # Administrator holds no ticket work (D14), and the matrix is keyed by the
+    # three impacts a coordinator can actually record.
+    "authorizedClosureRoles": ["coordinator"],
     "approvalCategories": [],
     "priorityMatrix": {
-        "critical": {"high": "critical", "medium": "critical", "low": "high"},
         "high": {"high": "critical", "medium": "high", "low": "medium"},
         "medium": {"high": "high", "medium": "medium", "low": "low"},
         "low": {"high": "medium", "medium": "low", "low": "low"},

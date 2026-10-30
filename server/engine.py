@@ -1314,6 +1314,67 @@ def _parse_ms(iso):
         return 0
 
 
+# The office is in Asia/Manila, which is UTC+8 with no daylight saving, so the
+# calendar date of an instant is a fixed shift rather than a zone lookup.
+MANILA_OFFSET_MS = 8 * 3600000
+# Weekday numbers follow Python's `date.weekday()`: Monday is 0, Sunday is 6.
+DEFAULT_WORKDAYS = (0, 1, 2, 3, 4)
+WEEKDAY_NAMES = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+                 "Saturday", "Sunday")
+DAY_MS = 86400000
+
+
+def _manila_day(ms):
+    """The Asia/Manila calendar date of an instant and its weekday (Monday 0)."""
+    from datetime import datetime, timezone
+    d = datetime.fromtimestamp((ms + MANILA_OFFSET_MS) / 1000, timezone.utc)
+    return d.strftime("%Y-%m-%d"), d.weekday()
+
+
+def working_days(d):
+    """Normalise a workweek setting to an ordered set of weekday numbers."""
+    return set(int(x) for x in (DEFAULT_WORKDAYS if d is None else d))
+
+
+def closed_days(h):
+    """Normalise a holiday list to a set of `YYYY-MM-DD` dates."""
+    return set(str(x).strip() for x in (h or []) if str(x).strip())
+
+
+def working_due_ms(base_ms, days, workdays=None, holidays=None):
+    """The instant `days` working days after the anchor, at the same clock time.
+
+    Assumption A4 counts the reminder interval in business days and A5 defines
+    them as Monday to Friday, so an interval that lands on a rest day or on a
+    closed date moves to the next working day rather than firing into an empty
+    office. The anchor itself moves first: a request answered on a Sunday starts
+    its count on Monday.
+    """
+    days = max(0, int(days or 0))
+    off = working_days(workdays)
+    closed = closed_days(holidays)
+
+    def next_working(ms):
+        # Seven hops cover a whole rest week; 400 covers a settings block that
+        # closes every date for a year, and then the interval is calendar based
+        # rather than never arriving.
+        for _ in range(400):
+            key, weekday = _manila_day(ms)
+            if weekday in off and key not in closed:
+                return ms
+            ms += DAY_MS
+        return None
+
+    ms = next_working(base_ms)
+    if ms is None:
+        return base_ms + days * DAY_MS
+    for _ in range(days):
+        ms = next_working(ms + DAY_MS)
+        if ms is None:
+            return base_ms + days * DAY_MS
+    return ms
+
+
 def world_tick(state):
     """One tick of the world clock (system workers).
 
@@ -1335,14 +1396,13 @@ def world_tick(state):
         base = _parse_ms(t.get("resolvedAt") or t["updatedAt"])
         st = _settings(state)
         mode = st.get("reminderMode", "minutes")
-        if mode == "business" and state["settings"].get("reminderMinutes", 2) >= 1:
-            from datetime import timedelta
+        if mode == "business" and st.get("reminderMinutes", 2) >= 1:
             sent = len(t.get("reminders", []))
             if sent == 0:
                 every_days = int(st.get("reminderBusinessDays", 3))
             else:
                 every_days = int(st.get("reminderRepeatDays", 7))
-            due = base + every_days * 24 * 60 * 60 * 1000
+            due = working_due_ms(base, every_days, st.get("workdays"), st.get("holidays"))
         else:
             every = max(int(float(st.get("reminderMinutes", 2)) * 60000), 1)
             due = base + (len(t.get("reminders", [])) + 1) * every
@@ -1363,10 +1423,10 @@ def world_tick(state):
             continue
         base = _parse_ms(j.get("resolvedAt") or j.get("updatedAt") or j.get("createdAt"))
         st = _settings(state)
-        if st.get("reminderMode", "minutes") == "business" and state["settings"].get("reminderMinutes", 2) >= 1:
+        if st.get("reminderMode", "minutes") == "business" and st.get("reminderMinutes", 2) >= 1:
             sent = len(j.get("reminders", []))
             every_days = int(st.get("reminderBusinessDays", 3)) if sent == 0 else int(st.get("reminderRepeatDays", 7))
-            due = base + every_days * 24 * 60 * 60 * 1000
+            due = working_due_ms(base, every_days, st.get("workdays"), st.get("holidays"))
         else:
             every = max(int(float(st.get("reminderMinutes", 2)) * 60000), 1)
             due = base + (len(j.get("reminders", [])) + 1) * every
@@ -2449,6 +2509,44 @@ def save_settings(state, role, d):
                 return {"ok": False, "msg": "%s must be 1-60 days." % label}
             if settings.get(key) != val:
                 settings[key] = val; changed.append("%s = %d" % (label, val))
+    if "workdays" in d:
+        val = d["workdays"]
+        if not isinstance(val, (list, tuple)):
+            return {"ok": False, "msg": "The workweek must be a list of weekdays."}
+        try:
+            nums = sorted(set(int(x) for x in val))
+        except (TypeError, ValueError):
+            return {"ok": False, "msg": "The workweek takes weekday numbers 0 to 6 (Monday is 0)."}
+        if not nums:
+            return {"ok": False, "msg": "The workweek needs at least one working day."}
+        if [x for x in nums if x < 0 or x > 6]:
+            return {"ok": False, "msg": "The workweek takes weekday numbers 0 to 6 (Monday is 0)."}
+        if settings.get("workdays") != nums:
+            settings["workdays"] = nums
+            changed.append("workweek = %s" % ", ".join(WEEKDAY_NAMES[i] for i in nums))
+    if "holidays" in d:
+        from datetime import datetime as _day_cls
+        val = d["holidays"]
+        if not isinstance(val, (list, tuple)):
+            return {"ok": False, "msg": "The holiday calendar must be a list of dates."}
+        dates = []
+        for h in val:
+            s = str(h).strip()
+            if not s:
+                continue
+            if not re.match(r"^\d{4}-\d{2}-\d{2}$", s):
+                return {"ok": False, "msg": "A holiday date must read YYYY-MM-DD, not %s." % s}
+            try:
+                _day_cls.strptime(s, "%Y-%m-%d")
+            except ValueError:
+                return {"ok": False, "msg": "%s is not a real date." % s}
+            dates.append(s)
+        if len(dates) > 400:
+            return {"ok": False, "msg": "The holiday calendar holds at most 400 dates."}
+        dates = sorted(set(dates))
+        if settings.get("holidays") != dates:
+            settings["holidays"] = dates
+            changed.append("holiday calendar = %d closed date(s)" % len(dates))
     if "authorizedClosureRoles" in d:
         val = d["authorizedClosureRoles"]
         if not isinstance(val, (list, tuple)) or not val:

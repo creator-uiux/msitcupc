@@ -16,8 +16,8 @@ frequencies) is likewise editable on `settings.html`.
 | A1 | Default service level window used when the coordinator sets no target date | 5 calendar days from intake | `settings.slaDays`, `query.DEFAULT_SLA_DAYS` |
 | A2 | Priority is derived from an impact by urgency matrix, but the coordinator may override | matrix default, override allowed | `settings.priorityMatrix` |
 | A3 | Certain categories require coordinator or office approval before work starts | disabled per category | `settings.approvalCategories` |
-| A4 | Confirmation reminder cadence while a ticket waits at Resolved | 3 business days, repeat weekly | `settings.reminderBusinessDays`, `settings.reminderRepeatDays` |
-| A5 | Business day definition for reminders and targets | Monday to Friday, no holiday calendar | `settings.workdays` |
+| A4 | Confirmation reminder cadence while a ticket waits at Resolved | 3 working days, then every 7 | `settings.reminderMode`, `settings.reminderBusinessDays`, `settings.reminderRepeatDays` |
+| A5 | Working day definition for the reminder interval | Monday to Friday, no closed dates; an interval that lands on a rest day or a closed date moves to the next working day | `settings.workdays` (Monday is 0), `settings.holidays` |
 | A6 | Time zone for all displayed and audited times | Asia/Manila (UTC+8) | `settings.timezone` |
 | A7 | Maintenance occurrence identity | schedule id plus scheduled timestamp | `jobs.occurrence` |
 | A8 | Recurrence next due calculation | previous due date plus configured frequency days | `engine.frequency_days` |
@@ -58,7 +58,7 @@ frequencies) is likewise editable on `settings.html`.
 
 ## Open items (not assumed, deferred)
 
-- Holiday calendar for business day maths is out of scope for this iteration
-  (see `KNOWN_LIMITATIONS.md`).
+- The service level window is calendar days, not working days (A1). A target the
+  coordinator types always wins over it.
 - Real outbound e-mail or SMS delivery depends on server credentials supplied at
   deployment, not on this code.

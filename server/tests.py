@@ -351,6 +351,79 @@ def test_world_tick():
     check("notification added", len(st["notifications"]) > n_before)
 
 
+def test_working_day_reminders():
+    """Assumption A4/A5: the interval counts working days, not calendar days."""
+    from datetime import datetime, timedelta, timezone
+    DAY = 86400000
+    manila = timezone(timedelta(hours=8))
+    st = fresh()
+    check("the shipped workweek is Monday to Friday",
+          st["settings"]["workdays"] == [0, 1, 2, 3, 4], st["settings"].get("workdays"))
+    check("the shipped calendar closes no dates",
+          st["settings"]["holidays"] == [], st["settings"].get("holidays"))
+
+    def lands_on(ms):
+        return engine._manila_day(ms)[0]
+
+    # 2026-10-16 is a Friday, 2026-10-18 the Sunday after it.
+    fri = datetime(2026, 10, 16, 9, 0, tzinfo=manila).timestamp() * 1000
+    check("three working days from Friday is Wednesday",
+          lands_on(engine.working_due_ms(fri, 3)) == "2026-10-21",
+          lands_on(engine.working_due_ms(fri, 3)))
+    check("a Sunday anchor starts its count on Monday",
+          lands_on(engine.working_due_ms(fri + 2 * DAY, 1)) == "2026-10-20",
+          lands_on(engine.working_due_ms(fri + 2 * DAY, 1)))
+    check("a closed date is skipped",
+          lands_on(engine.working_due_ms(fri, 3, [0, 1, 2, 3, 4], ["2026-10-19"])) == "2026-10-22",
+          lands_on(engine.working_due_ms(fri, 3, [0, 1, 2, 3, 4], ["2026-10-19"])))
+    check("a Saturday-only week counts Saturdays",
+          lands_on(engine.working_due_ms(fri, 1, [5], [])) == "2026-10-24",
+          lands_on(engine.working_due_ms(fri, 1, [5], [])))
+    check("the reminder keeps the clock time of the anchor",
+          engine.working_due_ms(fri, 3) % DAY == fri % DAY)
+
+    r = engine.call(st, "management", "saveSettings", [{"workdays": [6, 0, 1]}])
+    check("workweek sorts and dedupes", r.get("ok") and st["settings"]["workdays"] == [0, 1, 6], r)
+    check("workweek change is audited",
+          any("workweek = Monday, Tuesday, Sunday" in e.get("text", "") for e in st["audit"][-6:]),
+          st["audit"][-3:])
+    for bad, label in (([-1], "a weekday before Monday"), ([7], "a weekday after Sunday"),
+                       ([], "an empty workweek"), ("Mon", "workdays that are not a list"),
+                       (["x"], "workdays that are not numbers")):
+        r = engine.call(st, "management", "saveSettings", [{"workdays": bad}])
+        check("workweek rejects %s" % label, not r.get("ok"), r)
+
+    r = engine.call(st, "management", "saveSettings",
+                    [{"holidays": ["2026-12-25", "2026-12-25", "2027-01-01"]}])
+    check("holidays dedupe and sort",
+          r.get("ok") and st["settings"]["holidays"] == ["2026-12-25", "2027-01-01"], r)
+    for bad, label in ((["25/12/2026"], "a date that does not read YYYY-MM-DD"),
+                       (["2026-02-30"], "a date that does not exist"),
+                       ("2026-12-25", "holidays that are not a list")):
+        r = engine.call(st, "management", "saveSettings", [{"holidays": bad}])
+        check("holiday calendar rejects %s" % label, not r.get("ok"), r)
+    r = engine.call(st, "coordinator", "saveSettings", [{"workdays": [1]}])
+    check("only the System Administrator edits the workweek", not r.get("ok"), r)
+
+    # The world clock waits for the working days, then sends one reminder per tick
+    st2 = fresh()
+    st2["settings"].update({"reminderMode": "business", "reminderMinutes": 2,
+                            "reminderBusinessDays": 1, "workdays": [0], "holidays": []})
+    t2 = engine.get_ticket(st2, "IT-2026-000141")
+    t2["reminders"] = []
+    t2["resolvedAt"] = engine.now_iso()
+    engine.world_tick(st2)
+    check("a business interval does not fire on the rest days", not t2["reminders"], t2["reminders"])
+    t2["resolvedAt"] = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat().replace("+00:00", "Z")
+    engine.world_tick(st2)
+    check("the interval fires once the working days have passed",
+          len(t2["reminders"]) == 1, t2["reminders"])
+    st2["settings"]["reminderMode"] = "minutes"
+    st2["settings"]["reminderMinutes"] = 0.0001
+    engine.world_tick(st2)
+    check("the minute clock ignores the calendar", len(t2["reminders"]) == 2, t2["reminders"])
+
+
 # ----------------------------------------------------------------- persistence
 def test_persistence(tmp):
     path = os.path.join(tmp, "persist.sqlite3")
@@ -1325,6 +1398,14 @@ def test_seed_shape():
     check("asset ids are unique", len(set(x["id"] for x in st["assets"])) == len(st["assets"]))
     check("asset tags are unique", len(set(x["tag"] for x in st["assets"])) == len(st["assets"]))
 
+    # The defaults an empty database starts from must clear the same guards the
+    # settings screen uses; a no-op answer also proves they agree with the seed.
+    probe = {k: database.DEFAULT_SETTINGS[k] for k in
+             ("reminderMode", "reminderMinutes", "reminderBusinessDays", "reminderRepeatDays",
+              "workdays", "holidays", "authorizedClosureRoles", "priorityMatrix")}
+    r = engine.call(fresh(), "management", "saveSettings", [probe])
+    check("the shipped defaults pass the settings guards", r.get("msg") == "Nothing to update.", r)
+
 
 # ----------------------------------------------------------------- oidc
 def _is_probable_prime(n, rounds=12):
@@ -2241,6 +2322,7 @@ def main():
     test_engine_maintenance()
     test_schedule_generation()
     test_world_tick()
+    test_working_day_reminders()
     test_tenancy()
     test_requester_scope_includes_own_requests()
     test_technician_notification_scope()

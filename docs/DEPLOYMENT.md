@@ -276,8 +276,10 @@ Honest limits, restated from `docs/KNOWN_LIMITATIONS.md` in operational terms.
 - **Attachments are not scanned.** Type and size are validated on the trusted
   layer, the bytes are stored in the database and served only through the
   authorised download route, and nothing looks inside them for malware.
-- **No holiday calendar.** Business-day maths counts Monday to Friday, so a
-  deadline that falls across a break is early rather than late.
+- **The holiday calendar is typed, not imported.** The reminder interval skips
+  the working week and the closed dates entered on `settings.html`, so a date
+  nobody entered counts as a working day. Nothing reads an institutional
+  calendar, and the service level window stays in calendar days.
 - **No monitoring or alerting.** `GET /api/health` is the probe to hang a check
   on; the platform itself does not page anyone.
 - **E-mail and SMS are configured, not proven from here.** The channels run, the

@@ -51,6 +51,7 @@
       settings: {
         reminderMinutes: 2, reminderMode: 'business', tickMs: 9000,
         reminderBusinessDays: 3, reminderRepeatDays: 7, timezone: 'Asia/Manila',
+        workdays: [0, 1, 2, 3, 4], holidays: [],
         simulate: true, slaDays: 5, maxUploadBytes: 10 * 1024 * 1024,
         authorizedClosureRoles: ['coordinator'],
         approvalCategories: [],
@@ -430,6 +431,9 @@
     if (!Array.isArray(d.settings.sources)) d.settings.sources = ['telephone', 'email', 'walk-in', 'on-site', 'online portal'];
     if (!Array.isArray(d.settings.priorities)) d.settings.priorities = [['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['critical', 'Critical']];
     if (!Array.isArray(d.settings.frequencies)) d.settings.frequencies = [['daily', 'Daily', 1], ['weekly', 'Weekly', 7], ['biweekly', 'Every 2 weeks', 14], ['monthly', 'Monthly', 30], ['quarterly', 'Quarterly', 91], ['semiannual', 'Every 6 months', 182], ['annual', 'Yearly', 365], ['custom', 'Custom', 30]];
+    // The working week the reminder interval counts (assumption A5).  Monday is 0.
+    if (!Array.isArray(d.settings.workdays) || !d.settings.workdays.length) d.settings.workdays = [0, 1, 2, 3, 4];
+    if (!Array.isArray(d.settings.holidays)) d.settings.holidays = [];
     var maxAudit = 0;
     d.audit.forEach(function (a) { if (typeof a.id === 'number' && a.id > maxAudit) maxAudit = a.id; });
     d.audit.forEach(function (a) { if (typeof a.id !== 'number') a.id = ++maxAudit; });

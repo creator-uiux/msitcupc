@@ -1371,6 +1371,24 @@ tests.push(async function roleScoping() {
   ok($$('#policySettings [data-approval]').length > 0, 'the approval categories are configurable');
   ok($$('#policySettings [name^="pm_"]').length === 9, 'the impact and urgency matrix is configurable');
   ok($$('#policySettings [data-closure]').length > 0, 'the authorized closure roles are configurable');
+
+  /* the reminder clock is configured in the open, not in a config file */
+  ok($$('#opSettings [data-workday]').length === 7, 'every weekday is offered as a working day');
+  ok($('#opSettings [name="holidays"]') !== null, 'the closed dates are editable');
+  ok($('#opSettings [name="reminderRepeatDays"]') !== null, 'the repeat interval is configurable');
+  ok($('#opSettings [name="reminderMode"]') !== null, 'the reminder clock is selectable');
+  $('[data-workday="6"]').checked = true;
+  $('[name="holidays"]').value = '2026-12-25, 2027-01-01';
+  $('#saveOp').click();
+  ok(ps.w.Store.db.settings.workdays.indexOf(6) > -1, 'the workweek keeps the day just ticked');
+  ok(ps.w.Store.db.settings.holidays.join(',') === '2026-12-25,2027-01-01',
+     'both closed dates are stored');
+  ok($('#opSettings').textContent.indexOf('2 date(s) on the calendar') > -1,
+     'the screen reports the calendar it saved');
+  $('[name="holidays"]').value = '25/12/2026';
+  $('#saveOp').click();
+  ok(ps.w.Store.db.settings.holidays.length === 2,
+     'a date that does not read YYYY-MM-DD is refused');
   asRole(ps, 'coordinator');
   ok($('#accessPanel') !== null, 'the coordinator is blocked from the system settings');
   close(ps);

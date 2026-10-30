@@ -20,6 +20,60 @@
 
   function emit() { onEvent.forEach(function (f) { try { f(); } catch (e) { console.error(e); } }); }
 
+  /* Assumption A4 counts the reminder interval in business days and A5 defines
+     them as Monday to Friday.  Ports server/engine.py `working_due_ms()`, so the
+     browser engine and the trusted backend put a reminder on the same day.
+     Manila keeps UTC+8 all year, so a calendar date is a fixed shift. */
+  var DAY_MS = 864e5, MANILA_OFFSET_MS = 8 * 3600000;
+
+  function manilaParts(ms) {
+    var d = new Date(ms + MANILA_OFFSET_MS);
+    return {
+      key: d.toISOString().slice(0, 10),
+      weekday: (d.getUTCDay() + 6) % 7 // Monday 0, same numbering as the backend
+    };
+  }
+
+  function workingDue(base, days, workdays, holidays) {
+    var count = Math.max(0, parseInt(days, 10) || 0);
+    var off = (workdays && workdays.length ? workdays : [0, 1, 2, 3, 4]).map(Number);
+    var closed = {};
+    (holidays || []).forEach(function (h) { if (String(h).trim()) closed[String(h).trim()] = true; });
+
+    function nextWorking(ms) {
+      // 400 hops cover a calendar that closes every date for over a year; past
+      // that the interval falls back to calendar days rather than never arriving.
+      for (var i = 0; i < 400; i++) {
+        var p = manilaParts(ms);
+        if (off.indexOf(p.weekday) !== -1 && !closed[p.key]) return ms;
+        ms += DAY_MS;
+      }
+      return null;
+    }
+
+    var ms = nextWorking(base);
+    if (ms === null) return base + count * DAY_MS;
+    for (var n = 0; n < count; n++) {
+      ms = nextWorking(ms + DAY_MS);
+      if (ms === null) return base + count * DAY_MS;
+    }
+    return ms;
+  }
+
+  /* When the next reminder for a Resolved record is due, on the same terms the
+     backend uses: business days when the mode says so, plain minutes otherwise. */
+  function reminderDueMs(st, base, sentCount) {
+    var minutes = (st.reminderMinutes === undefined || st.reminderMinutes === null)
+      ? 2 : parseInt(st.reminderMinutes, 10);
+    if (st.reminderMode === 'business' && minutes >= 1) {
+      var everyDays = sentCount === 0
+        ? parseInt(st.reminderBusinessDays === undefined ? 3 : st.reminderBusinessDays, 10)
+        : parseInt(st.reminderRepeatDays === undefined ? 7 : st.reminderRepeatDays, 10);
+      return workingDue(base, everyDays, st.workdays, st.holidays);
+    }
+    return base + Math.max((minutes || 0) * 60000, 1) * (sentCount + 1);
+  }
+
   /* One tick of the world clock. */
   function tick() {
     var events = [];
@@ -38,8 +92,7 @@
       db.tickets.forEach(function (t) {
         if (t.status !== 'resolved' || (t.confirmation.state !== 'pending' && t.confirmation.state !== 'no_response')) return;
         var base = new Date(t.resolvedAt || t.updatedAt).getTime();
-        var every = db.settings.reminderMinutes * 60000;
-        var due = base + (t.reminders.length + 1) * every;
+        var due = reminderDueMs(db.settings, base, (t.reminders || []).length);
         if (now >= due) {
           t.reminders.push(new Date(Date.now()).toISOString());
           t.history.push({
@@ -75,10 +128,9 @@
       db.jobs.forEach(function (j) {
         if (j.status !== 'resolved' || !j.confirmation) return;
         if (j.confirmation.state !== 'pending' && j.confirmation.state !== 'no_response') return;
-        var base = new Date(j.resolvedAt || j.createdAt || Date.now()).getTime();
-        var every = db.settings.reminderMinutes * 60000;
+        var base = new Date(j.resolvedAt || j.updatedAt || j.createdAt).getTime();
         var reminders = j.reminders || (j.reminders = []);
-        if (now < base + (reminders.length + 1) * every) return;
+        if (now < reminderDueMs(db.settings, base, reminders.length)) return;
         reminders.push(new Date(Date.now()).toISOString());
         db.seq.notif++;
         db.notifications.unshift({
