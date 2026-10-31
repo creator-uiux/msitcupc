@@ -36,7 +36,7 @@
 
       <!-- filters -->
       <div class="card no-print">
-        <div class="filters">
+        <div class="filters filters-reports">
           <div class="field"><label for="fOffice">Office</label>
             <select id="fOffice"><option value="">All offices</option></select></div>
           <div class="field"><label for="fFrom">Date from</label><input type="date" id="fFrom" value=""></div>
@@ -281,7 +281,7 @@ function render() {
     var days = hrs == null ? 'ongoing' : (hrs / 24).toFixed(1) + 'd';
     return '<tr style="--row-index:' + i + '"' + (t.status === 'cancelled' ? ' class="row-cancelled"' : '') + '>' +
       '<td class="td-main" data-label="Ticket"><div class="t-id">' + UI.esc(t.id) + '</div>' +
-      '<div class="t-title">' + UI.esc(t.issue.slice(0, 44)) + '</div>' +
+      '<div class="t-title">' + UI.esc(UI.cut(t.issue, 44)) + '</div>' +
       '<div class="t-sub">' + UI.esc(t.category) + (t.linkedTo ? ' · linked ' + UI.esc(t.linkedTo) : '') + '</div></td>' +
       '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div><div class="t-sub">' + UI.esc(t.requester) + '</div></td>' +
       '<td data-label="Status">' + UI.badge(t.status) + '</td>' +

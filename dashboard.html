@@ -612,7 +612,7 @@ function render() {
   document.getElementById('queueBody').innerHTML = pg.items.map(function (t, i) {
     return '<tr data-href="ticket.html?id=' + encodeURIComponent(t.id) + '" style="--row-index:' + i + '"' + (t.status === 'cancelled' ? ' class="row-cancelled"' : '') + '>' +
       '<td class="td-main" data-label="Ticket"><div class="t-id">' + UI.esc(t.id) + '</div>' +
-      '<div class="t-title">' + UI.esc(t.issue.slice(0, 58)) + (t.issue.length > 58 ? '…' : '') + '</div>' +
+      '<div class="t-title">' + UI.esc(UI.cut(t.issue, 58)) + '</div>' +
       '<div class="t-sub">' + UI.esc(t.category) + (t.asset ? ' · Asset ' + UI.esc(t.asset) : '') + (t.linkedTo ? ' · linked to ' + UI.esc(t.linkedTo) : '') + '</div></td>' +
       '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div><div class="t-sub">' + UI.esc(t.requester) + '</div></td>' +
       '<td data-label="Status">' + UI.badge(t.status) + UI.waitingOn(t.status) + '</td>' +
@@ -646,7 +646,7 @@ function render() {
     return String(a.dueDate).localeCompare(String(b.dueDate));
   }).slice(0, 4);
   var jobBySched = {};
-  jobs.forEach(function (j) { if (j.status !== 'closed') jobBySched[j.scheduleId] = j; });
+  jobs.forEach(function (j) { if (j.status !== 'closed' && j.status !== 'cancelled') jobBySched[j.scheduleId] = j; });
   document.getElementById('maintDue').innerHTML = soon.map(function (s) {
     var overdue = new Date(s.dueDate).getTime() < UI.nowMs();
     var j = jobBySched[s.id];

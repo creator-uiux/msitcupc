@@ -209,6 +209,11 @@
       }
     });
 
+    /* A tick can generate a job or change a queue, so the sidebar counts and
+       the bell are read again on every tick rather than on navigation only. */
+    U.renderBell();
+    U.renderPills();
+
     if (events.length) {
       events.forEach(function (e) { U.toast(e, 'live'); });
       emit();

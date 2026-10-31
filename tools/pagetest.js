@@ -2246,6 +2246,49 @@ tests.push(async function popupsSwitch() {
   close(p);
 });
 
+/* The rail pill and the bell are the same count.  The pill used to be printed
+   at zero on load and never written again, so the two disagreed as soon as a
+   notification arrived. */
+tests.push(async function sidebarNotifications() {
+  var p = await open(BASE + 'dashboard.html');
+  asRole(p, 'coordinator');
+  ok(p.errors.length === 0, 'dashboard loads for the rail count test');
+  var unread = p.w.Store.db.notifications.filter(function (n) {
+    return (n.role === 'coordinator' || n.role === 'any') && !p.w.UI.notifRead(n);
+  }).length;
+  var want = unread > 9 ? '9+' : String(unread);
+  var pill = $('#pillNotif');
+  ok(pill !== null, 'the rail carries the notification pill');
+  ok(unread > 0, 'the seeded coordinator inbox has something unread (' + unread + ')');
+  ok($('.bellCount').textContent.trim() === want, 'the bell states the unread count');
+  ok(pill && pill.textContent.trim() === want, 'the rail pill states the same count (' + (pill ? pill.textContent.trim() : 'no pill') + ')');
+  /* the count is rewritten by the render that paints the bell, not only on load */
+  if (pill) pill.textContent = 'stale';
+  p.w.UI.renderBell();
+  ok(pill && pill.textContent.trim() === want, 'the pill follows every bell render');
+  /* an empty inbox drops the pill the way the bell drops its zero */
+  p.w.Store.update(function (db) {
+    db.notifications.forEach(function (n) { n.read = true; n.readBy = null; });
+  });
+  p.w.UI.renderBell();
+  ok(pill && pill.classList.contains('is-zero'), 'an empty inbox hides the rail pill');
+  ok($('.bellCount').style.display === 'none', 'the bell hides its zero too');
+  close(p);
+});
+
+/* Priority is a three-slot gauge.  The old glyph was three 6px stroke stubs
+   at 12px, which rendered as a row of dots. */
+tests.push(async function priorityGlyphShape() {
+  var p = await open(BASE + 'dashboard.html');
+  var low = p.w.UI.icon('prioLow');
+  var high = p.w.UI.icon('prioHigh');
+  ok((low.match(/<rect/g) || []).length === 3, 'a priority glyph has three bar slots');
+  ok(low.indexOf('fill="currentColor"') > -1, 'the bars are filled, not stroked');
+  ok(low.indexOf('opacity=".26"') > -1, 'low dims the taller slots');
+  ok(high.indexOf('opacity') === -1, 'high fills every slot');
+  close(p);
+});
+
 /* Screen sizes must not add or remove a feature. The navigation set is the
    same at 390, 768 and 1440 px, and every optional extra is absent at each
    width. The hidden extras also have no backend endpoint to call. */

@@ -137,7 +137,7 @@ function render() {
   document.getElementById('wBody').innerHTML = pg.items.map(function (t, i) {
     return '<tr data-pick="' + t.id + '"' + (t.id === selTicket ? ' class="tr-sel"' : '') + ' style="--row-index:' + i + '">' +
       '<td class="td-main" data-label="Ticket"><div class="t-id">' + UI.esc(t.id) + '</div>' +
-      '<div class="t-title">' + UI.esc(t.issue.slice(0, 46)) + '</div>' +
+      '<div class="t-title">' + UI.esc(UI.cut(t.issue, 46)) + '</div>' +
       '<div class="t-sub">' + UI.esc(t.category) + '</div></td>' +
       '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div></td>' +
       '<td data-label="Status">' + UI.badge(t.status) + '</td>' +
@@ -259,7 +259,7 @@ function renderToday(tickets, jobs) {
       var late = String(t.target).slice(0, 10) < today;
       return '<li><span class="ico">' + UI.icon(late ? 'alert' : 'clock') + '</span>' +
         '<div class="body"><strong><a class="t-id" href="technician.html?t=' + encodeURIComponent(t.id) + '">' + UI.esc(t.id) + '</a> · ' + UI.esc(t.office) + '</strong>' +
-        '<span>' + UI.esc(t.issue.slice(0, 58)) + '</span></div>' +
+        '<span>' + UI.esc(UI.cut(t.issue, 58)) + '</span></div>' +
         '<span class="when">' + (late ? '<span class="chip chip-warn">Overdue</span>' : '<span class="chip">Due today</span>') + '</span></li>';
     }).join('') + '</ul>'
     : '<div class="card-pad"><span class="hint">Nothing has reached its target date.</span></div>';

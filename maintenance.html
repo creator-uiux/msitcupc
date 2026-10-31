@@ -391,7 +391,7 @@ function render() {
     ? db.jobs.filter(function (j) { return j.technician === myName; })
     : db.jobs;
   var due7 = schedules.filter(function (s) { return s.active && new Date(s.dueDate) <= new Date(Date.now() + 7 * 864e5); });
-  var openJobs = jobs.filter(function (j) { return j.status !== 'closed'; });
+  var openJobs = jobs.filter(function (j) { return j.status !== 'closed' && j.status !== 'cancelled'; });
   var awaitConf = jobs.filter(function (j) { return j.status === 'resolved' && j.confirmation && j.confirmation.state === 'pending'; });
 
   document.getElementById('mKpi').innerHTML =
@@ -405,7 +405,7 @@ function render() {
   var schedPg = UI.paginate(allSchedules, schedPage, SCHED_PER_PAGE);
   document.getElementById('sBody').innerHTML = schedPg.items.map(function (s, i) {
     var overdue = new Date(s.dueDate).getTime() < UI.nowMs();
-    var job = db.jobs.filter(function (j) { return j.scheduleId === s.id && j.status !== 'closed'; })[0];
+    var job = db.jobs.filter(function (j) { return j.scheduleId === s.id && j.status !== 'closed' && j.status !== 'cancelled'; })[0];
     return '<tr style="--row-index:' + i + '">' +
       '<td class="td-main" data-label="Schedule"><div class="t-id">' + UI.esc(s.id) + '</div>' +
       '<div class="t-sub">' + UI.esc(s.category) + ' · ' + s.checklist.length + ' checklist item(s)</div>' +
@@ -749,7 +749,7 @@ document.getElementById('btnCheck').addEventListener('click', function () {
   if (!ev.length) ev = [{ kind: 'wait', msg: 'All schedules checked. Nothing due at this moment.' }];
   ev.forEach(function (e) { e.at = Store.NOW(); checkLog.unshift(e); });
   UI.toast((res && res.msg) ? res.msg : ('Schedule check finished: ' + ev.length + ' result(s).'), 'ok');
-  UI.renderBell(); render();
+  UI.renderBell(); UI.renderPills(); render();
 });
 document.getElementById('clearLog').addEventListener('click', function () { checkLog = []; render(); });
 

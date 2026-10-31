@@ -10,6 +10,16 @@
     });
   }
   function attr(s) { return esc(s); }
+  /* A shortened title ends in an ellipsis and breaks between words, so it
+     reads as shortened instead of as a typo. Callers still escape the result. */
+  function cut(s, max) {
+    var t = String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+    if (t.length <= max) return t;
+    var head = t.slice(0, max + 1);
+    var space = head.lastIndexOf(' ');
+    head = space > max * 0.6 ? head.slice(0, space) : t.slice(0, max);
+    return head.replace(/[\s,.;:-]+$/, '') + '…';
+  }
 
   /* The registry lives in features.json and its generated mirror. A page that
      does not load the mirror (the frozen sign-in page) reads every flag as
@@ -137,7 +147,7 @@
       '<span class="wo-top"><span class="wo-id">' + esc(t.id) + '</span>' +
       '<span class="wo-cat">' + icon(categoryIcon(t.category)) +
       '<span class="wo-cat-name">' + esc(t.category || '') + '</span></span></span>' +
-      '<span class="wo-title">' + esc(subject.slice(0, 96)) + (subject.length > 96 ? '…' : '') + '</span>' +
+      '<span class="wo-title">' + esc(cut(subject, 96)) + '</span>' +
       '<span class="wo-office">' + icon('building') + esc(t.office || '') +
       (t.requester ? ' · ' + esc(t.requester) : '') + '</span>' +
       '<span class="wo-foot">' + badge(t.status) +
@@ -1012,9 +1022,9 @@
     archive: '<rect x="2.5" y="4" width="19" height="4.5" rx="1.5"/><path d="M4.5 8.5V19a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8.5"/><path d="M10 12.5h4"/>',
     server: '<rect x="2.5" y="3" width="19" height="7" rx="2"/><rect x="2.5" y="14" width="19" height="7" rx="2"/><path d="M6 6.5h.01M6 17.5h.01"/>',
     wifiOff: '<path d="m2 2 20 20"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M5 13a10 10 0 0 1 3.5-2.3"/><path d="M2 9a15 15 0 0 1 5-3.2"/><path d="M12.5 6.5A15 15 0 0 1 22 9"/><path d="M10.5 20.5a2 2 0 0 1 3 0"/><path d="M12 20h.01"/>',
-    prioLow: '<path d="M5 19v-3"/><path d="M12 19v-3"/><path d="M19 19v-3"/>',
-    prioMed: '<path d="M5 19v-3"/><path d="M12 19v-6"/><path d="M19 19v-3"/>',
-    prioHigh: '<path d="M5 19v-3"/><path d="M12 19v-6"/><path d="M19 19v-9"/>'
+    prioLow: '<rect x="3" y="14.5" width="4.6" height="5.5" rx="1" fill="currentColor" stroke="none"/><rect x="9.7" y="10.5" width="4.6" height="9.5" rx="1" fill="currentColor" stroke="none" opacity=".26"/><rect x="16.4" y="6.5" width="4.6" height="13.5" rx="1" fill="currentColor" stroke="none" opacity=".26"/>',
+    prioMed: '<rect x="3" y="14.5" width="4.6" height="5.5" rx="1" fill="currentColor" stroke="none"/><rect x="9.7" y="10.5" width="4.6" height="9.5" rx="1" fill="currentColor" stroke="none"/><rect x="16.4" y="6.5" width="4.6" height="13.5" rx="1" fill="currentColor" stroke="none" opacity=".26"/>',
+    prioHigh: '<rect x="3" y="14.5" width="4.6" height="5.5" rx="1" fill="currentColor" stroke="none"/><rect x="9.7" y="10.5" width="4.6" height="9.5" rx="1" fill="currentColor" stroke="none"/><rect x="16.4" y="6.5" width="4.6" height="13.5" rx="1" fill="currentColor" stroke="none"/>'
   };
   function icon(name, cls) {
     var body = ICONS[name];
@@ -1456,7 +1466,7 @@
       }).sort(function (a, b) {
         return new Date(a.dueDate || 0).getTime() - new Date(b.dueDate || 0).getTime();
       }).slice(0, 4).map(function (s) {
-        var job = sc.jobs.filter(function (j) { return j.scheduleId === s.id && j.status !== 'closed'; })[0];
+        var job = sc.jobs.filter(function (j) { return j.scheduleId === s.id && j.status !== 'closed' && j.status !== 'cancelled'; })[0];
         return {
           kind: 'Schedule', label: s.id + ' · ' + s.category,
           meta: s.office + ' · due ' + dateOnly(s.dueDate),
@@ -1809,6 +1819,9 @@
     bindChrome();
     bindPaletteKeys();
     activeNav();
+    /* renderSide rebuilds the rail with a zero pill, so the count is read
+       again here or a role switch would leave the rail at zero. */
+    renderBell();
     renderPills();
     guardPage();
   }
@@ -1882,6 +1895,10 @@
         : '<li class="notif-item muted">No notifications for your role yet.</li>';
     });
     document.querySelectorAll('.bellWrap').forEach(function (w) { w.classList.toggle('has-unread', unread > 0); });
+    document.querySelectorAll('#pillNotif').forEach(function (el) {
+      el.textContent = unread > 9 ? '9+' : String(unread);
+      el.classList.toggle('is-zero', unread === 0);
+    });
   }
   function kindIcon(k) {
     return { intake: UI.icon('inbox'), assign: UI.icon('wrench'), confirm: UI.icon('checkCircle'), remind: UI.icon('clock'), cancel: UI.icon('ban'), dep: UI.icon('pause'), job: UI.icon('toolbox'), sched: UI.icon('cal'), test: UI.icon('flask'), comment: UI.icon('message'), attachment: UI.icon('paperclip') }[k] || UI.icon('bell');
@@ -2246,7 +2263,7 @@
   }
 
   window.UI = {
-    esc: esc, attr: attr, feature: feature, badge: badge, prio: prio, sourceLabel: sourceLabel, timeAgo: timeAgo, clock: clock, dateOnly: dateOnly,
+    esc: esc, attr: attr, cut: cut, feature: feature, badge: badge, prio: prio, sourceLabel: sourceLabel, timeAgo: timeAgo, clock: clock, dateOnly: dateOnly,
     workCard: workCard, categoryIcon: categoryIcon, sparkline: sparkline, gauge: gauge,
     openPalette: openPalette, closePalette: closePalette, paletteResults: cmCommandResults,
     toast: toast, openModal: openModal, closeModal: closeModal, field: field, input: input,

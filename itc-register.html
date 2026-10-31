@@ -217,7 +217,7 @@ function render() {
     var st = e._status || [e.status, 'b-submitted'];
     return '<tr style="--row-index:' + i + '">' +
       '<td class="td-main" data-label="Record"><a class="t-id" href="' + e.href + '">' + UI.esc(e.id) + '</a>' +
-      '<div class="t-title">' + UI.esc(String(e.title || '').slice(0, 60)) + '</div>' +
+      '<div class="t-title">' + UI.esc(UI.cut(e.title || '', 60)) + '</div>' +
       '<div class="t-sub">' + UI.esc(e.category || '') + (e.asset ? ' · ' + UI.esc(e.asset) : '') + '</div></td>' +
       '<td data-label="Office"><div class="t-title">' + UI.esc(e.office) + '</div></td>' +
       '<td data-label="Kind"><span class="chip">' + (e.kind === 'preventive' ? 'Preventive' : 'Corrective') + '</span></td>' +

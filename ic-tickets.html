@@ -403,7 +403,7 @@ function rowHTML(t, i) {
     (cls.length ? ' class="' + cls.join(' ') + '"' : '') + '>' +
     '<td data-label="Select" class="col-check tk-sel"><input type="checkbox" data-sel="' + UI.attr(t.id) + '"' + sel + ' aria-label="Select ' + UI.attr(t.id) + '"></td>' +
     '<td class="td-main" data-label="Ticket"><div class="t-id"><a class="t-link" href="' + UI.attr(href) + '">' + UI.esc(t.id) + '</a></div>' +
-    '<div class="t-title' + (unread ? ' is-unread' : '') + '">' + UI.esc(subject.slice(0, 56)) + (subject.length > 56 ? '…' : '') + '</div>' +
+    '<div class="t-title' + (unread ? ' is-unread' : '') + '">' + UI.esc(UI.cut(subject, 56)) + '</div>' +
     (files || replies || unread ? '<div class="t-marks">' +
       (files ? '<span class="t-mark" title="' + files + ' attachment(s)">' + UI.icon('paperclip') + files + '</span>' : '') +
       (replies ? '<span class="t-mark" title="' + replies + ' reply(ies)">' + UI.icon('message') + replies + '</span>' : '') +

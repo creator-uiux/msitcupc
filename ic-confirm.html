@@ -39,7 +39,7 @@
         <div class="stack">
           <div class="card">
             <div class="card-head">
-              <h3>Awaiting office confirmation</h3>
+              <h3>Confirmation and closure queue</h3>
               <span class="chip" id="cfCount">0</span>
             </div>
             <table class="table">
@@ -146,7 +146,11 @@ function render() {
     kpi('Maintenance to action', openJobs.length + jobs.length, 'Availability, scheduling and confirmation', 'k-warn', UI.icon('toolbox')) +
     kpi('Reminders sent', reminders, 'Follow-ups while awaiting a reply', 'k-hold', UI.icon('mail'));
 
-  document.getElementById('cfCount').textContent = list.length + ' to action';
+  /* Closed records stay in this queue so the recurrence move is reachable,
+     but they are not "to action": the chip separates the two counts. */
+  var closedRows = list.length - pending;
+  document.getElementById('cfCount').textContent = pending + ' awaiting' +
+    (closedRows ? ' · ' + closedRows + ' closed' : '');
   document.getElementById('cfEmpty').hidden = list.length > 0;
   if (!sel || !Store.getTicket(sel) || confirmable().map(function (x) { return x.id; }).indexOf(sel) === -1) {
     sel = list.length ? list[0].id : '';
@@ -156,7 +160,7 @@ function render() {
   document.getElementById('cfBody').innerHTML = pg.items.map(function (t, i) {
     return '<tr data-id="' + t.id + '"' + (t.id === sel ? ' class="tr-sel"' : '') + ' style="--row-index:' + i + '">' +
       '<td class="td-main" data-label="Ticket"><div class="t-id">' + UI.esc(t.id) + '</div>' +
-      '<div class="t-title">' + UI.esc(t.issue.slice(0, 48)) + (t.issue.length > 48 ? '…' : '') + '</div>' +
+      '<div class="t-title">' + UI.esc(UI.cut(t.issue, 48)) + '</div>' +
       '<div class="t-sub">' + UI.esc(t.category) + '</div></td>' +
       '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div></td>' +
       '<td data-label="Status">' + UI.badge(t.status) + '</td>' +

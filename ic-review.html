@@ -141,7 +141,7 @@ function render() {
   document.getElementById('rvBody').innerHTML = pg.items.map(function (t, i) {
     return '<tr data-id="' + t.id + '"' + (t.id === sel ? ' class="tr-sel"' : '') + ' style="--row-index:' + i + '">' +
       '<td class="td-main" data-label="Ticket"><div class="t-id">' + UI.esc(t.id) + '</div>' +
-      '<div class="t-title">' + UI.esc(t.issue.slice(0, 48)) + (t.issue.length > 48 ? '…' : '') + '</div>' +
+      '<div class="t-title">' + UI.esc(UI.cut(t.issue, 48)) + '</div>' +
       '<div class="t-sub">' + UI.esc(t.category) + '</div></td>' +
       '<td data-label="Office"><div class="t-title">' + UI.esc(t.office) + '</div></td>' +
       '<td data-label="Status">' + UI.badge(t.status) + '</td>' +

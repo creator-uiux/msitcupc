@@ -273,7 +273,7 @@ function render() {
   var role = Store.db.role;
   var t = Store.getTicket(currentId);
   if (!t) { document.getElementById('tTitle').textContent = 'No tickets'; return; }
-  document.getElementById('tTitle').innerHTML = UI.esc(t.issue.slice(0, 54)) + (t.issue.length > 54 ? '…' : '');
+  document.getElementById('tTitle').innerHTML = UI.esc(UI.cut(t.issue, 54));
   var pickEl = document.getElementById('tPick');
   if (pickEl) pickEl.value = t.id;
   var printDoc = document.getElementById('tPrintDoc');

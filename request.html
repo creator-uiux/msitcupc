@@ -238,7 +238,7 @@ function fillPrevious() {
   sel.dataset.sig = sig;
   var current = sel.value;
   sel.innerHTML = '<option value="">No previous record</option>' + list.map(function (t) {
-    return '<option value="' + UI.attr(t.id) + '">' + UI.esc(t.id + ': ' + String(t.issue || '').slice(0, 48)) + '</option>';
+    return '<option value="' + UI.attr(t.id) + '">' + UI.esc(t.id + ': ' + UI.cut(t.issue, 48)) + '</option>';
   }).join('');
   if (current && list.some(function (t) { return t.id === current; })) sel.value = current;
 }
@@ -421,7 +421,7 @@ function renderSide() {
     var canWithdraw = role === 'requester' && ACTIVE.indexOf(t.status) > -1 && !t.withdrawal;
     return '<li><span class="ico">' + (t.status === 'needs_info' ? UI.icon('pen') : UI.icon('ticket')) + '</span>' +
       '<div class="body"><strong><span class="mono">' + UI.esc(t.id) + '</span> · ' + UI.esc(t.office) + '</strong>' +
-      '<span>' + UI.esc(t.issue.slice(0, 54)) + '</span>' +
+      '<span>' + UI.esc(UI.cut(t.issue, 54)) + '</span>' +
       (t.withdrawal ? '<div class="hint mt-xs">Withdrawal requested. The IT Coordinator will record the cancellation reason.</div>' : '') +
       (canWithdraw ? '<button class="btn btn-sm btn-danger-soft mt-xs" data-withdraw="' + t.id + '">Request withdrawal</button>' : '') +
       '</div>' +

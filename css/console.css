@@ -103,6 +103,8 @@
   font-weight:var(--w-semibold);line-height:17px;text-align:center;
 }
 .side-link.active .pill{background:var(--brand-3);color:var(--sidebar-3)}
+/* An empty inbox needs no badge; the bell hides its zero the same way. */
+.side-link .pill.is-zero{display:none}
 
 .side-foot{
   flex:0 0 auto;padding:4px 10px 12px;
@@ -1231,6 +1233,35 @@ html[data-density="compact"] .list li{padding-top:8px;padding-bottom:8px}
 /* A table cell breaks long words anywhere; an action button keeps its label
    on one line, so "CSV" or "Activate" never splits into "CS / V". */
 .table .btn{white-space:nowrap}
+
+/* ---------- small-screen corrections ---------- */
+@media (max-width:599px){
+  /* The five-step track wraps, so Resolved and Closed stay readable instead
+     of being clipped off the right edge.  The connectors would break across
+     the wrap, so the dots and labels carry the order on their own. */
+  .stepper{flex-wrap:wrap;row-gap:8px;overflow:visible}
+  .stepper .step-line{display:none}
+  .stepper .step{padding-right:14px}
+  /* Reports has three filter actions.  Two share the first row and Print
+     takes the second, instead of three ragged widths. */
+  .filters-reports .filter-action{flex:1 1 calc(50% - 6px);min-width:0}
+  .filters-reports .filter-action:last-child{flex-basis:100%}
+  .filters-reports .filter-action .btn{width:100%;min-width:0}
+}
+
+/* The request form is shorter than the recent-ticket rail, so it keeps its
+   own height instead of stretching into an empty panel below the submit row. */
+#formRow{align-items:start}
+
+/* The request screen used to show the browser's raw file control.  The
+   chooser now uses the same soft brand surface as the secondary actions. */
+.field input[type="file"]{padding:6px 8px;font-size:12.5px;min-height:44px;cursor:pointer}
+.field input[type="file"]::file-selector-button{
+  font:inherit;font-size:12.5px;font-weight:600;color:var(--brand-2);
+  background:var(--brand-soft);border:1px solid var(--line);border-radius:8px;
+  padding:7px 12px;margin-right:10px;cursor:pointer;
+}
+.field input[type="file"]::file-selector-button:hover{border-color:var(--brand)}
 
 /* ---------- print view (Appendix E.2, Section 25.3.8) ----------
    The letterhead and the record are the only things on paper: navigation,
