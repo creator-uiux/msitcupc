@@ -25,24 +25,6 @@
     },
     {
      "tag": "span",
-     "cls": "tb-search-text",
-     "text": "Search tickets, offices, assets\u2026",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "kbd",
-     "cls": "",
-     "text": "Ctrl K",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
      "cls": "hint",
      "text": "Good day, A. Delos Reyes. Your office requests, maintenance ",
      "ratio": 4.09,
@@ -229,6 +211,24 @@
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "span",
+     "cls": "",
+     "text": "busiest day \u00b7 1 event",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "span",
+     "cls": "",
+     "text": "events per day",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
     }
    ]
   },
@@ -287,6 +287,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -304,13 +311,6 @@
      "text": "Workspace",
      "w": 64,
      "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
     },
     {
      "tag": "a",
@@ -416,7 +416,7 @@
  "1440-light|or-tickets.html": {
   "contrast": {
    "min": 1.41,
-   "checked": 66,
+   "checked": 74,
    "unknown": 0,
    "worst": [
     {
@@ -439,24 +439,6 @@
     },
     {
      "tag": "span",
-     "cls": "tb-search-text",
-     "text": "Search tickets, offices, assets\u2026",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "kbd",
-     "cls": "",
-     "text": "Ctrl K",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
      "cls": "hint",
      "text": "Search, filter, sort and page through every request you are ",
      "ratio": 4.09,
@@ -467,7 +449,7 @@
     {
      "tag": "span",
      "cls": "hint",
-     "text": "office tenancy applied -- you see your office records and th",
+     "text": "Office tenancy applied. You see your office records and the ",
      "ratio": 4.2,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -483,17 +465,17 @@
      "bg": "rgb(247,250,248)"
     },
     {
-     "tag": "button",
+     "tag": "summary",
      "cls": "",
-     "text": "Board",
-     "ratio": 4.2,
+     "text": "Columns",
+     "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
+     "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "th",
-     "cls": "",
+     "tag": "button",
+     "cls": "th-sort",
      "text": "Ticket",
      "ratio": 4.2,
      "need": 4.5,
@@ -502,7 +484,7 @@
     },
     {
      "tag": "th",
-     "cls": "",
+     "cls": "col-office",
      "text": "Office / requester",
      "ratio": 4.2,
      "need": 4.5,
@@ -510,8 +492,8 @@
      "bg": "rgb(247,250,248)"
     },
     {
-     "tag": "th",
-     "cls": "",
+     "tag": "button",
+     "cls": "th-sort",
      "text": "Status",
      "ratio": 4.2,
      "need": 4.5,
@@ -519,8 +501,8 @@
      "bg": "rgb(247,250,248)"
     },
     {
-     "tag": "th",
-     "cls": "",
+     "tag": "button",
+     "cls": "th-sort",
      "text": "Target",
      "ratio": 4.2,
      "need": 4.5,
@@ -528,31 +510,49 @@
      "bg": "rgb(247,250,248)"
     },
     {
-     "tag": "th",
-     "cls": "",
-     "text": "Updated",
+     "tag": "button",
+     "cls": "th-sort",
+     "text": "Last update",
      "ratio": 4.2,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(247,250,248)"
     },
     {
+     "tag": "span",
+     "cls": "t-mark",
+     "text": "1",
+     "ratio": 3.63,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(251,228,225)"
+    },
+    {
+     "tag": "span",
+     "cls": "t-mark",
+     "text": "1",
+     "ratio": 3.63,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(251,228,225)"
+    },
+    {
      "tag": "div",
      "cls": "t-sub",
      "text": "Hardware Repair \u00b7 Asset PC-OF-118",
-     "ratio": 4.42,
+     "ratio": 3.63,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
+     "bg": "rgb(251,228,225)"
     },
     {
      "tag": "div",
      "cls": "t-sub",
      "text": "A. Delos Reyes",
-     "ratio": 4.42,
+     "ratio": 3.63,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
+     "bg": "rgb(251,228,225)"
     },
     {
      "tag": "span",
@@ -566,7 +566,7 @@
    ]
   },
   "touch": {
-   "checked": 18,
+   "checked": 27,
    "small": [
     {
      "tag": "a",
@@ -620,6 +620,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -637,13 +644,6 @@
      "text": "Workspace",
      "w": 64,
      "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
     },
     {
      "tag": "a",
@@ -688,11 +688,60 @@
      "h": 28
     },
     {
-     "tag": "button",
+     "tag": "input",
      "cls": "",
-     "text": "Board",
-     "w": 96,
-     "h": 28
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost",
+     "text": "Print list",
+     "w": 88,
+     "h": 40
+    },
+    {
+     "tag": "button",
+     "cls": "th-sort",
+     "text": "TICKET",
+     "w": 322,
+     "h": 16
+    },
+    {
+     "tag": "button",
+     "cls": "th-sort",
+     "text": "STATUS",
+     "w": 357,
+     "h": 16
+    },
+    {
+     "tag": "button",
+     "cls": "th-sort",
+     "text": "TARGET",
+     "w": 84,
+     "h": 16
     }
    ]
   }
@@ -700,7 +749,7 @@
  "1440-light|or-ticket.html": {
   "contrast": {
    "min": 1.41,
-   "checked": 81,
+   "checked": 46,
    "unknown": 0,
    "worst": [
     {
@@ -741,129 +790,12 @@
     },
     {
      "tag": "span",
-     "cls": "tb-search-text",
-     "text": "Search tickets, offices, assets\u2026",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "kbd",
-     "cls": "",
-     "text": "Ctrl K",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
      "cls": "hint",
      "text": "Service record and audit trail",
      "ratio": 4.09,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(244,247,245)"
-    },
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "updated 4h ago",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Assigned",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "In Progress",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Resolved",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Office",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Requester",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Category / source",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Asset",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Target completion",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Attachments",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
     },
     {
      "tag": "button",
@@ -893,45 +825,18 @@
      "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "div",
-     "cls": "tl-meta",
-     "text": "Aug 12, 2026 8:24 pm \u00b7 M. Bataller (requester) \u00b7 message",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "tl-meta",
-     "text": "Aug 12, 2026 7:12 pm \u00b7 M. Bataller (requester)",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "small",
-     "cls": "muted",
-     "text": "Office requester intake",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
      "tag": "span",
-     "cls": "hint",
-     "text": "Who must act next on this record.",
-     "ratio": 4.2,
+     "cls": "",
+     "text": "\u00a9 2026 University of the Philippines Cebu. All rights reserv",
+     "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
+     "bg": "rgb(255,255,255)"
     }
    ]
   },
   "touch": {
-   "checked": 20,
+   "checked": 16,
    "small": [
     {
      "tag": "a",
@@ -985,6 +890,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -1005,31 +917,10 @@
     },
     {
      "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
+     "cls": "btn btn-ghost btn-sm no-print",
+     "text": "Print ticket",
+     "w": 89,
      "h": 34
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "IT-2026-000143 -- Library (Submitted) IT",
-     "w": 320,
-     "h": 42
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 810,
-     "h": 40
-    },
-    {
-     "tag": "a",
-     "cls": "contact-link",
-     "text": "Email",
-     "w": 71,
-     "h": 36
     },
     {
      "tag": "button",
@@ -1058,13 +949,6 @@
      "text": "Related",
      "w": 70,
      "h": 42
-    },
-    {
-     "tag": "button",
-     "cls": "chip chip-file",
-     "text": "wifi-log.txt",
-     "w": 105,
-     "h": 26
     }
    ]
   }
@@ -1072,7 +956,7 @@
  "1440-light|itc-dashboard.html": {
   "contrast": {
    "min": 1.41,
-   "checked": 333,
+   "checked": 329,
    "unknown": 4,
    "worst": [
     {
@@ -1091,24 +975,6 @@
      "ratio": 1.41,
      "need": 4.5,
      "color": "rgb(207, 220, 213)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "tb-search-text",
-     "text": "Search tickets, offices, assets\u2026",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "kbd",
-     "cls": "",
-     "text": "Ctrl K",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
      "bg": "rgb(255,255,255)"
     },
     {
@@ -1299,11 +1165,29 @@
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "span",
+     "cls": "",
+     "text": "Jul 14",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "span",
+     "cls": "",
+     "text": "Jul 22",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
     }
    ]
   },
   "touch": {
-   "checked": 43,
+   "checked": 42,
    "small": [
     {
      "tag": "a",
@@ -1343,6 +1227,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -1360,13 +1251,6 @@
      "text": "Workspace",
      "w": 64,
      "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
     },
     {
      "tag": "a",
@@ -1486,7 +1370,7 @@
  "1440-light|itc-technician.html": {
   "contrast": {
    "min": 1.41,
-   "checked": 318,
+   "checked": 264,
    "unknown": 9,
    "worst": [
     {
@@ -1527,24 +1411,6 @@
     },
     {
      "tag": "span",
-     "cls": "tb-search-text",
-     "text": "Search tickets, offices, assets\u2026",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "kbd",
-     "cls": "",
-     "text": "Ctrl K",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
      "cls": "hint",
      "text": "Today first, then the rest of your queue",
      "ratio": 4.09,
@@ -1555,7 +1421,7 @@
     {
      "tag": "span",
      "cls": "hint",
-     "text": "Oct 29, 2026",
+     "text": "Oct 31, 2026",
      "ratio": 4.2,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -1713,11 +1579,29 @@
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "Hardware Repair",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "Hardware Repair",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
     }
    ]
   },
   "touch": {
-   "checked": 126,
+   "checked": 78,
    "small": [
     {
      "tag": "a",
@@ -1757,6 +1641,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -1774,13 +1665,6 @@
      "text": "Workspace",
      "w": 64,
      "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
     },
     {
      "tag": "a",
@@ -1900,8 +1784,8 @@
  "1440-light|itc-ticket.html": {
   "contrast": {
    "min": 1.41,
-   "checked": 87,
-   "unknown": 1,
+   "checked": 45,
+   "unknown": 0,
    "worst": [
     {
      "tag": "nav",
@@ -1941,147 +1825,12 @@
     },
     {
      "tag": "span",
-     "cls": "tb-search-text",
-     "text": "Search tickets, offices, assets\u2026",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "kbd",
-     "cls": "",
-     "text": "Ctrl K",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
      "cls": "hint",
      "text": "Service record and audit trail",
      "ratio": 4.09,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(244,247,245)"
-    },
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "updated 4h ago",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Assigned",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "In Progress",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Resolved",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Office",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Requester",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Category / source",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Asset",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Impact / urgency",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Target completion",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Technician",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Attachments",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
     },
     {
      "tag": "button",
@@ -2120,9 +1869,9 @@
      "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "button",
+     "tag": "span",
      "cls": "",
-     "text": "Internal note",
+     "text": "\u00a9 2026 University of the Philippines Cebu. All rights reserv",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -2131,7 +1880,7 @@
    ]
   },
   "touch": {
-   "checked": 22,
+   "checked": 15,
    "small": [
     {
      "tag": "a",
@@ -2171,6 +1920,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -2191,31 +1947,10 @@
     },
     {
      "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
+     "cls": "btn btn-ghost btn-sm no-print",
+     "text": "Print ticket",
+     "w": 89,
      "h": 34
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "IT-2026-000143 -- Library (Submitted) IT",
-     "w": 320,
-     "h": 42
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 810,
-     "h": 40
-    },
-    {
-     "tag": "a",
-     "cls": "contact-link",
-     "text": "Email",
-     "w": 71,
-     "h": 36
     },
     {
      "tag": "button",
@@ -2251,34 +1986,6 @@
      "text": "Related",
      "w": 70,
      "h": 42
-    },
-    {
-     "tag": "button",
-     "cls": "on",
-     "text": "Reply to office",
-     "w": 361,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Internal note",
-     "w": 351,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "btn btn-primary",
-     "text": "Send reply",
-     "w": 104,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chip chip-file",
-     "text": "wifi-log.txt",
-     "w": 105,
-     "h": 26
     }
    ]
   }
@@ -2286,7 +1993,7 @@
  "1440-light|ic-dashboard.html": {
   "contrast": {
    "min": 1.41,
-   "checked": 396,
+   "checked": 393,
    "unknown": 4,
    "worst": [
     {
@@ -2305,24 +2012,6 @@
      "ratio": 1.41,
      "need": 4.5,
      "color": "rgb(207, 220, 213)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "tb-search-text",
-     "text": "Search tickets, offices, assets\u2026",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "kbd",
-     "cls": "",
-     "text": "Ctrl K",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
      "bg": "rgb(255,255,255)"
     },
     {
@@ -2513,11 +2202,29 @@
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "span",
+     "cls": "",
+     "text": "1",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "span",
+     "cls": "",
+     "text": "0",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
     }
    ]
   },
   "touch": {
-   "checked": 50,
+   "checked": 49,
    "small": [
     {
      "tag": "a",
@@ -2578,6 +2285,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -2595,13 +2309,6 @@
      "text": "Workspace",
      "w": 64,
      "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
     },
     {
      "tag": "a",
@@ -2700,7 +2407,7 @@
  "1440-light|ic-tickets.html": {
   "contrast": {
    "min": 1.41,
-   "checked": 139,
+   "checked": 156,
    "unknown": 0,
    "worst": [
     {
@@ -2719,24 +2426,6 @@
      "ratio": 1.41,
      "need": 4.5,
      "color": "rgb(207, 220, 213)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "tb-search-text",
-     "text": "Search tickets, offices, assets\u2026",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "kbd",
-     "cls": "",
-     "text": "Ctrl K",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
      "bg": "rgb(255,255,255)"
     },
     {
@@ -2767,17 +2456,17 @@
      "bg": "rgb(247,250,248)"
     },
     {
-     "tag": "button",
+     "tag": "summary",
      "cls": "",
-     "text": "Board",
-     "ratio": 4.2,
+     "text": "Columns",
+     "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
+     "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "th",
-     "cls": "",
+     "tag": "button",
+     "cls": "th-sort",
      "text": "Ticket",
      "ratio": 4.2,
      "need": 4.5,
@@ -2786,7 +2475,7 @@
     },
     {
      "tag": "th",
-     "cls": "",
+     "cls": "col-office",
      "text": "Office / requester",
      "ratio": 4.2,
      "need": 4.5,
@@ -2794,8 +2483,8 @@
      "bg": "rgb(247,250,248)"
     },
     {
-     "tag": "th",
-     "cls": "",
+     "tag": "button",
+     "cls": "th-sort",
      "text": "Status",
      "ratio": 4.2,
      "need": 4.5,
@@ -2803,8 +2492,8 @@
      "bg": "rgb(247,250,248)"
     },
     {
-     "tag": "th",
-     "cls": "lead-only",
+     "tag": "button",
+     "cls": "th-sort",
      "text": "Priority",
      "ratio": 4.2,
      "need": 4.5,
@@ -2812,8 +2501,8 @@
      "bg": "rgb(247,250,248)"
     },
     {
-     "tag": "th",
-     "cls": "",
+     "tag": "button",
+     "cls": "th-sort",
      "text": "Target",
      "ratio": 4.2,
      "need": 4.5,
@@ -2822,7 +2511,7 @@
     },
     {
      "tag": "th",
-     "cls": "staff-only",
+     "cls": "staff-only col-tech",
      "text": "Technician",
      "ratio": 4.2,
      "need": 4.5,
@@ -2830,13 +2519,31 @@
      "bg": "rgb(247,250,248)"
     },
     {
-     "tag": "th",
-     "cls": "",
-     "text": "Updated",
+     "tag": "button",
+     "cls": "th-sort",
+     "text": "Last update",
      "ratio": 4.2,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "span",
+     "cls": "t-mark",
+     "text": "1",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "span",
+     "cls": "t-mark",
+     "text": "1",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
     },
     {
      "tag": "div",
@@ -2875,6 +2582,15 @@
      "bg": "rgb(255,255,255)"
     },
     {
+     "tag": "span",
+     "cls": "t-mark",
+     "text": "1",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
      "tag": "div",
      "cls": "t-sub",
      "text": "Printer and Peripheral \u00b7 Asset PRN-REG-02",
@@ -2887,6 +2603,15 @@
      "tag": "div",
      "cls": "t-sub",
      "text": "P. Ocampo",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "span",
+     "cls": "t-mark",
+     "text": "1",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -2909,29 +2634,11 @@
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "t-sub",
-     "text": "Hardware Repair \u00b7 Asset PC-OF-118",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "t-sub",
-     "text": "A. Delos Reyes",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
     }
    ]
   },
   "touch": {
-   "checked": 27,
+   "checked": 45,
    "small": [
     {
      "tag": "a",
@@ -2992,6 +2699,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -3009,13 +2723,6 @@
      "text": "Workspace",
      "w": 64,
      "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
     },
     {
      "tag": "a",
@@ -3060,53 +2767,53 @@
      "h": 28
     },
     {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
      "tag": "button",
-     "cls": "",
-     "text": "Board",
-     "w": 96,
-     "h": 28
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "on",
-     "w": 13,
-     "h": 13
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "on",
-     "w": 13,
-     "h": 13
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "on",
-     "w": 13,
-     "h": 13
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "on",
-     "w": 13,
-     "h": 13
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "on",
-     "w": 13,
-     "h": 13
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "on",
-     "w": 13,
-     "h": 13
+     "cls": "btn btn-ghost",
+     "text": "Print list",
+     "w": 88,
+     "h": 40
     }
    ]
   }
@@ -3114,8 +2821,8 @@
  "1440-light|ic-ticket.html": {
   "contrast": {
    "min": 1.41,
-   "checked": 94,
-   "unknown": 1,
+   "checked": 50,
+   "unknown": 0,
    "worst": [
     {
      "tag": "nav",
@@ -3155,147 +2862,12 @@
     },
     {
      "tag": "span",
-     "cls": "tb-search-text",
-     "text": "Search tickets, offices, assets\u2026",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "kbd",
-     "cls": "",
-     "text": "Ctrl K",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
      "cls": "hint",
      "text": "Service record and audit trail",
      "ratio": 4.09,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(244,247,245)"
-    },
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "updated 4h ago",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Assigned",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "In Progress",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Resolved",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Office",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Requester",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Category / source",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Asset",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Impact / urgency",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Target completion",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Technician",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Attachments",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
     },
     {
      "tag": "button",
@@ -3334,9 +2906,9 @@
      "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "button",
+     "tag": "span",
      "cls": "",
-     "text": "Internal note",
+     "text": "\u00a9 2026 University of the Philippines Cebu. All rights reserv",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -3345,7 +2917,7 @@
    ]
   },
   "touch": {
-   "checked": 27,
+   "checked": 18,
    "small": [
     {
      "tag": "a",
@@ -3406,6 +2978,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -3426,31 +3005,10 @@
     },
     {
      "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
+     "cls": "btn btn-ghost btn-sm no-print",
+     "text": "Print ticket",
+     "w": 89,
      "h": 34
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "IT-2026-000143 -- Library (Submitted) IT",
-     "w": 320,
-     "h": 42
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 810,
-     "h": 40
-    },
-    {
-     "tag": "a",
-     "cls": "contact-link",
-     "text": "Email",
-     "w": 71,
-     "h": 36
     },
     {
      "tag": "button",
@@ -3486,55 +3044,20 @@
      "text": "Related",
      "w": 70,
      "h": 42
-    },
-    {
-     "tag": "button",
-     "cls": "on",
-     "text": "Reply to office",
-     "w": 361,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Internal note",
-     "w": 351,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "btn btn-primary",
-     "text": "Send reply",
-     "w": 104,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chip chip-file",
-     "text": "wifi-log.txt",
-     "w": 105,
-     "h": 26
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "Choose the next step\u2026 Request missing de",
-     "w": 321,
-     "h": 42
     }
    ]
   }
  },
- "1440-light|mgmt-dashboard.html": {
+ "1440-light|mgmt-users.html": {
   "contrast": {
    "min": 1.41,
-   "checked": 363,
+   "checked": 145,
    "unknown": 4,
    "worst": [
     {
      "tag": "a",
      "cls": "",
-     "text": "Workspace",
+     "text": "Administration",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -3551,26 +3074,8 @@
     },
     {
      "tag": "span",
-     "cls": "tb-search-text",
-     "text": "Search tickets, offices, assets\u2026",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "kbd",
-     "cls": "",
-     "text": "Ctrl K",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
      "cls": "hint",
-     "text": "Good day, M. Reyes. Read-only oversight of every office, sch",
+     "text": "Accounts, roles and office assignment, the identity written ",
      "ratio": 4.09,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -3579,7 +3084,7 @@
     {
      "tag": "div",
      "cls": "delta",
-     "text": "Across every office",
+     "text": "office staff",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -3588,7 +3093,7 @@
     {
      "tag": "div",
      "cls": "delta",
-     "text": "Awaiting office confirmation",
+     "text": "service delivery",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -3597,7 +3102,7 @@
     {
      "tag": "div",
      "cls": "delta",
-     "text": "Service records retained",
+     "text": "workflow control",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -3606,115 +3111,7 @@
     {
      "tag": "div",
      "cls": "delta",
-     "text": "Past the target date",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-nums",
-     "text": "1 open \u00b7 1 overdue",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-foot",
-     "text": "50% resolved or closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-nums",
-     "text": "2 open \u00b7 0 overdue",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-foot",
-     "text": "50% resolved or closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-nums",
-     "text": "2 open \u00b7 0 overdue",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-foot",
-     "text": "50% resolved or closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-nums",
-     "text": "1 open \u00b7 0 overdue",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-foot",
-     "text": "0% resolved or closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-nums",
-     "text": "1 open \u00b7 0 overdue",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-foot",
-     "text": "0% resolved or closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-nums",
-     "text": "0 open \u00b7 0 overdue",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-foot",
-     "text": "0% resolved or closed",
+     "text": "administration & audit",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -3723,34 +3120,160 @@
     {
      "tag": "span",
      "cls": "hint",
-     "text": "updated just now",
+     "text": "new accounts sign in with the initial password",
      "ratio": 4.2,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(247,250,248)"
     },
     {
-     "tag": "span",
+     "tag": "code",
      "cls": "",
-     "text": "4",
+     "text": "itc",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "th",
+     "cls": "",
+     "text": "Person",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "th",
+     "cls": "",
+     "text": "Role",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "th",
+     "cls": "",
+     "text": "Office",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "th",
+     "cls": "",
+     "text": "Contact",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "th",
+     "cls": "",
+     "text": "State",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "th",
+     "cls": "",
+     "text": "Actions",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "areyes",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "span",
-     "cls": "",
-     "text": "3",
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "kramos",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "span",
-     "cls": "",
-     "text": "2",
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "jtan",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "mreyes",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "muy",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "rvillanueva",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "pocampo",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "mbataller",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "lsarmiento",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "cyap",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -3759,46 +3282,11 @@
    ]
   },
   "touch": {
-   "checked": 43,
+   "checked": 48,
    "small": [
     {
      "tag": "a",
      "cls": "side-link active",
-     "text": "Dashboard",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Service Records 7",
-     "w": 235,
-     "h": 33
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Maintenance 5",
-     "w": 235,
-     "h": 33
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Office Register",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Reports",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
      "text": "Users",
      "w": 235,
      "h": 32
@@ -3807,6 +3295,13 @@
      "tag": "a",
      "cls": "side-link",
      "text": "Offices",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Assets",
      "w": 235,
      "h": 32
     },
@@ -3827,414 +3322,7 @@
     {
      "tag": "a",
      "cls": "side-link",
-     "text": "Notifications 0",
-     "w": 235,
-     "h": 33
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Profile and Account",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "",
-     "text": "Workspace",
-     "w": 64,
-     "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Submitted 1",
-     "w": 94,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Needs Information 1",
-     "w": 141,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Assigned 1",
-     "w": 88,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "In Progress 1",
-     "w": 100,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "On Hold 1",
-     "w": 81,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Resolved 2",
-     "w": 91,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Closed 1",
-     "w": 75,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Cancelled 1",
-     "w": 93,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit is-warn",
-     "text": "Overdue 1",
-     "w": 85,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Users",
-     "w": 89,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Offices",
-     "w": 98,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Configuration",
-     "w": 137,
-     "h": 39
-    }
-   ]
-  }
- },
- "1440-light|mgmt-tickets.html": {
-  "contrast": {
-   "min": 1.41,
-   "checked": 138,
-   "unknown": 0,
-   "worst": [
-    {
-     "tag": "a",
-     "cls": "",
-     "text": "Workspace",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "sep",
-     "text": "/",
-     "ratio": 1.41,
-     "need": 4.5,
-     "color": "rgb(207, 220, 213)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "tb-search-text",
-     "text": "Search tickets, offices, assets\u2026",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "kbd",
-     "cls": "",
-     "text": "Ctrl K",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "Search, filter, sort and page through every request you are ",
-     "ratio": 4.09,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(244,247,245)"
-    },
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "the register you are authorized to view",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Cards",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Board",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "th",
-     "cls": "",
-     "text": "Ticket",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "th",
-     "cls": "",
-     "text": "Office / requester",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "th",
-     "cls": "",
-     "text": "Status",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "th",
-     "cls": "lead-only",
-     "text": "Priority",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "th",
-     "cls": "",
-     "text": "Target",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "th",
-     "cls": "staff-only",
-     "text": "Technician",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "th",
-     "cls": "",
-     "text": "Updated",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "div",
-     "cls": "t-sub",
-     "text": "Network and Connectivity \u00b7 Asset AP-LIB-04",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "t-sub",
-     "text": "M. Bataller",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "t-sub",
-     "text": "Software Support",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "t-sub",
-     "text": "R. Villanueva",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "t-sub",
-     "text": "Printer and Peripheral \u00b7 Asset PRN-REG-02",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "t-sub",
-     "text": "P. Ocampo",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "t-sub",
-     "text": "Hardware Repair \u00b7 Asset MON-ACC-11",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "t-sub",
-     "text": "R. Villanueva",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "t-sub",
-     "text": "Hardware Repair \u00b7 Asset PC-OF-118",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "t-sub",
-     "text": "A. Delos Reyes",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    }
-   ]
-  },
-  "touch": {
-   "checked": 19,
-   "small": [
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Dashboard",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link active",
-     "text": "Service Records 7",
-     "w": 235,
-     "h": 33
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Maintenance 5",
-     "w": 235,
-     "h": 33
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Office Register",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Reports",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Users",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Offices",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Configuration",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Audit Log",
+     "text": "Workflow Guide",
      "w": 235,
      "h": 32
     },
@@ -4255,81 +3343,135 @@
     {
      "tag": "a",
      "cls": "",
-     "text": "Workspace",
-     "w": 64,
+     "text": "Administration",
+     "w": 82,
      "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
-    },
-    {
-     "tag": "button",
-     "cls": "btn btn-ghost",
-     "text": "Export CSV",
-     "w": 108,
-     "h": 40
     },
     {
      "tag": "input",
      "cls": "",
      "text": "",
-     "w": 945,
+     "w": 230,
+     "h": 38
+    },
+    {
+     "tag": "select",
+     "cls": "",
+     "text": "All roles Office Requester IT Technician",
+     "w": 230,
+     "h": 38
+    },
+    {
+     "tag": "select",
+     "cls": "",
+     "text": "All offices Accounting HR IT Office Libr",
+     "w": 230,
+     "h": 38
+    },
+    {
+     "tag": "select",
+     "cls": "",
+     "text": "All Active Inactive",
+     "w": 230,
+     "h": 38
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-primary",
+     "text": "New user",
+     "w": 148,
      "h": 40
     },
     {
-     "tag": "button",
-     "cls": "btn btn-ghost",
-     "text": "Advanced filters",
-     "w": 143,
-     "h": 40
+     "tag": "a",
+     "cls": "contact-link",
+     "text": "a.delosreyes@upcebu.edu.ph",
+     "w": 212,
+     "h": 36
+    },
+    {
+     "tag": "a",
+     "cls": "contact-link",
+     "text": "+63 917 000 0001",
+     "w": 146,
+     "h": 36
     },
     {
      "tag": "button",
-     "cls": "on",
-     "text": "List",
-     "w": 96,
-     "h": 28
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
     },
     {
      "tag": "button",
-     "cls": "",
-     "text": "Cards",
-     "w": 96,
-     "h": 28
+     "cls": "btn btn-danger-soft btn-sm",
+     "text": "Deactivate",
+     "w": 89,
+     "h": 34
+    },
+    {
+     "tag": "a",
+     "cls": "contact-link",
+     "text": "k.ramos@upcebu.edu.ph",
+     "w": 185,
+     "h": 36
+    },
+    {
+     "tag": "a",
+     "cls": "contact-link",
+     "text": "+63 917 000 0002",
+     "w": 148,
+     "h": 36
     },
     {
      "tag": "button",
-     "cls": "",
-     "text": "Board",
-     "w": 96,
-     "h": 28
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-danger-soft btn-sm",
+     "text": "Deactivate",
+     "w": 89,
+     "h": 34
+    },
+    {
+     "tag": "a",
+     "cls": "contact-link",
+     "text": "j.tan@upcebu.edu.ph",
+     "w": 162,
+     "h": 36
+    },
+    {
+     "tag": "a",
+     "cls": "contact-link",
+     "text": "+63 917 000 0003",
+     "w": 149,
+     "h": 36
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
     }
    ]
   }
  },
- "1440-light|mgmt-ticket.html": {
+ "1440-light|mgmt-offices.html": {
   "contrast": {
    "min": 1.41,
-   "checked": 90,
-   "unknown": 0,
+   "checked": 119,
+   "unknown": 4,
    "worst": [
-    {
-     "tag": "nav",
-     "cls": "tb-crumbs",
-     "text": "Tickets",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
     {
      "tag": "a",
      "cls": "",
-     "text": "Workspace",
+     "text": "Administration",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -4346,26 +3488,44 @@
     },
     {
      "tag": "span",
-     "cls": "sep",
-     "text": "/",
-     "ratio": 1.41,
+     "cls": "hint",
+     "text": "Every office served. Services stay linked to their office.",
+     "ratio": 4.09,
      "need": 4.5,
-     "color": "rgb(207, 220, 213)",
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(244,247,245)"
+    },
+    {
+     "tag": "div",
+     "cls": "delta",
+     "text": "8 active",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
      "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "span",
-     "cls": "tb-search-text",
-     "text": "Search tickets, offices, assets\u2026",
-     "ratio": 4.2,
+     "tag": "div",
+     "cls": "delta",
+     "text": "0 retired",
+     "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
+     "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "kbd",
-     "cls": "",
-     "text": "Ctrl K",
+     "tag": "div",
+     "cls": "delta",
+     "text": "people tied to an office",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "delta",
+     "text": "check the directory",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -4374,7 +3534,376 @@
     {
      "tag": "span",
      "cls": "hint",
-     "text": "Service record and audit trail",
+     "text": "accounts assigned to each office",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "th",
+     "cls": "",
+     "text": "Office",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "th",
+     "cls": "",
+     "text": "Contact",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "th",
+     "cls": "",
+     "text": "Accounts",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "th",
+     "cls": "",
+     "text": "State",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "th",
+     "cls": "",
+     "text": "Actions",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "IT \u00b7 Admin Building, Room 101",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "k.ramos@upcebu.edu.ph \u00b7 +63 917 000 0002",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "0 requester(s) \u00b7 2 technician(s) \u00b7 1 coordinator(s)",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "REC \u00b7 Records Bldg, Room 2",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "a.delosreyes@upcebu.edu.ph \u00b7 +63 917 000 0001",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "1 requester(s) \u00b7 0 technician(s) \u00b7 0 coordinator(s)",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "ACC \u00b7 Admin Building, Room 105",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "r.villanueva@upcebu.edu.ph",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "1 requester(s) \u00b7 0 technician(s) \u00b7 0 coordinator(s)",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "REG \u00b7 Registrar Bldg, Ground Floor",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "p.ocampo@upcebu.edu.ph",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "1 requester(s) \u00b7 0 technician(s) \u00b7 0 coordinator(s)",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    }
+   ]
+  },
+  "touch": {
+   "checked": 28,
+   "small": [
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Users",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link active",
+     "text": "Offices",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Assets",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Configuration",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Audit Log",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Notifications 0",
+     "w": 235,
+     "h": 33
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Profile and Account",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "",
+     "text": "Administration",
+     "w": 82,
+     "h": 18
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "",
+     "w": 469,
+     "h": 38
+    },
+    {
+     "tag": "select",
+     "cls": "",
+     "text": "All Active Inactive",
+     "w": 469,
+     "h": 38
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-primary",
+     "text": "New office",
+     "w": 148,
+     "h": 40
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-danger-soft btn-sm",
+     "text": "Deactivate",
+     "w": 89,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-danger-soft btn-sm",
+     "text": "Deactivate",
+     "w": 89,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-danger-soft btn-sm",
+     "text": "Deactivate",
+     "w": 89,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-danger-soft btn-sm",
+     "text": "Deactivate",
+     "w": 89,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-danger-soft btn-sm",
+     "text": "Deactivate",
+     "w": 89,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-danger-soft btn-sm",
+     "text": "Deactivate",
+     "w": 89,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
+    }
+   ]
+  }
+ },
+ "1440-light|mgmt-audit.html": {
+  "contrast": {
+   "min": 1.41,
+   "checked": 139,
+   "unknown": 0,
+   "worst": [
+    {
+     "tag": "a",
+     "cls": "",
+     "text": "Administration",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "span",
+     "cls": "sep",
+     "text": "/",
+     "ratio": 1.41,
+     "need": 4.5,
+     "color": "rgb(207, 220, 213)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "span",
+     "cls": "hint",
+     "text": "Append-only record of every status change and administrative",
      "ratio": 4.09,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -4383,42 +3912,114 @@
     {
      "tag": "span",
      "cls": "hint",
-     "text": "updated 4h ago",
+     "text": "newest first",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "th",
+     "cls": "",
+     "text": "When",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "th",
+     "cls": "",
+     "text": "Actor",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "th",
+     "cls": "",
+     "text": "Event",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "th",
+     "cls": "",
+     "text": "Record",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "th",
+     "cls": "",
+     "text": "Detail",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "1d ago",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Assigned",
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "management",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "In Progress",
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "settings",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Resolved",
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "3d ago",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "span",
-     "cls": "step-label",
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "system",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "job",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
      "text": "Closed",
      "ratio": 4.42,
      "need": 4.5,
@@ -4427,8 +4028,8 @@
     },
     {
      "tag": "div",
-     "cls": "k",
-     "text": "Office",
+     "cls": "t-sub",
+     "text": "5d ago",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -4436,8 +4037,8 @@
     },
     {
      "tag": "div",
-     "cls": "k",
-     "text": "Requester",
+     "cls": "t-sub",
+     "text": "technician",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -4445,8 +4046,8 @@
     },
     {
      "tag": "div",
-     "cls": "k",
-     "text": "Category / source",
+     "cls": "t-sub",
+     "text": "job",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -4454,8 +4055,8 @@
     },
     {
      "tag": "div",
-     "cls": "k",
-     "text": "Asset",
+     "cls": "t-sub",
+     "text": "Resolved",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -4463,8 +4064,8 @@
     },
     {
      "tag": "div",
-     "cls": "k",
-     "text": "Impact / urgency",
+     "cls": "t-sub",
+     "text": "6d ago",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -4472,8 +4073,8 @@
     },
     {
      "tag": "div",
-     "cls": "k",
-     "text": "Target completion",
+     "cls": "t-sub",
+     "text": "coordinator",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -4481,8 +4082,8 @@
     },
     {
      "tag": "div",
-     "cls": "k",
-     "text": "Technician",
+     "cls": "t-sub",
+     "text": "ticket",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -4490,44 +4091,8 @@
     },
     {
      "tag": "div",
-     "cls": "k",
-     "text": "Attachments",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "button",
-     "cls": "tab",
-     "text": "Service record",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "button",
-     "cls": "tab staff-only",
-     "text": "Dependencies",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "button",
-     "cls": "tab",
-     "text": "History",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "button",
-     "cls": "tab",
-     "text": "Related",
+     "cls": "t-sub",
+     "text": "Cancelled",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -4535,8 +4100,8 @@
     },
     {
      "tag": "div",
-     "cls": "tl-meta",
-     "text": "Aug 12, 2026 8:24 pm \u00b7 M. Bataller (requester) \u00b7 message",
+     "cls": "t-sub",
+     "text": "9d ago",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -4545,43 +4110,8 @@
    ]
   },
   "touch": {
-   "checked": 22,
+   "checked": 17,
    "small": [
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Dashboard",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Service Records 7",
-     "w": 235,
-     "h": 33
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Maintenance 5",
-     "w": 235,
-     "h": 33
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Office Register",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Reports",
-     "w": 235,
-     "h": 32
-    },
     {
      "tag": "a",
      "cls": "side-link",
@@ -4599,14 +4129,28 @@
     {
      "tag": "a",
      "cls": "side-link",
-     "text": "Configuration",
+     "text": "Assets",
      "w": 235,
      "h": 32
     },
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Configuration",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link active",
      "text": "Audit Log",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Workflow Guide",
      "w": 235,
      "h": 32
     },
@@ -4627,79 +4171,65 @@
     {
      "tag": "a",
      "cls": "",
-     "text": "Workspace",
-     "w": 64,
+     "text": "Administration",
+     "w": 82,
      "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "IT-2026-000143 -- Library (Submitted) IT",
-     "w": 320,
-     "h": 42
     },
     {
      "tag": "input",
      "cls": "",
      "text": "",
-     "w": 810,
+     "w": 176,
+     "h": 38
+    },
+    {
+     "tag": "select",
+     "cls": "",
+     "text": "All actors A. Delos Reyes J. Tan K. Ramo",
+     "w": 176,
+     "h": 38
+    },
+    {
+     "tag": "select",
+     "cls": "",
+     "text": "All subjects job office schedule setting",
+     "w": 176,
+     "h": 38
+    },
+    {
+     "tag": "select",
+     "cls": "",
+     "text": "All events cancelled created office outc",
+     "w": 176,
+     "h": 38
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "",
+     "w": 176,
      "h": 40
     },
     {
-     "tag": "a",
-     "cls": "contact-link",
-     "text": "Email",
-     "w": 71,
-     "h": 36
+     "tag": "input",
+     "cls": "",
+     "text": "",
+     "w": 176,
+     "h": 40
     },
     {
      "tag": "button",
-     "cls": "tab",
-     "text": "Conversation",
-     "w": 109,
-     "h": 42
+     "cls": "btn btn-ghost",
+     "text": "Reset",
+     "w": 148,
+     "h": 40
     },
     {
      "tag": "button",
-     "cls": "tab",
-     "text": "Service record",
-     "w": 116,
-     "h": 42
-    },
-    {
-     "tag": "button",
-     "cls": "tab staff-only",
-     "text": "Dependencies",
-     "w": 115,
-     "h": 42
-    },
-    {
-     "tag": "button",
-     "cls": "tab",
-     "text": "History",
-     "w": 68,
-     "h": 42
-    },
-    {
-     "tag": "button",
-     "cls": "tab",
-     "text": "Related",
-     "w": 70,
-     "h": 42
-    },
-    {
-     "tag": "button",
-     "cls": "chip chip-file",
-     "text": "wifi-log.txt",
-     "w": 105,
-     "h": 26
+     "cls": "btn btn-soft",
+     "text": "Export CSV",
+     "w": 148,
+     "h": 40
     }
    ]
   }
@@ -4824,6 +4354,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -4841,13 +4378,6 @@
      "text": "Workspace",
      "w": 64,
      "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
     },
     {
      "tag": "a",
@@ -4953,7 +4483,7 @@
  "1440-dark|or-tickets.html": {
   "contrast": {
    "min": 1.88,
-   "checked": 66,
+   "checked": 74,
    "unknown": 0,
    "worst": [
     {
@@ -4986,7 +4516,7 @@
    ]
   },
   "touch": {
-   "checked": 18,
+   "checked": 27,
    "small": [
     {
      "tag": "a",
@@ -5040,6 +4570,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -5057,13 +4594,6 @@
      "text": "Workspace",
      "w": 64,
      "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
     },
     {
      "tag": "a",
@@ -5108,11 +4638,60 @@
      "h": 28
     },
     {
-     "tag": "button",
+     "tag": "input",
      "cls": "",
-     "text": "Board",
-     "w": 96,
-     "h": 28
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost",
+     "text": "Print list",
+     "w": 88,
+     "h": 40
+    },
+    {
+     "tag": "button",
+     "cls": "th-sort",
+     "text": "TICKET",
+     "w": 322,
+     "h": 16
+    },
+    {
+     "tag": "button",
+     "cls": "th-sort",
+     "text": "STATUS",
+     "w": 357,
+     "h": 16
+    },
+    {
+     "tag": "button",
+     "cls": "th-sort",
+     "text": "TARGET",
+     "w": 84,
+     "h": 16
     }
    ]
   }
@@ -5120,7 +4699,7 @@
  "1440-dark|or-ticket.html": {
   "contrast": {
    "min": 1.88,
-   "checked": 81,
+   "checked": 46,
    "unknown": 0,
    "worst": [
     {
@@ -5162,7 +4741,7 @@
    ]
   },
   "touch": {
-   "checked": 20,
+   "checked": 16,
    "small": [
     {
      "tag": "a",
@@ -5216,6 +4795,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -5236,31 +4822,10 @@
     },
     {
      "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
+     "cls": "btn btn-ghost btn-sm no-print",
+     "text": "Print ticket",
+     "w": 89,
      "h": 34
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "IT-2026-000143 -- Library (Submitted) IT",
-     "w": 320,
-     "h": 42
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 810,
-     "h": 40
-    },
-    {
-     "tag": "a",
-     "cls": "contact-link",
-     "text": "Email",
-     "w": 71,
-     "h": 36
     },
     {
      "tag": "button",
@@ -5289,13 +4854,6 @@
      "text": "Related",
      "w": 70,
      "h": 42
-    },
-    {
-     "tag": "button",
-     "cls": "chip chip-file",
-     "text": "wifi-log.txt",
-     "w": 105,
-     "h": 26
     }
    ]
   }
@@ -5303,7 +4861,7 @@
  "1440-dark|itc-dashboard.html": {
   "contrast": {
    "min": 1.88,
-   "checked": 333,
+   "checked": 329,
    "unknown": 4,
    "worst": [
     {
@@ -5336,7 +4894,7 @@
    ]
   },
   "touch": {
-   "checked": 43,
+   "checked": 42,
    "small": [
     {
      "tag": "a",
@@ -5376,6 +4934,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -5393,13 +4958,6 @@
      "text": "Workspace",
      "w": 64,
      "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
     },
     {
      "tag": "a",
@@ -5519,7 +5077,7 @@
  "1440-dark|itc-technician.html": {
   "contrast": {
    "min": 1.88,
-   "checked": 318,
+   "checked": 264,
    "unknown": 9,
    "worst": [
     {
@@ -5584,29 +5142,11 @@
      "need": 4.5,
      "color": "rgb(255, 255, 255)",
      "bg": "rgb(46,158,107)"
-    },
-    {
-     "tag": "button",
-     "cls": "btn btn-sm btn-primary",
-     "text": "Save progress",
-     "ratio": 3.38,
-     "need": 4.5,
-     "color": "rgb(255, 255, 255)",
-     "bg": "rgb(46,158,107)"
-    },
-    {
-     "tag": "button",
-     "cls": "btn btn-sm btn-primary",
-     "text": "Save progress",
-     "ratio": 3.38,
-     "need": 4.5,
-     "color": "rgb(255, 255, 255)",
-     "bg": "rgb(46,158,107)"
     }
    ]
   },
   "touch": {
-   "checked": 126,
+   "checked": 78,
    "small": [
     {
      "tag": "a",
@@ -5646,6 +5186,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -5663,13 +5210,6 @@
      "text": "Workspace",
      "w": 64,
      "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
     },
     {
      "tag": "a",
@@ -5789,8 +5329,8 @@
  "1440-dark|itc-ticket.html": {
   "contrast": {
    "min": 1.88,
-   "checked": 87,
-   "unknown": 1,
+   "checked": 45,
+   "unknown": 0,
    "worst": [
     {
      "tag": "span",
@@ -5827,20 +5367,11 @@
      "need": 4.5,
      "color": "rgb(255, 255, 255)",
      "bg": "rgb(46,158,107)"
-    },
-    {
-     "tag": "button",
-     "cls": "btn btn-primary",
-     "text": "Send reply",
-     "ratio": 3.38,
-     "need": 4.5,
-     "color": "rgb(255, 255, 255)",
-     "bg": "rgb(46,158,107)"
     }
    ]
   },
   "touch": {
-   "checked": 22,
+   "checked": 15,
    "small": [
     {
      "tag": "a",
@@ -5880,6 +5411,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -5900,31 +5438,10 @@
     },
     {
      "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
+     "cls": "btn btn-ghost btn-sm no-print",
+     "text": "Print ticket",
+     "w": 89,
      "h": 34
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "IT-2026-000143 -- Library (Submitted) IT",
-     "w": 320,
-     "h": 42
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 810,
-     "h": 40
-    },
-    {
-     "tag": "a",
-     "cls": "contact-link",
-     "text": "Email",
-     "w": 71,
-     "h": 36
     },
     {
      "tag": "button",
@@ -5960,34 +5477,6 @@
      "text": "Related",
      "w": 70,
      "h": 42
-    },
-    {
-     "tag": "button",
-     "cls": "on",
-     "text": "Reply to office",
-     "w": 361,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Internal note",
-     "w": 351,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "btn btn-primary",
-     "text": "Send reply",
-     "w": 104,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chip chip-file",
-     "text": "wifi-log.txt",
-     "w": 105,
-     "h": 26
     }
    ]
   }
@@ -5995,7 +5484,7 @@
  "1440-dark|ic-dashboard.html": {
   "contrast": {
    "min": 1.88,
-   "checked": 396,
+   "checked": 393,
    "unknown": 4,
    "worst": [
     {
@@ -6028,7 +5517,7 @@
    ]
   },
   "touch": {
-   "checked": 50,
+   "checked": 49,
    "small": [
     {
      "tag": "a",
@@ -6089,6 +5578,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -6106,13 +5602,6 @@
      "text": "Workspace",
      "w": 64,
      "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
     },
     {
      "tag": "a",
@@ -6211,7 +5700,7 @@
  "1440-dark|ic-tickets.html": {
   "contrast": {
    "min": 1.88,
-   "checked": 139,
+   "checked": 156,
    "unknown": 0,
    "worst": [
     {
@@ -6244,7 +5733,7 @@
    ]
   },
   "touch": {
-   "checked": 27,
+   "checked": 45,
    "small": [
     {
      "tag": "a",
@@ -6305,6 +5794,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -6322,13 +5818,6 @@
      "text": "Workspace",
      "w": 64,
      "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
     },
     {
      "tag": "a",
@@ -6373,53 +5862,53 @@
      "h": 28
     },
     {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "on",
+     "w": 13,
+     "h": 13
+    },
+    {
      "tag": "button",
-     "cls": "",
-     "text": "Board",
-     "w": 96,
-     "h": 28
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "on",
-     "w": 13,
-     "h": 13
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "on",
-     "w": 13,
-     "h": 13
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "on",
-     "w": 13,
-     "h": 13
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "on",
-     "w": 13,
-     "h": 13
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "on",
-     "w": 13,
-     "h": 13
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "on",
-     "w": 13,
-     "h": 13
+     "cls": "btn btn-ghost",
+     "text": "Print list",
+     "w": 88,
+     "h": 40
     }
    ]
   }
@@ -6427,8 +5916,8 @@
  "1440-dark|ic-ticket.html": {
   "contrast": {
    "min": 1.88,
-   "checked": 94,
-   "unknown": 1,
+   "checked": 50,
+   "unknown": 0,
    "worst": [
     {
      "tag": "span",
@@ -6465,20 +5954,11 @@
      "need": 4.5,
      "color": "rgb(255, 255, 255)",
      "bg": "rgb(46,158,107)"
-    },
-    {
-     "tag": "button",
-     "cls": "btn btn-primary",
-     "text": "Send reply",
-     "ratio": 3.38,
-     "need": 4.5,
-     "color": "rgb(255, 255, 255)",
-     "bg": "rgb(46,158,107)"
     }
    ]
   },
   "touch": {
-   "checked": 27,
+   "checked": 18,
    "small": [
     {
      "tag": "a",
@@ -6539,6 +6019,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -6559,31 +6046,10 @@
     },
     {
      "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
+     "cls": "btn btn-ghost btn-sm no-print",
+     "text": "Print ticket",
+     "w": 89,
      "h": 34
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "IT-2026-000143 -- Library (Submitted) IT",
-     "w": 320,
-     "h": 42
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 810,
-     "h": 40
-    },
-    {
-     "tag": "a",
-     "cls": "contact-link",
-     "text": "Email",
-     "w": 71,
-     "h": 36
     },
     {
      "tag": "button",
@@ -6619,49 +6085,14 @@
      "text": "Related",
      "w": 70,
      "h": 42
-    },
-    {
-     "tag": "button",
-     "cls": "on",
-     "text": "Reply to office",
-     "w": 361,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Internal note",
-     "w": 351,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "btn btn-primary",
-     "text": "Send reply",
-     "w": 104,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chip chip-file",
-     "text": "wifi-log.txt",
-     "w": 105,
-     "h": 26
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "Choose the next step\u2026 Request missing de",
-     "w": 321,
-     "h": 42
     }
    ]
   }
  },
- "1440-dark|mgmt-dashboard.html": {
+ "1440-dark|mgmt-users.html": {
   "contrast": {
    "min": 1.88,
-   "checked": 363,
+   "checked": 145,
    "unknown": 4,
    "worst": [
     {
@@ -6681,209 +6112,101 @@
      "need": 4.5,
      "color": "rgb(255, 255, 255)",
      "bg": "rgb(46,158,107)"
-    }
-   ]
-  },
-  "touch": {
-   "checked": 43,
-   "small": [
-    {
-     "tag": "a",
-     "cls": "side-link active",
-     "text": "Dashboard",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Service Records 7",
-     "w": 235,
-     "h": 33
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Maintenance 5",
-     "w": 235,
-     "h": 33
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Office Register",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Reports",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Users",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Offices",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Configuration",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Audit Log",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Notifications 0",
-     "w": 235,
-     "h": 33
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Profile and Account",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "",
-     "text": "Workspace",
-     "w": 64,
-     "h": 18
     },
     {
      "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
+     "cls": "btn btn-primary",
+     "text": "New user",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
     },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Submitted 1",
-     "w": 94,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Needs Information 1",
-     "w": 141,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Assigned 1",
-     "w": 88,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "In Progress 1",
-     "w": 100,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "On Hold 1",
-     "w": 81,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Resolved 2",
-     "w": 91,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Closed 1",
-     "w": 75,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Cancelled 1",
-     "w": 93,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit is-warn",
-     "text": "Overdue 1",
-     "w": 85,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Users",
-     "w": 89,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Offices",
-     "w": 98,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Configuration",
-     "w": 137,
-     "h": 39
-    }
-   ]
-  }
- },
- "1440-dark|mgmt-tickets.html": {
-  "contrast": {
-   "min": 1.88,
-   "checked": 138,
-   "unknown": 0,
-   "worst": [
     {
      "tag": "span",
-     "cls": "sep",
-     "text": "/",
-     "ratio": 1.88,
+     "cls": "avatar sm",
+     "text": "AD",
+     "ratio": 3.38,
      "need": 4.5,
-     "color": "rgb(49, 68, 95)",
-     "bg": "rgb(8,21,17)"
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
     },
     {
-     "tag": "label",
-     "cls": "avatar",
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "KR",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "JT",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
      "text": "MR",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "MU",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "RV",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "PO",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "MB",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "LS",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "CY",
      "ratio": 3.38,
      "need": 4.5,
      "color": "rgb(255, 255, 255)",
@@ -6892,46 +6215,11 @@
    ]
   },
   "touch": {
-   "checked": 19,
+   "checked": 48,
    "small": [
     {
      "tag": "a",
-     "cls": "side-link",
-     "text": "Dashboard",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
      "cls": "side-link active",
-     "text": "Service Records 7",
-     "w": 235,
-     "h": 33
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Maintenance 5",
-     "w": 235,
-     "h": 33
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Office Register",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Reports",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
      "text": "Users",
      "w": 235,
      "h": 32
@@ -6940,6 +6228,13 @@
      "tag": "a",
      "cls": "side-link",
      "text": "Offices",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Assets",
      "w": 235,
      "h": 32
     },
@@ -6960,6 +6255,13 @@
     {
      "tag": "a",
      "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
      "text": "Notifications 0",
      "w": 235,
      "h": 33
@@ -6974,253 +6276,488 @@
     {
      "tag": "a",
      "cls": "",
-     "text": "Workspace",
-     "w": 64,
+     "text": "Administration",
+     "w": 82,
      "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
-    },
-    {
-     "tag": "button",
-     "cls": "btn btn-ghost",
-     "text": "Export CSV",
-     "w": 108,
-     "h": 40
     },
     {
      "tag": "input",
      "cls": "",
      "text": "",
-     "w": 945,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "btn btn-ghost",
-     "text": "Advanced filters",
-     "w": 143,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "on",
-     "text": "List",
-     "w": 96,
-     "h": 28
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Cards",
-     "w": 96,
-     "h": 28
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Board",
-     "w": 96,
-     "h": 28
-    }
-   ]
-  }
- },
- "1440-dark|mgmt-ticket.html": {
-  "contrast": {
-   "min": 1.88,
-   "checked": 90,
-   "unknown": 0,
-   "worst": [
-    {
-     "tag": "span",
-     "cls": "sep",
-     "text": "/",
-     "ratio": 1.88,
-     "need": 4.5,
-     "color": "rgb(49, 68, 95)",
-     "bg": "rgb(8,21,17)"
-    },
-    {
-     "tag": "span",
-     "cls": "sep",
-     "text": "/",
-     "ratio": 1.88,
-     "need": 4.5,
-     "color": "rgb(49, 68, 95)",
-     "bg": "rgb(8,21,17)"
-    },
-    {
-     "tag": "label",
-     "cls": "avatar",
-     "text": "MR",
-     "ratio": 3.38,
-     "need": 4.5,
-     "color": "rgb(255, 255, 255)",
-     "bg": "rgb(46,158,107)"
-    }
-   ]
-  },
-  "touch": {
-   "checked": 22,
-   "small": [
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Dashboard",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Service Records 7",
-     "w": 235,
-     "h": 33
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Maintenance 5",
-     "w": 235,
-     "h": 33
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Office Register",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Reports",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Users",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Offices",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Configuration",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Audit Log",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Notifications 0",
-     "w": 235,
-     "h": 33
-    },
-    {
-     "tag": "a",
-     "cls": "side-link",
-     "text": "Profile and Account",
-     "w": 235,
-     "h": 32
-    },
-    {
-     "tag": "a",
-     "cls": "",
-     "text": "Workspace",
-     "w": 64,
-     "h": 18
-    },
-    {
-     "tag": "button",
-     "cls": "tb-search",
-     "text": "Search tickets, offices, assets\u2026 Ctrl K",
-     "w": 268,
-     "h": 34
+     "w": 230,
+     "h": 38
     },
     {
      "tag": "select",
      "cls": "",
-     "text": "IT-2026-000143 -- Library (Submitted) IT",
-     "w": 320,
-     "h": 42
+     "text": "All roles Office Requester IT Technician",
+     "w": 230,
+     "h": 38
     },
     {
-     "tag": "input",
+     "tag": "select",
      "cls": "",
-     "text": "",
-     "w": 810,
+     "text": "All offices Accounting HR IT Office Libr",
+     "w": 230,
+     "h": 38
+    },
+    {
+     "tag": "select",
+     "cls": "",
+     "text": "All Active Inactive",
+     "w": 230,
+     "h": 38
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-primary",
+     "text": "New user",
+     "w": 148,
      "h": 40
     },
     {
      "tag": "a",
      "cls": "contact-link",
-     "text": "Email",
-     "w": 71,
+     "text": "a.delosreyes@upcebu.edu.ph",
+     "w": 212,
+     "h": 36
+    },
+    {
+     "tag": "a",
+     "cls": "contact-link",
+     "text": "+63 917 000 0001",
+     "w": 146,
      "h": 36
     },
     {
      "tag": "button",
-     "cls": "tab",
-     "text": "Conversation",
-     "w": 109,
-     "h": 42
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
     },
     {
      "tag": "button",
-     "cls": "tab",
-     "text": "Service record",
-     "w": 116,
-     "h": 42
+     "cls": "btn btn-danger-soft btn-sm",
+     "text": "Deactivate",
+     "w": 89,
+     "h": 34
+    },
+    {
+     "tag": "a",
+     "cls": "contact-link",
+     "text": "k.ramos@upcebu.edu.ph",
+     "w": 185,
+     "h": 36
+    },
+    {
+     "tag": "a",
+     "cls": "contact-link",
+     "text": "+63 917 000 0002",
+     "w": 148,
+     "h": 36
     },
     {
      "tag": "button",
-     "cls": "tab staff-only",
-     "text": "Dependencies",
-     "w": 115,
-     "h": 42
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
     },
     {
      "tag": "button",
-     "cls": "tab",
-     "text": "History",
-     "w": 68,
-     "h": 42
+     "cls": "btn btn-danger-soft btn-sm",
+     "text": "Deactivate",
+     "w": 89,
+     "h": 34
+    },
+    {
+     "tag": "a",
+     "cls": "contact-link",
+     "text": "j.tan@upcebu.edu.ph",
+     "w": 162,
+     "h": 36
+    },
+    {
+     "tag": "a",
+     "cls": "contact-link",
+     "text": "+63 917 000 0003",
+     "w": 149,
+     "h": 36
     },
     {
      "tag": "button",
-     "cls": "tab",
-     "text": "Related",
-     "w": 70,
-     "h": 42
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
+    }
+   ]
+  }
+ },
+ "1440-dark|mgmt-offices.html": {
+  "contrast": {
+   "min": 1.88,
+   "checked": 119,
+   "unknown": 4,
+   "worst": [
+    {
+     "tag": "span",
+     "cls": "sep",
+     "text": "/",
+     "ratio": 1.88,
+     "need": 4.5,
+     "color": "rgb(49, 68, 95)",
+     "bg": "rgb(8,21,17)"
+    },
+    {
+     "tag": "label",
+     "cls": "avatar",
+     "text": "MR",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
     },
     {
      "tag": "button",
-     "cls": "chip chip-file",
-     "text": "wifi-log.txt",
-     "w": 105,
-     "h": 26
+     "cls": "btn btn-primary",
+     "text": "New office",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    }
+   ]
+  },
+  "touch": {
+   "checked": 28,
+   "small": [
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Users",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link active",
+     "text": "Offices",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Assets",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Configuration",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Audit Log",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Notifications 0",
+     "w": 235,
+     "h": 33
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Profile and Account",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "",
+     "text": "Administration",
+     "w": 82,
+     "h": 18
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "",
+     "w": 469,
+     "h": 38
+    },
+    {
+     "tag": "select",
+     "cls": "",
+     "text": "All Active Inactive",
+     "w": 469,
+     "h": 38
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-primary",
+     "text": "New office",
+     "w": 148,
+     "h": 40
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-danger-soft btn-sm",
+     "text": "Deactivate",
+     "w": 89,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-danger-soft btn-sm",
+     "text": "Deactivate",
+     "w": 89,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-danger-soft btn-sm",
+     "text": "Deactivate",
+     "w": 89,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-danger-soft btn-sm",
+     "text": "Deactivate",
+     "w": 89,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-danger-soft btn-sm",
+     "text": "Deactivate",
+     "w": 89,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-danger-soft btn-sm",
+     "text": "Deactivate",
+     "w": 89,
+     "h": 34
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost btn-sm",
+     "text": "Edit",
+     "w": 47,
+     "h": 34
+    }
+   ]
+  }
+ },
+ "1440-dark|mgmt-audit.html": {
+  "contrast": {
+   "min": 1.88,
+   "checked": 139,
+   "unknown": 0,
+   "worst": [
+    {
+     "tag": "span",
+     "cls": "sep",
+     "text": "/",
+     "ratio": 1.88,
+     "need": 4.5,
+     "color": "rgb(49, 68, 95)",
+     "bg": "rgb(8,21,17)"
+    },
+    {
+     "tag": "label",
+     "cls": "avatar",
+     "text": "MR",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    }
+   ]
+  },
+  "touch": {
+   "checked": 17,
+   "small": [
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Users",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Offices",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Assets",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Configuration",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link active",
+     "text": "Audit Log",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Workflow Guide",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Notifications 0",
+     "w": 235,
+     "h": 33
+    },
+    {
+     "tag": "a",
+     "cls": "side-link",
+     "text": "Profile and Account",
+     "w": 235,
+     "h": 32
+    },
+    {
+     "tag": "a",
+     "cls": "",
+     "text": "Administration",
+     "w": 82,
+     "h": 18
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "",
+     "w": 176,
+     "h": 38
+    },
+    {
+     "tag": "select",
+     "cls": "",
+     "text": "All actors A. Delos Reyes J. Tan K. Ramo",
+     "w": 176,
+     "h": 38
+    },
+    {
+     "tag": "select",
+     "cls": "",
+     "text": "All subjects job office schedule setting",
+     "w": 176,
+     "h": 38
+    },
+    {
+     "tag": "select",
+     "cls": "",
+     "text": "All events cancelled created office outc",
+     "w": 176,
+     "h": 38
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "",
+     "w": 176,
+     "h": 40
+    },
+    {
+     "tag": "input",
+     "cls": "",
+     "text": "",
+     "w": 176,
+     "h": 40
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-ghost",
+     "text": "Reset",
+     "w": 148,
+     "h": 40
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-soft",
+     "text": "Export CSV",
+     "w": 148,
+     "h": 40
     }
    ]
   }
@@ -7489,107 +7026,8 @@
    ]
   },
   "touch": {
-   "checked": 30,
-   "small": [
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Submitted 0",
-     "w": 98,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Needs Information 0",
-     "w": 145,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Assigned 0",
-     "w": 92,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "In Progress 1",
-     "w": 100,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "On Hold 0",
-     "w": 85,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Resolved 0",
-     "w": 92,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Closed 1",
-     "w": 75,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Cancelled 0",
-     "w": 97,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit is-warn",
-     "text": "Overdue 1",
-     "w": 85,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "New Request",
-     "w": 135,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "My Requests",
-     "w": 132,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Confirmation",
-     "w": 133,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Reports",
-     "w": 100,
-     "h": 39
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "Last 7 days Last 30 days Last 90 days Th",
-     "w": 150,
-     "h": 42
-    }
-   ]
+   "checked": 29,
+   "small": []
   }
  },
  "390-light|or-tickets.html": {
@@ -7610,7 +7048,7 @@
     {
      "tag": "span",
      "cls": "hint",
-     "text": "office tenancy applied -- you see your office records and th",
+     "text": "Office tenancy applied. You see your office records and the ",
      "ratio": 4.2,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -7620,15 +7058,6 @@
      "tag": "button",
      "cls": "",
      "text": "List",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Board",
      "ratio": 4.2,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -7691,43 +7120,14 @@
    ]
   },
   "touch": {
-   "checked": 14,
-   "small": [
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 336,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "List",
-     "w": 96,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "on",
-     "text": "Cards",
-     "w": 96,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Board",
-     "w": 96,
-     "h": 36
-    }
-   ]
+   "checked": 13,
+   "small": []
   }
  },
  "390-light|or-ticket.html": {
   "contrast": {
    "min": 4.09,
-   "checked": 57,
+   "checked": 22,
    "unknown": 0,
    "worst": [
     {
@@ -7738,105 +7138,6 @@
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(244,247,245)"
-    },
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "updated 4h ago",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Assigned",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "In Progress",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Resolved",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Office",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Requester",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Category / source",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Asset",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Target completion",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Attachments",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
     },
     {
      "tag": "button",
@@ -7866,42 +7167,6 @@
      "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "div",
-     "cls": "tl-meta",
-     "text": "Aug 12, 2026 8:24 pm \u00b7 M. Bataller (requester) \u00b7 message",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "tl-meta",
-     "text": "Aug 12, 2026 7:12 pm \u00b7 M. Bataller (requester)",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "small",
-     "cls": "muted",
-     "text": "Office requester intake",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "Who must act next on this record.",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
      "tag": "span",
      "cls": "",
      "text": "\u00a9 2026 University of the Philippines Cebu. All rights reserv",
@@ -7913,43 +7178,14 @@
    ]
   },
   "touch": {
-   "checked": 15,
-   "small": [
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "IT-2026-000143 -- Library (Submitted) IT",
-     "w": 366,
-     "h": 42
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 366,
-     "h": 40
-    },
-    {
-     "tag": "a",
-     "cls": "contact-link",
-     "text": "Email",
-     "w": 71,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "chip chip-file",
-     "text": "wifi-log.txt",
-     "w": 105,
-     "h": 36
-    }
-   ]
+   "checked": 10,
+   "small": []
   }
  },
  "390-light|itc-dashboard.html": {
   "contrast": {
    "min": 3.87,
-   "checked": 297,
+   "checked": 294,
    "unknown": 4,
    "worst": [
     {
@@ -8180,113 +7416,14 @@
    ]
   },
   "touch": {
-   "checked": 40,
-   "small": [
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Submitted 0",
-     "w": 98,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Needs Information 0",
-     "w": 145,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Assigned 1",
-     "w": 88,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "In Progress 1",
-     "w": 100,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "On Hold 1",
-     "w": 81,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Resolved 2",
-     "w": 91,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Closed 1",
-     "w": 75,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Cancelled 1",
-     "w": 93,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit is-warn",
-     "text": "Overdue 1",
-     "w": 85,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "My Tickets",
-     "w": 119,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "My Maintenance Jobs",
-     "w": 188,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Office Register",
-     "w": 145,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Reports",
-     "w": 100,
-     "h": 39
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "Last 7 days Last 30 days Last 90 days Th",
-     "w": 150,
-     "h": 42
-    }
-   ]
+   "checked": 38,
+   "small": []
   }
  },
  "390-light|itc-technician.html": {
   "contrast": {
    "min": 3.87,
-   "checked": 291,
+   "checked": 238,
    "unknown": 9,
    "worst": [
     {
@@ -8301,7 +7438,7 @@
     {
      "tag": "span",
      "cls": "hint",
-     "text": "Oct 29, 2026",
+     "text": "Oct 31, 2026",
      "ratio": 4.2,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -8517,191 +7654,15 @@
    ]
   },
   "touch": {
-   "checked": 123,
-   "small": [
-    {
-     "tag": "a",
-     "cls": "t-id",
-     "text": "IT-2026-000130",
-     "w": 114,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "t-id",
-     "text": "IT-2026-000139",
-     "w": 114,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "t-id",
-     "text": "IT-2026-000142",
-     "w": 114,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn on",
-     "text": "Passed",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Attention",
-     "w": 139,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Failed",
-     "w": 140,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "N/A",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "Heavy dust on PSU intake",
-     "w": 268,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Passed",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn on",
-     "text": "Attention",
-     "w": 139,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Failed",
-     "w": 140,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "N/A",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "PSU fan noise on PC-OF-118",
-     "w": 268,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn on",
-     "text": "Passed",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Attention",
-     "w": 139,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Failed",
-     "w": 140,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "N/A",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "SMART all green",
-     "w": 268,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Passed",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Attention",
-     "w": 139,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Failed",
-     "w": 140,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "N/A",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 268,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Passed",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Attention",
-     "w": 139,
-     "h": 40
-    }
-   ]
+   "checked": 74,
+   "small": []
   }
  },
  "390-light|itc-ticket.html": {
   "contrast": {
    "min": 4.09,
-   "checked": 64,
-   "unknown": 1,
+   "checked": 23,
+   "unknown": 0,
    "worst": [
     {
      "tag": "span",
@@ -8711,123 +7672,6 @@
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(244,247,245)"
-    },
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "updated 4h ago",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Assigned",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "In Progress",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Resolved",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Office",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Requester",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Category / source",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Asset",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Impact / urgency",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Target completion",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Technician",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Attachments",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
     },
     {
      "tag": "button",
@@ -8866,42 +7710,6 @@
      "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "button",
-     "cls": "",
-     "text": "Internal note",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "tl-meta",
-     "text": "Aug 12, 2026 8:24 pm \u00b7 M. Bataller (requester) \u00b7 message",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "tl-meta",
-     "text": "Aug 12, 2026 7:12 pm \u00b7 M. Bataller (requester)",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "Who must act next on this record.",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
      "tag": "span",
      "cls": "",
      "text": "\u00a9 2026 University of the Philippines Cebu. All rights reserv",
@@ -8913,57 +7721,14 @@
    ]
   },
   "touch": {
-   "checked": 19,
-   "small": [
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "IT-2026-000143 -- Library (Submitted) IT",
-     "w": 366,
-     "h": 42
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 366,
-     "h": 40
-    },
-    {
-     "tag": "a",
-     "cls": "contact-link",
-     "text": "Email",
-     "w": 71,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "on",
-     "text": "Reply to office",
-     "w": 169,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Internal note",
-     "w": 159,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chip chip-file",
-     "text": "wifi-log.txt",
-     "w": 105,
-     "h": 36
-    }
-   ]
+   "checked": 11,
+   "small": []
   }
  },
  "390-light|ic-dashboard.html": {
   "contrast": {
    "min": 3.87,
-   "checked": 355,
+   "checked": 352,
    "unknown": 4,
    "worst": [
     {
@@ -9194,114 +7959,8 @@
    ]
   },
   "touch": {
-   "checked": 44,
-   "small": [
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Submitted 1",
-     "w": 94,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Needs Information 1",
-     "w": 141,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Assigned 1",
-     "w": 88,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "In Progress 1",
-     "w": 100,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "On Hold 1",
-     "w": 81,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Resolved 2",
-     "w": 91,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Closed 1",
-     "w": 75,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Cancelled 1",
-     "w": 93,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit is-warn",
-     "text": "Overdue 1",
-     "w": 85,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Review and Assign",
-     "w": 168,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "New Request",
-     "w": 135,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "New Schedule",
-     "w": 143,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Maintenance",
-     "w": 133,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Reports",
-     "w": 100,
-     "h": 39
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "Last 7 days Last 30 days Last 90 days Th",
-     "w": 150,
-     "h": 42
-    }
-   ]
+   "checked": 42,
+   "small": []
   }
  },
  "390-light|ic-tickets.html": {
@@ -9338,15 +7997,6 @@
      "bg": "rgb(247,250,248)"
     },
     {
-     "tag": "button",
-     "cls": "",
-     "text": "Board",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
      "tag": "span",
      "cls": "wo-id",
      "text": "IT-2026-000143",
@@ -9534,894 +8184,11 @@
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(255,255,255)"
-    }
-   ]
-  },
-  "touch": {
-   "checked": 20,
-   "small": [
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 336,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "List",
-     "w": 96,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "on",
-     "text": "Cards",
-     "w": 96,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Board",
-     "w": 96,
-     "h": 36
-    }
-   ]
-  }
- },
- "390-light|ic-ticket.html": {
-  "contrast": {
-   "min": 4.09,
-   "checked": 67,
-   "unknown": 1,
-   "worst": [
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "Service record and audit trail",
-     "ratio": 4.09,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(244,247,245)"
-    },
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "updated 4h ago",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Assigned",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "In Progress",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Resolved",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Office",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Requester",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Category / source",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Asset",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Impact / urgency",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Target completion",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Technician",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Attachments",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "button",
-     "cls": "tab",
-     "text": "Service record",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "button",
-     "cls": "tab staff-only",
-     "text": "Dependencies",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "button",
-     "cls": "tab",
-     "text": "History",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "button",
-     "cls": "tab",
-     "text": "Related",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Internal note",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "tl-meta",
-     "text": "Aug 12, 2026 8:24 pm \u00b7 M. Bataller (requester) \u00b7 message",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "tl-meta",
-     "text": "Aug 12, 2026 7:12 pm \u00b7 M. Bataller (requester)",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "small",
-     "cls": "muted",
-     "text": "Coordinator review, assessment and assignment",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "help",
-     "text": "Only the moves your role may make are listed. Each one opens",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "Who must act next on this record.",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "span",
-     "cls": "",
-     "text": "\u00a9 2026 University of the Philippines Cebu. All rights reserv",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    }
-   ]
-  },
-  "touch": {
-   "checked": 21,
-   "small": [
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "IT-2026-000143 -- Library (Submitted) IT",
-     "w": 366,
-     "h": 42
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 366,
-     "h": 40
-    },
-    {
-     "tag": "a",
-     "cls": "contact-link",
-     "text": "Email",
-     "w": 71,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "on",
-     "text": "Reply to office",
-     "w": 169,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Internal note",
-     "w": 159,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chip chip-file",
-     "text": "wifi-log.txt",
-     "w": 105,
-     "h": 36
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "Choose the next step\u2026 Request missing de",
-     "w": 336,
-     "h": 42
-    }
-   ]
-  }
- },
- "390-light|mgmt-dashboard.html": {
-  "contrast": {
-   "min": 4.09,
-   "checked": 322,
-   "unknown": 4,
-   "worst": [
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "Good day, M. Reyes. Read-only oversight of every office, sch",
-     "ratio": 4.09,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(244,247,245)"
-    },
-    {
-     "tag": "div",
-     "cls": "delta",
-     "text": "Across every office",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "delta",
-     "text": "Awaiting office confirmation",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "delta",
-     "text": "Service records retained",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "delta",
-     "text": "Past the target date",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-nums",
-     "text": "1 open \u00b7 1 overdue",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-foot",
-     "text": "50% resolved or closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-nums",
-     "text": "2 open \u00b7 0 overdue",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-foot",
-     "text": "50% resolved or closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-nums",
-     "text": "2 open \u00b7 0 overdue",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-foot",
-     "text": "50% resolved or closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-nums",
-     "text": "1 open \u00b7 0 overdue",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-foot",
-     "text": "0% resolved or closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-nums",
-     "text": "1 open \u00b7 0 overdue",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-foot",
-     "text": "0% resolved or closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-nums",
-     "text": "0 open \u00b7 0 overdue",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "health-foot",
-     "text": "0% resolved or closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "updated just now",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "span",
-     "cls": "",
-     "text": "4",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "",
-     "text": "3",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "",
-     "text": "2",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "",
-     "text": "1",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "",
-     "text": "0",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "",
-     "text": "Jul 14",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "",
-     "text": "Jul 22",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    }
-   ]
-  },
-  "touch": {
-   "checked": 36,
-   "small": [
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Submitted 1",
-     "w": 94,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Needs Information 1",
-     "w": 141,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Assigned 1",
-     "w": 88,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "In Progress 1",
-     "w": 100,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "On Hold 1",
-     "w": 81,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Resolved 2",
-     "w": 91,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Closed 1",
-     "w": 75,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Cancelled 1",
-     "w": 93,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit is-warn",
-     "text": "Overdue 1",
-     "w": 85,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Users",
-     "w": 89,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Offices",
-     "w": 98,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Configuration",
-     "w": 137,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Audit Log",
-     "w": 110,
-     "h": 39
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "Last 7 days Last 30 days Last 90 days Th",
-     "w": 150,
-     "h": 42
-    }
-   ]
-  }
- },
- "390-light|mgmt-tickets.html": {
-  "contrast": {
-   "min": 4.09,
-   "checked": 94,
-   "unknown": 0,
-   "worst": [
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "Search, filter, sort and page through every request you are ",
-     "ratio": 4.09,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(244,247,245)"
-    },
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "the register you are authorized to view",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "List",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Board",
-     "ratio": 4.2,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(247,250,248)"
-    },
-    {
-     "tag": "span",
-     "cls": "wo-id",
-     "text": "IT-2026-000143",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "wo-cat-name",
-     "text": "Network and Connectivity",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
     },
     {
      "tag": "span",
      "cls": "wo-office",
-     "text": "Library \u00b7 M. Bataller",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "",
-     "text": "1",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "",
-     "text": "1",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "wo-id",
-     "text": "IT-2026-000137",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "wo-cat-name",
-     "text": "Software Support",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "wo-office",
-     "text": "Accounting \u00b7 R. Villanueva",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "wo-due",
-     "text": "Aug 16, 2026",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "wo-id",
-     "text": "IT-2026-000130",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "wo-cat-name",
-     "text": "Printer and Peripheral",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "wo-office",
-     "text": "Registrar \u00b7 P. Ocampo",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "wo-due",
-     "text": "Aug 17, 2026",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "",
-     "text": "1",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "wo-id",
-     "text": "IT-2026-000141",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "wo-cat-name",
-     "text": "Hardware Repair",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "wo-office",
-     "text": "Accounting \u00b7 R. Villanueva",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "wo-due",
-     "text": "Aug 15, 2026",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "",
-     "text": "1",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "wo-id",
-     "text": "IT-2026-000142",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "wo-cat-name",
-     "text": "Hardware Repair",
+     "text": "Records Office \u00b7 A. Delos Reyes",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -10431,42 +8198,13 @@
   },
   "touch": {
    "checked": 19,
-   "small": [
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 336,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "List",
-     "w": 96,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "on",
-     "text": "Cards",
-     "w": 96,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Board",
-     "w": 96,
-     "h": 36
-    }
-   ]
+   "small": []
   }
  },
- "390-light|mgmt-ticket.html": {
+ "390-light|ic-ticket.html": {
   "contrast": {
    "min": 4.09,
-   "checked": 62,
+   "checked": 23,
    "unknown": 0,
    "worst": [
     {
@@ -10477,123 +8215,6 @@
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(244,247,245)"
-    },
-    {
-     "tag": "span",
-     "cls": "hint",
-     "text": "updated 4h ago",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Assigned",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "In Progress",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Resolved",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "span",
-     "cls": "step-label",
-     "text": "Closed",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Office",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Requester",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Category / source",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Asset",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Impact / urgency",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Target completion",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Technician",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
-    },
-    {
-     "tag": "div",
-     "cls": "k",
-     "text": "Attachments",
-     "ratio": 4.42,
-     "need": 4.5,
-     "color": "rgb(107, 124, 115)",
-     "bg": "rgb(255,255,255)"
     },
     {
      "tag": "button",
@@ -10632,9 +8253,40 @@
      "bg": "rgb(255,255,255)"
     },
     {
+     "tag": "span",
+     "cls": "",
+     "text": "\u00a9 2026 University of the Philippines Cebu. All rights reserv",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    }
+   ]
+  },
+  "touch": {
+   "checked": 11,
+   "small": []
+  }
+ },
+ "390-light|mgmt-users.html": {
+  "contrast": {
+   "min": 4.09,
+   "checked": 123,
+   "unknown": 4,
+   "worst": [
+    {
+     "tag": "span",
+     "cls": "hint",
+     "text": "Accounts, roles and office assignment, the identity written ",
+     "ratio": 4.09,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(244,247,245)"
+    },
+    {
      "tag": "div",
-     "cls": "tl-meta",
-     "text": "Aug 12, 2026 8:24 pm \u00b7 M. Bataller (requester) \u00b7 message",
+     "cls": "delta",
+     "text": "office staff",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -10642,8 +8294,26 @@
     },
     {
      "tag": "div",
-     "cls": "tl-meta",
-     "text": "Aug 12, 2026 7:12 pm \u00b7 M. Bataller (requester)",
+     "cls": "delta",
+     "text": "service delivery",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "delta",
+     "text": "workflow control",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "delta",
+     "text": "administration & audit",
      "ratio": 4.42,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
@@ -10652,11 +8322,110 @@
     {
      "tag": "span",
      "cls": "hint",
-     "text": "Who must act next on this record.",
+     "text": "new accounts sign in with the initial password",
      "ratio": 4.2,
      "need": 4.5,
      "color": "rgb(107, 124, 115)",
      "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "code",
+     "cls": "",
+     "text": "itc",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "areyes",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "kramos",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "jtan",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "mreyes",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "muy",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "rvillanueva",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "pocampo",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "mbataller",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "lsarmiento",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "cyap",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
     },
     {
      "tag": "span",
@@ -10670,37 +8439,484 @@
    ]
   },
   "touch": {
-   "checked": 15,
-   "small": [
+   "checked": 44,
+   "small": []
+  }
+ },
+ "390-light|mgmt-offices.html": {
+  "contrast": {
+   "min": 4.09,
+   "checked": 98,
+   "unknown": 4,
+   "worst": [
     {
-     "tag": "select",
-     "cls": "",
-     "text": "IT-2026-000143 -- Library (Submitted) IT",
-     "w": 366,
-     "h": 42
+     "tag": "span",
+     "cls": "hint",
+     "text": "Every office served. Services stay linked to their office.",
+     "ratio": 4.09,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(244,247,245)"
     },
     {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 366,
-     "h": 40
+     "tag": "div",
+     "cls": "delta",
+     "text": "8 active",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "a",
-     "cls": "contact-link",
-     "text": "Email",
-     "w": 71,
-     "h": 36
+     "tag": "div",
+     "cls": "delta",
+     "text": "0 retired",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
     },
     {
-     "tag": "button",
-     "cls": "chip chip-file",
-     "text": "wifi-log.txt",
-     "w": 105,
-     "h": 36
+     "tag": "div",
+     "cls": "delta",
+     "text": "people tied to an office",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "delta",
+     "text": "check the directory",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "span",
+     "cls": "hint",
+     "text": "accounts assigned to each office",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "IT \u00b7 Admin Building, Room 101",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "k.ramos@upcebu.edu.ph \u00b7 +63 917 000 0002",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "0 requester(s) \u00b7 2 technician(s) \u00b7 1 coordinator(s)",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "REC \u00b7 Records Bldg, Room 2",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "a.delosreyes@upcebu.edu.ph \u00b7 +63 917 000 0001",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "1 requester(s) \u00b7 0 technician(s) \u00b7 0 coordinator(s)",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "ACC \u00b7 Admin Building, Room 105",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "r.villanueva@upcebu.edu.ph",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "1 requester(s) \u00b7 0 technician(s) \u00b7 0 coordinator(s)",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "REG \u00b7 Registrar Bldg, Ground Floor",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "p.ocampo@upcebu.edu.ph",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "1 requester(s) \u00b7 0 technician(s) \u00b7 0 coordinator(s)",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "HR \u00b7 Admin Building, Room 108",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "l.sarmiento@upcebu.edu.ph",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "1 requester(s) \u00b7 0 technician(s) \u00b7 0 coordinator(s)",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "LIB \u00b7 Library Bldg, 2nd Floor",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "m.bataller@upcebu.edu.ph",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "1 requester(s) \u00b7 0 technician(s) \u00b7 0 coordinator(s)",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub mono",
+     "text": "SDG \u00b7 Research Annex, Room 3",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
     }
    ]
+  },
+  "touch": {
+   "checked": 24,
+   "small": []
+  }
+ },
+ "390-light|mgmt-audit.html": {
+  "contrast": {
+   "min": 4.09,
+   "checked": 118,
+   "unknown": 0,
+   "worst": [
+    {
+     "tag": "span",
+     "cls": "hint",
+     "text": "Append-only record of every status change and administrative",
+     "ratio": 4.09,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(244,247,245)"
+    },
+    {
+     "tag": "span",
+     "cls": "hint",
+     "text": "newest first",
+     "ratio": 4.2,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(247,250,248)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "1d ago",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "management",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "settings",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "3d ago",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "system",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "job",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "Closed",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "5d ago",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "technician",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "job",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "Resolved",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "6d ago",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "coordinator",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "ticket",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "Cancelled",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "9d ago",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "coordinator",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "ticket",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "Closed",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "10d ago",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "technician",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "ticket",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    },
+    {
+     "tag": "div",
+     "cls": "t-sub",
+     "text": "Resolved",
+     "ratio": 4.42,
+     "need": 4.5,
+     "color": "rgb(107, 124, 115)",
+     "bg": "rgb(255,255,255)"
+    }
+   ]
+  },
+  "touch": {
+   "checked": 13,
+   "small": []
   }
  },
  "390-light|login.html": {
@@ -10752,107 +8968,8 @@
    ]
   },
   "touch": {
-   "checked": 30,
-   "small": [
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Submitted 0",
-     "w": 98,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Needs Information 0",
-     "w": 145,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Assigned 0",
-     "w": 92,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "In Progress 1",
-     "w": 100,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "On Hold 0",
-     "w": 85,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Resolved 0",
-     "w": 92,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Closed 1",
-     "w": 75,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Cancelled 0",
-     "w": 97,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit is-warn",
-     "text": "Overdue 1",
-     "w": 85,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "New Request",
-     "w": 135,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "My Requests",
-     "w": 132,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Confirmation",
-     "w": 133,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Reports",
-     "w": 100,
-     "h": 39
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "Last 7 days Last 30 days Last 90 days Th",
-     "w": 150,
-     "h": 42
-    }
-   ]
+   "checked": 29,
+   "small": []
   }
  },
  "390-dark|or-tickets.html": {
@@ -10882,43 +8999,14 @@
    ]
   },
   "touch": {
-   "checked": 14,
-   "small": [
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 336,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "List",
-     "w": 96,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "on",
-     "text": "Cards",
-     "w": 96,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Board",
-     "w": 96,
-     "h": 36
-    }
-   ]
+   "checked": 13,
+   "small": []
   }
  },
  "390-dark|or-ticket.html": {
   "contrast": {
    "min": 3.38,
-   "checked": 57,
+   "checked": 22,
    "unknown": 0,
    "worst": [
     {
@@ -10942,43 +9030,14 @@
    ]
   },
   "touch": {
-   "checked": 15,
-   "small": [
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "IT-2026-000143 -- Library (Submitted) IT",
-     "w": 366,
-     "h": 42
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 366,
-     "h": 40
-    },
-    {
-     "tag": "a",
-     "cls": "contact-link",
-     "text": "Email",
-     "w": 71,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "chip chip-file",
-     "text": "wifi-log.txt",
-     "w": 105,
-     "h": 36
-    }
-   ]
+   "checked": 10,
+   "small": []
   }
  },
  "390-dark|itc-dashboard.html": {
   "contrast": {
    "min": 3.38,
-   "checked": 297,
+   "checked": 294,
    "unknown": 4,
    "worst": [
     {
@@ -11002,113 +9061,14 @@
    ]
   },
   "touch": {
-   "checked": 40,
-   "small": [
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Submitted 0",
-     "w": 98,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Needs Information 0",
-     "w": 145,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Assigned 1",
-     "w": 88,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "In Progress 1",
-     "w": 100,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "On Hold 1",
-     "w": 81,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Resolved 2",
-     "w": 91,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Closed 1",
-     "w": 75,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Cancelled 1",
-     "w": 93,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit is-warn",
-     "text": "Overdue 1",
-     "w": 85,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "My Tickets",
-     "w": 119,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "My Maintenance Jobs",
-     "w": 188,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Office Register",
-     "w": 145,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Reports",
-     "w": 100,
-     "h": 39
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "Last 7 days Last 30 days Last 90 days Th",
-     "w": 150,
-     "h": 42
-    }
-   ]
+   "checked": 38,
+   "small": []
   }
  },
  "390-dark|itc-technician.html": {
   "contrast": {
    "min": 3.38,
-   "checked": 291,
+   "checked": 238,
    "unknown": 9,
    "worst": [
     {
@@ -11155,213 +9115,19 @@
      "need": 4.5,
      "color": "rgb(255, 255, 255)",
      "bg": "rgb(46,158,107)"
-    },
-    {
-     "tag": "button",
-     "cls": "btn btn-sm btn-primary",
-     "text": "Save progress",
-     "ratio": 3.38,
-     "need": 4.5,
-     "color": "rgb(255, 255, 255)",
-     "bg": "rgb(46,158,107)"
-    },
-    {
-     "tag": "button",
-     "cls": "btn btn-sm btn-primary",
-     "text": "Save progress",
-     "ratio": 3.38,
-     "need": 4.5,
-     "color": "rgb(255, 255, 255)",
-     "bg": "rgb(46,158,107)"
     }
    ]
   },
   "touch": {
-   "checked": 123,
-   "small": [
-    {
-     "tag": "a",
-     "cls": "t-id",
-     "text": "IT-2026-000130",
-     "w": 114,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "t-id",
-     "text": "IT-2026-000139",
-     "w": 114,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "t-id",
-     "text": "IT-2026-000142",
-     "w": 114,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn on",
-     "text": "Passed",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Attention",
-     "w": 139,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Failed",
-     "w": 140,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "N/A",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "Heavy dust on PSU intake",
-     "w": 268,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Passed",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn on",
-     "text": "Attention",
-     "w": 139,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Failed",
-     "w": 140,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "N/A",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "PSU fan noise on PC-OF-118",
-     "w": 268,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn on",
-     "text": "Passed",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Attention",
-     "w": 139,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Failed",
-     "w": 140,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "N/A",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "SMART all green",
-     "w": 268,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Passed",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Attention",
-     "w": 139,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Failed",
-     "w": 140,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "N/A",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 268,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Passed",
-     "w": 125,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chk-seg-btn",
-     "text": "Attention",
-     "w": 139,
-     "h": 40
-    }
-   ]
+   "checked": 74,
+   "small": []
   }
  },
  "390-dark|itc-ticket.html": {
   "contrast": {
    "min": 3.38,
-   "checked": 64,
-   "unknown": 1,
+   "checked": 23,
+   "unknown": 0,
    "worst": [
     {
      "tag": "span",
@@ -11380,70 +9146,18 @@
      "need": 4.5,
      "color": "rgb(255, 255, 255)",
      "bg": "rgb(46,158,107)"
-    },
-    {
-     "tag": "button",
-     "cls": "btn btn-primary",
-     "text": "Send reply",
-     "ratio": 3.38,
-     "need": 4.5,
-     "color": "rgb(255, 255, 255)",
-     "bg": "rgb(46,158,107)"
     }
    ]
   },
   "touch": {
-   "checked": 19,
-   "small": [
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "IT-2026-000143 -- Library (Submitted) IT",
-     "w": 366,
-     "h": 42
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 366,
-     "h": 40
-    },
-    {
-     "tag": "a",
-     "cls": "contact-link",
-     "text": "Email",
-     "w": 71,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "on",
-     "text": "Reply to office",
-     "w": 169,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Internal note",
-     "w": 159,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chip chip-file",
-     "text": "wifi-log.txt",
-     "w": 105,
-     "h": 36
-    }
-   ]
+   "checked": 11,
+   "small": []
   }
  },
  "390-dark|ic-dashboard.html": {
   "contrast": {
    "min": 3.38,
-   "checked": 355,
+   "checked": 352,
    "unknown": 4,
    "worst": [
     {
@@ -11467,114 +9181,8 @@
    ]
   },
   "touch": {
-   "checked": 44,
-   "small": [
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Submitted 1",
-     "w": 94,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Needs Information 1",
-     "w": 141,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Assigned 1",
-     "w": 88,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "In Progress 1",
-     "w": 100,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "On Hold 1",
-     "w": 81,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Resolved 2",
-     "w": 91,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Closed 1",
-     "w": 75,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Cancelled 1",
-     "w": 93,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit is-warn",
-     "text": "Overdue 1",
-     "w": 85,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Review and Assign",
-     "w": 168,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "New Request",
-     "w": 135,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "New Schedule",
-     "w": 143,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Maintenance",
-     "w": 133,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Reports",
-     "w": 100,
-     "h": 39
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "Last 7 days Last 30 days Last 90 days Th",
-     "w": 150,
-     "h": 42
-    }
-   ]
+   "checked": 42,
+   "small": []
   }
  },
  "390-dark|ic-tickets.html": {
@@ -11604,44 +9212,15 @@
    ]
   },
   "touch": {
-   "checked": 20,
-   "small": [
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 336,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "List",
-     "w": 96,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "on",
-     "text": "Cards",
-     "w": 96,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Board",
-     "w": 96,
-     "h": 36
-    }
-   ]
+   "checked": 19,
+   "small": []
   }
  },
  "390-dark|ic-ticket.html": {
   "contrast": {
    "min": 3.38,
-   "checked": 67,
-   "unknown": 1,
+   "checked": 23,
+   "unknown": 0,
    "worst": [
     {
      "tag": "span",
@@ -11660,77 +9239,18 @@
      "need": 4.5,
      "color": "rgb(255, 255, 255)",
      "bg": "rgb(46,158,107)"
-    },
-    {
-     "tag": "button",
-     "cls": "btn btn-primary",
-     "text": "Send reply",
-     "ratio": 3.38,
-     "need": 4.5,
-     "color": "rgb(255, 255, 255)",
-     "bg": "rgb(46,158,107)"
     }
    ]
   },
   "touch": {
-   "checked": 21,
-   "small": [
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "IT-2026-000143 -- Library (Submitted) IT",
-     "w": 366,
-     "h": 42
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 366,
-     "h": 40
-    },
-    {
-     "tag": "a",
-     "cls": "contact-link",
-     "text": "Email",
-     "w": 71,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "on",
-     "text": "Reply to office",
-     "w": 169,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Internal note",
-     "w": 159,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "chip chip-file",
-     "text": "wifi-log.txt",
-     "w": 105,
-     "h": 36
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "Choose the next step\u2026 Request missing de",
-     "w": 336,
-     "h": 42
-    }
-   ]
+   "checked": 11,
+   "small": []
   }
  },
- "390-dark|mgmt-dashboard.html": {
+ "390-dark|mgmt-users.html": {
   "contrast": {
    "min": 3.38,
-   "checked": 322,
+   "checked": 123,
    "unknown": 4,
    "worst": [
     {
@@ -11741,117 +9261,148 @@
      "need": 4.5,
      "color": "rgb(255, 255, 255)",
      "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-primary",
+     "text": "New user",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "AD",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "KR",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "JT",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "MR",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "MU",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "RV",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "PO",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "MB",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "LS",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "span",
+     "cls": "avatar sm",
+     "text": "CY",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
     }
    ]
   },
   "touch": {
-   "checked": 36,
-   "small": [
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Submitted 1",
-     "w": 94,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Needs Information 1",
-     "w": 141,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Assigned 1",
-     "w": 88,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "In Progress 1",
-     "w": 100,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "On Hold 1",
-     "w": 81,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Resolved 2",
-     "w": 91,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Closed 1",
-     "w": 75,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit",
-     "text": "Cancelled 1",
-     "w": 93,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "status-bit is-warn",
-     "text": "Overdue 1",
-     "w": 85,
-     "h": 36
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Users",
-     "w": 89,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Offices",
-     "w": 98,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Configuration",
-     "w": 137,
-     "h": 39
-    },
-    {
-     "tag": "a",
-     "cls": "quick-action",
-     "text": "Audit Log",
-     "w": 110,
-     "h": 39
-    },
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "Last 7 days Last 30 days Last 90 days Th",
-     "w": 150,
-     "h": 42
-    }
-   ]
+   "checked": 44,
+   "small": []
   }
  },
- "390-dark|mgmt-tickets.html": {
+ "390-dark|mgmt-offices.html": {
   "contrast": {
    "min": 3.38,
-   "checked": 94,
+   "checked": 98,
+   "unknown": 4,
+   "worst": [
+    {
+     "tag": "label",
+     "cls": "avatar",
+     "text": "MR",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    },
+    {
+     "tag": "button",
+     "cls": "btn btn-primary",
+     "text": "New office",
+     "ratio": 3.38,
+     "need": 4.5,
+     "color": "rgb(255, 255, 255)",
+     "bg": "rgb(46,158,107)"
+    }
+   ]
+  },
+  "touch": {
+   "checked": 24,
+   "small": []
+  }
+ },
+ "390-dark|mgmt-audit.html": {
+  "contrast": {
+   "min": 3.38,
+   "checked": 118,
    "unknown": 0,
    "worst": [
     {
@@ -11866,88 +9417,8 @@
    ]
   },
   "touch": {
-   "checked": 19,
-   "small": [
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 336,
-     "h": 40
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "List",
-     "w": 96,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "on",
-     "text": "Cards",
-     "w": 96,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "",
-     "text": "Board",
-     "w": 96,
-     "h": 36
-    }
-   ]
-  }
- },
- "390-dark|mgmt-ticket.html": {
-  "contrast": {
-   "min": 3.38,
-   "checked": 62,
-   "unknown": 0,
-   "worst": [
-    {
-     "tag": "label",
-     "cls": "avatar",
-     "text": "MR",
-     "ratio": 3.38,
-     "need": 4.5,
-     "color": "rgb(255, 255, 255)",
-     "bg": "rgb(46,158,107)"
-    }
-   ]
-  },
-  "touch": {
-   "checked": 15,
-   "small": [
-    {
-     "tag": "select",
-     "cls": "",
-     "text": "IT-2026-000143 -- Library (Submitted) IT",
-     "w": 366,
-     "h": 42
-    },
-    {
-     "tag": "input",
-     "cls": "",
-     "text": "",
-     "w": 366,
-     "h": 40
-    },
-    {
-     "tag": "a",
-     "cls": "contact-link",
-     "text": "Email",
-     "w": 71,
-     "h": 36
-    },
-    {
-     "tag": "button",
-     "cls": "chip chip-file",
-     "text": "wifi-log.txt",
-     "w": 105,
-     "h": 36
-    }
-   ]
+   "checked": 13,
+   "small": []
   }
  },
  "390-dark|login.html": {

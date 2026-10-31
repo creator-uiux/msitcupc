@@ -135,6 +135,14 @@ def test_engine_guards():
           engine.call(st, "coordinator", "assign", ["IT-2026-000143", "J. Tan"])["ok"] is False)
     check("diagnose requires active",
           engine.call(st, "technician", "diagnose", ["IT-2026-000143", {"findings": "x"}])["ok"] is False)
+    check("the coordinator cannot record a diagnosis",
+          engine.call(st, "coordinator", "diagnose",
+                      ["IT-2026-000142", {"findings": "not my lane"}])["ok"] is False)
+    check("the coordinator cannot record the test result",
+          engine.call(st, "coordinator", "recordTest", ["IT-2026-000142", "pass", "verified"])["ok"] is False)
+    check("the coordinator cannot answer for the office",
+          engine.call(st, "coordinator", "officeDecision",
+                      ["IT-2026-000130", "accepted", {"person": "K. Ramos"}])["ok"] is False)
     check("cancel needs reason",
           engine.call(st, "coordinator", "cancel", ["IT-2026-000143", ""])["ok"] is False)
     r = engine.call(st, "coordinator", "cancel", ["IT-2026-000143", "duplicate"])
@@ -180,6 +188,111 @@ def test_engine_recurrence():
     check("new ticket linked", nt and nt["linkedTo"] == "IT-2026-000141")
 
 
+def test_authorized_ticket_closure():
+    """Audit E4 and W12: closing a Resolved ticket without the office is a
+    positive path for the configured role, always with a reason and an audit
+    entry, and closed to everyone else."""
+    st = fresh()
+    tid = "IT-2026-000134"
+    check("the ticket waits on the office",
+          engine.get_ticket(st, tid)["status"] == "resolved")
+    r = engine.call(st, "coordinator", "close", [tid, "authorized", ""])
+    check("authorized closure needs a reason on a ticket", not r.get("ok"), r)
+    check("a reasonless closure leaves the ticket Resolved",
+          engine.get_ticket(st, tid)["status"] == "resolved")
+    r = engine.call(st, "requester", "close", [tid, "authorized", "office never replied"])
+    check("the office cannot close by authorized reason", not r.get("ok"), r)
+    r = engine.call(st, "management", "close", [tid, "authorized", "oversight only"])
+    check("the administrator cannot close a ticket", not r.get("ok"), r)
+    r = engine.call(st, "coordinator", "close", [tid, "authorized", "office never replied"])
+    check("authorized ticket closure ok", r.get("ok"), r)
+    t = engine.get_ticket(st, tid)
+    check("the ticket is Closed and the reason is kept",
+          t["status"] == "closed" and t["closure"] == "authorized"
+          and t["authorizedReason"] == "office never replied" and t.get("closedAt"), t)
+    entry = [e for e in st["audit"] if e.get("subjectId") == tid and e.get("kind") == "status"][-1]
+    check("the closure is audited with the reason and the actor",
+          "Authorized closure" in entry["text"] and "office never replied" in entry["text"]
+          and entry.get("by") and entry.get("role") == "coordinator", entry)
+    check("the office is told the record closed",
+          any(n.get("ticketId") == tid and "Closed" in n.get("text", "")
+              for n in st["notifications"][:4]), st["notifications"][:2])
+
+
+def test_office_confirmation_guards():
+    """Audit tests 12, 19, 22, 27 and 57: the guards around a hold, the office
+    confirmation loop and the door that opens a recurrence."""
+    st = fresh()
+    tid = "IT-2026-000143"
+    engine.call(st, "coordinator", "assess",
+                [tid, {"impact": "Medium", "urgency": "Medium", "priority": "medium",
+                       "target": "2026-10-20"}])
+    engine.call(st, "coordinator", "assign", [tid, "J. Tan"])
+    engine.call(st, "technician", "coordinate", [tid, {"date": "2026-10-20", "tech": "J. Tan"}])
+    engine.call(st, "technician", "startWork", [tid])
+
+    r = engine.call(st, "technician", "placeHold",
+                    [tid, {"reason": "Part on order", "responsible": "Supplier"}])
+    check("a hold without the next action is refused", not r.get("ok"), r)
+    check("the refused hold leaves the ticket In Progress",
+          engine.get_ticket(st, tid)["status"] == "in_progress", r)
+    r = engine.call(st, "coordinator", "placeHold",
+                    [tid, {"reason": "Part on order", "responsible": "Supplier",
+                           "nextAction": "Deliver the PSU"}])
+    check("only the assigned technician can hold the ticket", not r.get("ok"), r)
+    r = engine.call(st, "technician", "placeHold",
+                    [tid, {"reason": "Part on order", "responsible": "Supplier",
+                           "nextAction": "Deliver the PSU"}])
+    check("the complete hold is accepted", r.get("ok"), r)
+    check("the held ticket rests on On Hold",
+          engine.get_ticket(st, tid)["status"] == "on_hold", r)
+    r = engine.call(st, "coordinator", "resolveDependency", [tid, "the part arrived"])
+    check("the resolved dependency returns the ticket to In Progress",
+          r.get("ok") and engine.get_ticket(st, tid)["status"] == "in_progress", r)
+
+    engine.call(st, "technician", "diagnose", [tid, {"findings": "a failing port", "actions": "replaced"}])
+    engine.call(st, "technician", "recordRepair",
+                [tid, {"actions": "swapped the card", "parts": "PoE card", "cost": 0, "labor": 0.5}])
+    engine.call(st, "technician", "recordTest", [tid, "pass", "stable"])
+    check("the office is asked to confirm the result",
+          any(n["role"] == "requester" and n.get("ticketId") == tid
+              and "confirm" in n.get("text", "").lower() for n in st["notifications"]),
+          st["notifications"][:3])
+
+    r = engine.call(st, "requester", "officeDecision", [tid, "accepted", {}])
+    check("acceptance without a confirming person is refused", not r.get("ok"), r)
+    r = engine.call(st, "requester", "officeDecision", [tid, "rejected", {}])
+    check("rejection without office feedback is refused", not r.get("ok"), r)
+    r = engine.call(st, "requester", "officeDecision",
+                    [tid, "rejected", {"person": "A. Delos Reyes",
+                                       "feedback": "The port still sparks."}])
+    t = engine.get_ticket(st, tid)
+    check("the rejection returns the ticket to In Progress",
+          r.get("ok") and t["status"] == "in_progress", (r, t["status"]))
+    check("the rejection keeps the office words on the record",
+          t["confirmation"]["state"] == "rejected"
+          and t["confirmation"]["feedback"] == "The port still sparks.", t["confirmation"])
+    check("the rejection is audited with the feedback",
+          any(e.get("subjectId") == tid and "The port still sparks." in e.get("text", "")
+              for e in st["audit"][-4:]), st["audit"][-2:])
+    check("the technician is sent back to diagnosis",
+          any(n["role"] == "technician" and "rejected by office" in n.get("text", "")
+              for n in st["notifications"][:4]), st["notifications"][:3])
+
+    r = engine.call(st, "requester", "createLinkedTicket", [tid, {"issue": "again"}])
+    check("recurrence is refused before the record is Closed",
+          not r.get("ok") and "Closed" in r.get("msg", ""), r)
+    engine.call(st, "technician", "recordTest", [tid, "pass", "stable after the rework"])
+    engine.call(st, "requester", "officeDecision",
+                [tid, "accepted", {"person": "A. Delos Reyes"}])
+    check("the reworked record closes on the office answer",
+          engine.get_ticket(st, tid)["status"] == "closed", engine.get_ticket(st, tid)["status"])
+    r = engine.call(st, "technician", "createLinkedTicket", [tid, {"issue": "again"}])
+    check("a technician cannot open the recurrence", not r.get("ok"), r)
+    r = engine.call(st, "requester", "createLinkedTicket", [tid, {"issue": "again"}])
+    check("the office opens the recurrence once the record is Closed", r.get("ok"), r)
+
+
 def test_engine_maintenance():
     st = fresh()
     # MNT-2026-0061 in_progress: finish remaining items then success
@@ -191,6 +304,17 @@ def test_engine_maintenance():
             r = engine.call(st, "technician", "recordChecklistItem",
                             ["MNT-2026-0061", i, {"result": "Passed", "finding": "ok"}])
             check("checklist item %d ok" % i, r.get("ok"), r)
+    r = engine.call(st, "technician", "recordChecklistItem",
+                    ["MNT-2026-0061", 0, {"finding": "no result typed"}])
+    check("a checklist item with no result is refused", not r.get("ok"), r)
+    r = engine.call(st, "technician", "recordChecklistItem",
+                    ["MNT-2026-0061", 0, {"result": "Passed", "finding": "fan clear",
+                                          "evidence": ["fan-after-cleaning.jpg"]}])
+    it0 = engine.get_job(st, "MNT-2026-0061")["items"][0]
+    check("the checklist item keeps result, finding, technician, date and evidence",
+          r.get("ok") and it0["result"] == "Passed" and it0["finding"] == "fan clear"
+          and it0["tech"] == "J. Tan" and bool(it0["date"])
+          and it0["evidence"] == ["fan-after-cleaning.jpg"], it0)
     r = engine.call(st, "technician", "flagAdditionalFault", ["MNT-2026-0061", "no"])
     check("flagAdditionalFault ok", r.get("ok"), r)
     r = engine.call(st, "coordinator", "flagAdditionalFault", ["MNT-2026-0061", "no"])
@@ -287,15 +411,40 @@ def test_engine_maintenance():
     j["additionalFault"] = "yes"
     # technician owns the job (set)
     j["technician"] = "J. Tan"  # align with actor
+    before_items = copy.deepcopy(j["items"])
+    before_assets = list(j["assets"])
+    before_status = j["status"]
     r = engine.call(st2, "technician", "createFaultTicket", ["MNT-2026-0059"])
     check("createFaultTicket ok", r.get("ok"), r)
     if r.get("ok"):
         check("job linked ticket", engine.get_job(st2, "MNT-2026-0059")["linkedTicketId"] == r["id"])
+        kept = engine.get_job(st2, "MNT-2026-0059")
+        check("the visit keeps its own record once the fault ticket exists",
+              kept["items"] == before_items and kept["assets"] == before_assets
+              and kept["status"] == before_status and kept["additionalFault"] == "yes",
+              (kept["status"], len(kept["items"])))
+        ft = engine.get_ticket(st2, r["id"])
+        check("the corrective ticket is system-created as Submitted",
+              ft["status"] == "submitted" and ft["requester"] == "Maintenance visit MNT-2026-0059", ft["status"])
+        check("the corrective ticket is linked back to the visit",
+              ft["linkedTo"] == "MNT-2026-0059" and ft["previousRecord"] == "MNT-2026-0059"
+              and ft["office"] == j["office"], ft["linkedTo"])
+        check("the corrective ticket records who raised it",
+              ft["history"][0]["by"] == "J. Tan" and ft["history"][0]["role"] == "technician",
+              ft["history"][0])
+        check("a second corrective ticket for the same visit is refused",
+              not engine.call(st2, "technician", "createFaultTicket", ["MNT-2026-0059"]).get("ok"), r)
 
     # reschedule
+    r = engine.call(st2, "coordinator", "rescheduleJob", ["MNT-2026-0057", "", "office away"])
+    check("a reschedule without an agreed date is refused",
+          not r.get("ok") and "date" in r.get("msg", "").lower(), r)
     r = engine.call(st2, "coordinator", "rescheduleJob", ["MNT-2026-0057", "2026-12-01T09:00:00.000Z", "office away"])
     check("rescheduleJob ok", r.get("ok"), r)
     check("job rescheduled", engine.get_job(st2, "MNT-2026-0057")["status"] == "on_hold")
+    check("the reschedule keeps the agreed date on the job",
+          engine.get_job(st2, "MNT-2026-0057")["visitDate"] == "2026-12-01T09:00:00.000Z",
+          engine.get_job(st2, "MNT-2026-0057")["visitDate"])
 
     # Office requester owns availability / agree-new-date (Requester lane, SOP 9)
     st3 = fresh()
@@ -323,6 +472,54 @@ def test_engine_maintenance():
           engine.get_job(st3, "MNT-2026-0062")["reschedules"][0]["role"] == "requester")
 
 
+def test_agreed_date_recheck():
+    """Audit M6: the office answers availability again when the agreed date arrives."""
+    from datetime import datetime, timedelta, timezone
+    st = fresh()
+    r = engine.call(st, "coordinator", "rescheduleJob",
+                    ["MNT-2026-0057", "2026-12-01T09:00:00.000Z", "office away"])
+    j = engine.get_job(st, "MNT-2026-0057")
+    check("a reschedule clears the availability answer",
+          r.get("ok") and j["availability"] == "pending" and j["status"] == "on_hold",
+          (r, j["availability"], j["status"]))
+    engine.world_tick(st)
+    check("the visit waits while the agreed date is ahead",
+          j["status"] == "on_hold" and j["availability"] == "pending",
+          (j["status"], j["availability"]))
+
+    j["visitDate"] = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat().replace("+00:00", "Z")
+    asked_before = len([n for n in st["notifications"] if "Confirm availability" in n.get("text", "")])
+    engine.world_tick(st)
+    check("the agreed date asks the office again instead of proceeding",
+          j["availability"] == "asked" and j["status"] == "on_hold",
+          (j["availability"], j["status"]))
+    check("the re-ask is audited",
+          any("availability confirmation requested" in e.get("text", "").lower()
+              for e in st["audit"][-8:]), st["audit"][-3:])
+    asked = len([n for n in st["notifications"] if "Confirm availability" in n.get("text", "")])
+    check("the office is asked for the availability answer", asked == asked_before + 1,
+          (asked_before, asked))
+    engine.world_tick(st)
+    check("the office is asked once, not on every tick",
+          len([n for n in st["notifications"] if "Confirm availability" in n.get("text", "")]) == asked,
+          (asked, j["availability"]))
+
+    r = engine.call(st, "requester", "confirmAvailability", ["MNT-2026-0057", True])
+    check("the office answer releases the visit",
+          r.get("ok") and j["status"] == "assigned" and j["availability"] == "yes",
+          (r, j["status"], j["availability"]))
+    st2 = fresh()
+    engine.call(st2, "coordinator", "rescheduleJob",
+                ["MNT-2026-0057", "2026-12-01T09:00:00.000Z", "office away"])
+    j2 = engine.get_job(st2, "MNT-2026-0057")
+    j2["visitDate"] = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat().replace("+00:00", "Z")
+    engine.world_tick(st2)
+    r = engine.call(st2, "requester", "confirmAvailability", ["MNT-2026-0057", False])
+    check("an unavailable office is a new reschedule, not an availability record",
+          not r.get("ok") and "reschedule" in r.get("msg", "") and j2["status"] == "on_hold",
+          (r, j2["status"]))
+
+
 def test_schedule_generation():
     st = fresh()
     # SCH-2026-033 is seeded weeks out; make it due so the check generates a job.
@@ -336,6 +533,63 @@ def test_schedule_generation():
     before = len(st["jobs"])
     events2 = engine._run_schedule_check(st, silent=True)
     check("schedule check idempotent", len(st["jobs"]) == before, (before, len(st["jobs"])))
+    occ = [j for j in st["jobs"]
+           if j["scheduleId"] == "SCH-2026-033" and j["occurrence"] == sc["dueDate"]]
+    check("one occurrence is one job", len(occ) == 1, len(occ))
+
+    # The next due date is the schedule's own anchor plus the configured
+    # cadence, so a visit that ran late still puts the next one on plan.
+    sc["frequency"] = "weekly"
+    engine._advance_next_due(st, occ[0])
+    check("a weekly cadence advances the due date by seven days",
+          occ[0]["nextDue"] == "2026-01-08", occ[0].get("nextDue"))
+    check("the schedule itself moves to the next due date",
+          sc["dueDate"].startswith("2026-01-08"), sc["dueDate"])
+    sc["frequency"] = "quarterly"
+    engine._advance_next_due(st, occ[0])
+    check("a quarterly cadence advances from the anchor, not from today",
+          occ[0]["nextDue"] == "2026-04-09", occ[0].get("nextDue"))
+    sc["frequency"] = "custom"
+    sc["intervalDays"] = 10
+    engine._advance_next_due(st, occ[0])
+    check("a custom cadence uses its own day count",
+          occ[0]["nextDue"] == "2026-04-19", occ[0].get("nextDue"))
+
+    # A schedule that is not due yet stays on the books: the worker says it is
+    # waiting, generates nothing for it and leaves it active for the next pass.
+    st2 = fresh()
+    later = next(s for s in st2["schedules"] if s["id"] == "SCH-2026-033")
+    before = len([j for j in st2["jobs"] if j["scheduleId"] == "SCH-2026-033"])
+    ev = engine._run_schedule_check(st2, silent=False)
+    check("a schedule that is not due reports the wait",
+          any(e["kind"] == "wait" and e["id"] == "SCH-2026-033" for e in ev), ev[:4])
+    check("the not-due schedule generates no job",
+          len([j for j in st2["jobs"] if j["scheduleId"] == "SCH-2026-033"]) == before,
+          (before, len([j for j in st2["jobs"] if j["scheduleId"] == "SCH-2026-033"])))
+    check("the not-due schedule stays active and records the check",
+          bool(later["active"]) and bool(later.get("lastCheck")), later)
+
+    # A service can be maintained without naming a unit.  The schedule records,
+    # its job carries an empty asset list and an intake with no unit number keeps
+    # the asset field empty instead of inventing one.
+    r = engine.call(st2, "coordinator", "createSchedule", [{
+        "office": "Library", "category": "Network Share", "frequency": "monthly",
+        "dueDate": "2026-01-05T00:00:00.000Z", "technician": "J. Tan",
+        "checklist": ["Verify the share is reachable"]}])
+    check("a service schedule with no assets records", r.get("ok"), r)
+    ns = next(s for s in st2["schedules"] if s["id"] == r.get("id"))
+    check("the no-asset schedule keeps an empty asset list", ns["assets"] == [], ns)
+    ns["dueDate"] = "2026-01-01T00:00:00.000Z"
+    ns["nextCheck"] = ns["dueDate"]
+    engine._run_schedule_check(st2, silent=True)
+    nj = next((j for j in st2["jobs"] if j["scheduleId"] == ns["id"]), None)
+    check("its job generates with no unit to verify",
+          nj is not None and nj["assets"] == [] and len(nj["items"]) == 1, nj)
+    r = engine.call(st2, "requester", "createTicket", [{
+        "office": "Library", "requester": "R. Dela Cruz", "category": "Network Share",
+        "issue": "The shared folder is unreachable."}])
+    check("an intake with no unit number still records",
+          r.get("ok") and engine.get_ticket(st2, r["id"])["asset"] == "", r)
 
 
 def test_world_tick():
@@ -629,6 +883,13 @@ def test_http_integrity(httpd):
           all(len(t.get("history") or []) == 1 and
               t["history"][0]["text"].endswith("Status: Submitted.") for t in fresh),
           [t.get("history") for t in fresh])
+    merged_ids = {t["id"] for t in fresh}
+    events = [e for e in after["audit"]
+              if e.get("kind") == "create" and e.get("subjectId") in merged_ids]
+    check("a merged creation writes one server audit event", len(events) == 3, len(events))
+    check("the creation event carries the actor, the role and the server time",
+          all(e.get("by") and e.get("at") and e.get("role") == "coordinator"
+              and e.get("status") == "Submitted" for e in events), events[:1])
 
     # Evidence names belong to the upload endpoint: a merge cannot list bytes
     # the server has never held.
@@ -781,6 +1042,43 @@ def test_http_concurrency(httpd):
     check("no history row is lost to a half-written save", hist == mem, (hist, mem))
 
 
+def test_http_job_generation_race(httpd):
+    """Audit M4: ticks running side by side generate one job per occurrence."""
+    host, port = httpd.server_address[:2]
+    c = Client(host, port)
+    tok = c.request("POST", "/api/login", {"role": "coordinator"})[1]["token"]
+    s, r = c.request("POST", "/api/call", {"method": "createSchedule", "args": [{
+        "office": "Library", "category": "Hardware Repair", "frequency": "monthly",
+        "dueDate": "2026-01-05T09:00:00.000Z", "technician": "J. Tan",
+        "checklist": ["Clean the fan", "Verify storage health"]}]}, token=tok)
+    check("a schedule already due can be created over HTTP", s == 200 and r.get("ok"), r)
+    sid = r.get("id")
+
+    errors = []
+
+    def ticker():
+        cc = Client(host, port)
+        t = cc.request("POST", "/api/login", {"role": "coordinator"})[1]["token"]
+        for _ in range(4):
+            st, res = cc.request("POST", "/api/tick", {}, token=t)
+            if st != 200 or not isinstance(res, dict) or not res.get("ok"):
+                errors.append("tick %s %s" % (st, str(res)[:60]))
+
+    threads = [threading.Thread(target=ticker) for _ in range(6)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(60)
+    check("every concurrent tick answered", not errors, errors[:3])
+    with httpd.state.lock:
+        mine = [j for j in httpd.state.data["jobs"] if j["scheduleId"] == sid]
+        stored = httpd.state.conn.execute(
+            "SELECT COUNT(*) c FROM jobs WHERE schedule_id = ?", (sid,)).fetchone()["c"]
+    check("concurrent ticks generate one job for the occurrence",
+          len(mine) == 1, (sid, [j["id"] for j in mine]))
+    check("the database agrees with memory on that occurrence", stored == len(mine), (stored, len(mine)))
+
+
 MATRIX_ROLES = ("requester", "technician", "coordinator", "management")
 
 
@@ -867,6 +1165,7 @@ def test_http_transition_matrix(httpd):
     states = list(engine.TRANSITIONS)
     mismatches = []
     refused_breaks = []
+    unaudited = []
     allowed_total = sum(len(roles) for frm in states
                         for roles in engine.TRANSITIONS[frm].values())
     allowed_ok = 0
@@ -877,12 +1176,18 @@ def test_http_transition_matrix(httpd):
                 probes += 1
                 _matrix_prep(httpd, tid, frm)
                 m, a = _move_attempt(frm, to, role, tid)
+                with httpd.state.lock:
+                    audit_before = len(httpd.state.data["audit"])
                 s, r = c.request("POST", "/api/call", {"method": m, "args": a}, token=tokens[role])
                 with httpd.state.lock:
                     now = engine.get_ticket(httpd.state.data, tid)["status"]
+                    audit_after = len(httpd.state.data["audit"])
                 if engine.can_transition(frm, to, role):
                     if r.get("ok") and now == to:
                         allowed_ok += 1
+                        if audit_after <= audit_before:
+                            unaudited.append("%s to %s as %s moved without an audit entry"
+                                             % (frm, to, role))
                     else:
                         mismatches.append("%s to %s as %s is whitelisted but got ok=%s status=%s (%s)"
                                           % (frm, to, role, r.get("ok"), now, r.get("msg")))
@@ -895,6 +1200,7 @@ def test_http_transition_matrix(httpd):
           not refused_breaks, refused_breaks[:4])
     check("every whitelisted move succeeded over HTTP", allowed_ok == allowed_total,
           "%d of %d: %s" % (allowed_ok, allowed_total, mismatches[:4]))
+    check("every whitelisted move wrote its audit entry", not unaudited, unaudited[:4])
 
 
 def test_http_ticket_ids(httpd):
@@ -1076,6 +1382,43 @@ def test_action_rollback(tmp):
     stored = database.load_state(st.conn)
     check("the saved copy still matches memory",
           [t["id"] for t in stored["tickets"]] == [t["id"] for t in st.data["tickets"]])
+
+
+def test_google_login_gates(tmp):
+    """Audit test 91: the door an in-domain Google account meets before the IT
+    Office provisions a role for it, and the door it walks through after."""
+    path = os.path.join(tmp, "google-gates.sqlite3")
+    if os.path.exists(path):
+        os.remove(path)
+    st = database.State(path=path, seed_fn=seed_mod.seed)
+    auth.ensure_users(st.conn)
+    claims = {"email": "r.delacruz@upcebu.edu.ph", "hd": "upcebu.edu.ph",
+              "name": "R. Dela Cruz"}
+    r = auth.login_google(st.conn, claims)
+    check("an unprovisioned in-domain account is refused", not r.get("ok"), r)
+    check("the refusal carries the code behind the Access not granted panel",
+          r.get("code") == "not_provisioned", r)
+    check("the refusal names who to ask", "IT Office" in r.get("msg", ""), r)
+    st.conn.execute(
+        "INSERT INTO users (username, name, role, office, email, pw_hash) VALUES (?,?,?,?,?,?)",
+        ("rdelacruz", "R. Dela Cruz", "requester", "Library",
+         "r.delacruz@upcebu.edu.ph", auth.hash_password("itc")))
+    st.conn.commit()
+    r = auth.login_google(st.conn, claims)
+    check("the same claims sign in once the account is provisioned",
+          r.get("ok") and r["user"]["role"] == "requester", r)
+    check("the signed-in identity carries the office", r["user"]["office"] == "Library", r["user"])
+    token = r["token"]
+    who = auth.resolve(st.conn, token)
+    check("the token resolves to the provisioned identity",
+          who and who["role"] == "requester" and who["email"].endswith("@upcebu.edu.ph"), who)
+    st.conn.execute("UPDATE users SET active = 0 WHERE username = 'rdelacruz'")
+    st.conn.commit()
+    r = auth.login_google(st.conn, claims)
+    check("a deactivated account is refused even with valid claims",
+          not r.get("ok") and "deactivated" in r.get("msg", ""), r)
+    check("the token issued before the deactivation no longer resolves",
+          auth.resolve(st.conn, token) is None)
 
 
 def test_http_tenancy(httpd):
@@ -2151,6 +2494,19 @@ def test_query_module():
     check("office filter", res["total"] == 2 and all(t["office"] == "Registrar" for t in res["items"]))
     res = query_mod.query_tickets(tickets, {"priority": "high"})
     check("priority filter", res["total"] == 3, res["total"])
+    tech = next(t for t in tickets if t.get("technician"))
+    res = query_mod.query_tickets(tickets, {"technician": tech["technician"]})
+    check("technician filter", res["total"] >= 1
+          and all(t["technician"] == tech["technician"] for t in res["items"]), res["total"])
+    cat = next(t for t in tickets if t.get("category"))
+    res = query_mod.query_tickets(tickets, {"category": cat["category"]})
+    check("category filter", res["total"] >= 1
+          and all(t["category"] == cat["category"] for t in res["items"]), res["total"])
+    res = query_mod.query_tickets(tickets, {"from": "2026-01-01", "to": "2026-12-31"})
+    check("date window keeps its range", res["total"] >= 1 and all(
+        "2026-01-01" <= t["createdAt"][:10] <= "2026-12-31" for t in res["items"]), res["total"])
+    res = query_mod.query_tickets(tickets, {"from": "2027-01-01"})
+    check("a window in the future keeps nothing", res["total"] == 0, res["total"])
     sample = [{"id": "A", "priority": "low"}, {"id": "B", "priority": "critical"},
               {"id": "C", "priority": "high"}, {"id": "D", "priority": "medium"}]
     res = query_mod.query_tickets(sample, {"sort": "priority", "order": "desc", "size": "10"})
@@ -2182,6 +2538,19 @@ def test_query_module():
     check("summarize turnaround samples", summary["turnaround_samples"] >= 1, summary)
     check("summarize overdue", summary["overdue"] >= 1, summary["overdue"])
     check("single SLA definition exposed", summary["default_sla_days"] == query_mod.DEFAULT_SLA_DAYS)
+
+    # The three endings stay separate on every report (audit finding E6).
+    base = engine.get_ticket(st, "IT-2026-000141")
+    endings = [dict(base, id="A", status="closed"), dict(base, id="B", status="closed"),
+               dict(base, id="C", status="cancelled"), dict(base, id="D", status="resolved")]
+    es = query_mod.summarize(endings)
+    check("completed counts closed records only",
+          es["completed"] == 2 and es["closed"] == 2 and es["cancelled"] == 1, es)
+    check("a cancelled record never reaches a completed total",
+          es["completed"] + es["cancelled"] + es["resolved_awaiting"] == 4, es)
+    check("Resolved waits for confirmation instead of closing",
+          es["resolved_awaiting"] == 1 and es["awaiting_confirmation"] == 1
+          and es["open"] == 1, es)
 
 
 # ----------------------------------------------------------------- main
@@ -2415,8 +2784,11 @@ def main():
     test_engine_guards()
     test_engine_dependency_and_hold()
     test_engine_recurrence()
+    test_authorized_ticket_closure()
+    test_office_confirmation_guards()
     test_register_propagation()
     test_engine_maintenance()
+    test_agreed_date_recheck()
     test_schedule_generation()
     test_world_tick()
     test_working_day_reminders()
@@ -2443,6 +2815,7 @@ def main():
     print("persistence:")
     test_persistence(tmp)
     test_action_rollback(tmp)
+    test_google_login_gates(tmp)
     print("http:")
     db_path = os.path.join(tmp, "http.sqlite3")
     httpd, state, worker = appmod.build_server(host="127.0.0.1", port=0, db_path=db_path, start_worker=False)
@@ -2453,6 +2826,7 @@ def main():
         test_http_import(httpd)
         test_http_integrity(httpd)
         test_http_concurrency(httpd)
+        test_http_job_generation_race(httpd)
         test_http_tenancy(httpd)
         test_http_records(httpd)
         test_http_sla_window(httpd)

@@ -237,8 +237,41 @@ current commit. Blocked or unverified items are listed first.
   worker does the same after a failed tick. The reply names the exception
   type, not the cause, so the traceback is written to the server log and an
   operator has to read it there.
+- **A base page's own markup names its links by base name.** `role_pages.py`
+  writes a lane page by changing the `<title>` and injecting the pre-paint role
+  guard; the body it copies is the source page's, so a base-name link in the
+  source also appears in the 45 lane pages. Nine base pages carry such a link:
+  three in their static markup (the "Open maintenance schedule" button at
+  `dashboard.html:119`, the offline panel's button at `offline.html:31` and the
+  New request button at `tickets.html:40`) and fourteen built inside page
+  scripts. A lane link the script paints is routed by the map (`UI.laneHref`,
+  `ticket.html`'s `lane()`, and the `UI.urlFor` re-write
+  of that New request button at `tickets.html:428`), so the addresses a person
+  follows on a working screen carry the lane. Following a base-name address still
+  opens the base page, which renders for the signed-in role and is guarded by the
+  same map, so nothing outside the lane becomes reachable:
+  `node tools/rolepages_test.js` reads 663 painted links across all 45 lane pages
+  and fails any that leads into another lane or to a page the map denies it.
+  Renaming the remaining literals in the source would move the same strings into
+  the generator without changing what anyone can reach, which is why they stay.
 
 ## Resolved during this work
+
+- The responsive sweep measured the light theme only and covered zoom by width
+  alone. `tools/responsive.py` now takes `--theme=` and `--scale=`: the same
+  2553-check matrix is re-measured on the explicit dark palette with 0 problems,
+  and a real `Emulation.setPageScaleFactor` pass reports 0 problems over its 345
+  checks. The dark sweep first failed 17 times on the sign-in screen because the
+  frozen-screen scroll budget was looked up with the query still attached.
+- Whether a lane link stayed inside its lane was read from the markup only. The
+  painted links on a signed-in lane are now walked across all 45 lane pages
+  (663 links), the record screen and the command palette route their links
+  through the permission map, and the primary screens are clicked rather than
+  measured in `tools/responsive_behavior.py`.
+- The theme freeze rested on a review. `tools/theme_discipline_check.py` now
+  fails an undeclared custom-property read, a colour literal outside the allowed
+  overlays, a snapshot row that no longer matches its sheet, and a page that
+  styles itself.
 
 - The sign-in photograph was hidden in dark mode by a global `body::before`
   rule; `css/login.css` now declares the photograph explicitly in both

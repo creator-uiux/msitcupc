@@ -673,6 +673,180 @@ tests.push(async function forbiddenUrlShowsNeutralPanel() {
   }
 });
 
+tests.push(async function paintedLinksBelongToTheLane() {
+  /* Every anchor a signed-in lane actually sees must lead to a screen that
+     lane may open.  tools/ui_ownership_check.js reads this from the markup and
+     from the gate classes in the sheet; this test asks the rendered page, so a
+     link the page assembles at load is covered by the same rule.  An anchor the
+     page hides is not painted, so it is not counted: the app hides what a lane
+     cannot use rather than offering it greyed out.  jsdom reports an element's
+     own display, so the climb to the ancestors is done here by hand: a card the
+     role gate collapses hides everything inside it. */
+  var PRE = { requester: 'or', technician: 'itc', coordinator: 'ic', management: 'mgmt' };
+  var FOR_ROLE = { or: 'requester', itc: 'technician', ic: 'coordinator', mgmt: 'management' };
+  var SHARED = ['login.html', '404.html', 'index.html', 'offline.html'];
+  var roles = ['requester', 'technician', 'coordinator', 'management'];
+  function painted(w, node) {
+    for (var e = node; e && e.nodeType === 1; e = e.parentElement) {
+      if (e.hasAttribute('hidden') || e.getAttribute('aria-hidden') === 'true') return false;
+      var cs = w.getComputedStyle(e);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+    }
+    return true;
+  }
+  var paintedCount = 0, pagesVisited = 0, controlCount = 0, greyed = [], outside = [];
+  var WORK_SEL = '[data-act],[data-jact],[data-w],[data-m],[data-withdraw],[data-fault],[data-sedit],[data-stoggle]';
+  function readControls(p, role, perm, where) {
+    /* review and confirm paint data-act and data-jact, the technician workbench
+       data-w, the maintenance screen data-m, the office withdrawal data-withdraw
+       and the corrective ticket data-fault: all of them are workflow moves. */
+    Array.prototype.slice.call(p.d.querySelectorAll(WORK_SEL)).forEach(function (b) {
+      if (!painted(p.w, b)) return;
+      controlCount++;
+      var key = b.dataset.act || b.dataset.jact || b.dataset.w || b.dataset.m ||
+        b.dataset.withdraw || b.dataset.fault || b.dataset.sedit || b.dataset.stoggle;
+      if (b.disabled || b.getAttribute('aria-disabled') === 'true' ||
+          /(^|\s)(is-|btn-)?disabled(\s|$)/.test(b.className)) {
+        greyed.push(where + ': ' + key);
+      }
+      if (perm.actions[key] && perm.actions[key].indexOf(role) < 0) {
+        outside.push(where + ': ' + key);
+      }
+    });
+  }
+  for (var r = 0; r < roles.length; r++) {
+    var role = roles[r];
+    var seed = await open(BASE + PRE[role] + '-profile.html', role);
+    var PM = seed.w.PermissionMap;
+    ok(!!PM, role + ': the permission map is loaded before its links are read');
+    var pages = Object.keys(PM.pages).filter(function (pg) {
+      return PM.pages[pg].indexOf(role) > -1 && SHARED.indexOf(pg) < 0;
+    });
+    close(seed);
+    for (var i = 0; i < pages.length; i++) {
+      var page = pages[i];
+      var p = await open(BASE + PRE[role] + '-' + page, role);
+      pagesVisited++;
+      ok((' ' + p.d.body.className + ' ').indexOf(' role-' + role + ' ') > -1,
+        role + ' on ' + PRE[role] + '-' + page + ': the body carries its own lane class');
+      var wrong = [], foreign = [], denied = [];
+      Array.prototype.slice.call(p.d.querySelectorAll('a[href]')).forEach(function (a) {
+        if (!painted(p.w, a)) return;
+        var full = a.getAttribute('href') || '';
+        var href = full.split('#')[0].split('?')[0];
+        if (!/\.html$/.test(href) || href.indexOf('http') === 0) return;
+        paintedCount++;
+        var own = /^(itc|mgmt|or|ic)-(.*)$/.exec(href);
+        if (own && FOR_ROLE[own[1]] !== role) {
+          wrong.push(href + ' (' + a.textContent.trim().slice(0, 28) + ')');
+          return;
+        }
+        var base = own ? own[2] : href;
+        if (SHARED.indexOf(base) > -1) return;
+        if (!PM.pages[base]) { foreign.push(base); return; }
+        if (PM.pages[base].indexOf(role) < 0) denied.push(base);
+      });
+      ok(wrong.length === 0, role + ' on ' + PRE[role] + '-' + page +
+        ': no painted link leads into another lane' + (wrong.length ? ' -> ' + wrong.join(', ') : ''));
+      ok(foreign.length === 0, role + ' on ' + PRE[role] + '-' + page +
+        ': every painted link names a page the map knows' + (foreign.length ? ' -> ' + foreign.join(', ') : ''));
+      ok(denied.length === 0, role + ' on ' + PRE[role] + '-' + page +
+        ': every painted link leads to a page this lane may open' + (denied.length ? ' -> ' + denied.join(', ') : ''));
+
+      /* Required test 97: a move this lane cannot make is absent from the
+         page, not offered greyed out.  Only workflow controls carry data-act;
+         a form's own submit button stays disabled until it is filled in, which
+         is input validation and not a permission. */
+      readControls(p, role, PM, role + ' on ' + PRE[role] + '-' + page);
+      close(p);
+    }
+  }
+  console.log('  (' + pagesVisited + ' lane pages, ' + paintedCount + ' painted links read)');
+  ok(pagesVisited >= 45, 'every lane page was visited (' + pagesVisited + ')');
+  ok(paintedCount > 200, 'the links read are a real surface, not an empty page (' + paintedCount + ')');
+
+  /* The list pages above carry no move: a record screen paints its buttons only
+     once it has a record to show.  These addresses are the moves the diagram
+     places in each lane, built from the seed the harness signs in with, so the
+     screen is asked as the lane that has to act on it. */
+  var recMap = JSON.parse(require('fs').readFileSync(path.join(ROOT, 'permissions.json'), 'utf8'));
+  var seed = JSON.parse(SEED_DB);
+  var SCOPE = {
+    requester: function (r) { return r.office === 'Records Office'; },
+    technician: function (r) { return r.technician === 'J. Tan'; }
+  };
+  function candidates(kind, role, prefer) {
+    var list = (kind === 'jobs' ? seed.jobs : seed.tickets) || [];
+    var inScope = SCOPE[role] || function () { return true; };
+    var mine = list.filter(inScope);
+    /* The records where this lane is the one that acts come first; the rest are
+       still opened, because a record the lane only watches must say so. */
+    var rank = function (r) {
+      var i = (prefer || []).indexOf(r.status);
+      return i < 0 ? prefer ? prefer.length + 1 : 1 : i;
+    };
+    return mine.slice().sort(function (a, b) { return rank(a) - rank(b); }).slice(0, 3)
+      .map(function (r) { return r.id; });
+  }
+  /* role, lane page, query parameter, which record kind, the statuses where this
+     lane acts, and whether a move is owed here: 'some' means a control must be
+     painted for at least one of the records, 'any' means the screen may hold none
+     because the wait is stated instead. */
+  var PLAN = [
+    ['coordinator', 'review.html', 'id', 'tickets', ['submitted', 'needs_info'], 'some'],
+    ['coordinator', 'confirm.html', 'id', 'tickets', ['resolved', 'closed'], 'some'],
+    ['coordinator', 'maintenance.html', 'job', 'jobs', ['submitted', 'assigned'], 'some'],
+    ['requester', 'confirm.html', 'id', 'tickets', ['resolved', 'closed'], 'some'],
+    ['requester', 'request.html', 'respond', 'tickets', ['needs_info'], 'any'],
+    ['requester', 'visits.html', 'job', 'jobs', ['assigned', 'in_progress'], 'any'],
+    ['technician', 'technician.html', 'job', 'jobs', ['assigned', 'in_progress'], 'some'],
+    ['technician', 'technician.html', 't', 'tickets', ['assigned', 'in_progress', 'on_hold'], 'some'],
+    ['technician', 'maintenance.html', 'job', 'jobs', ['assigned', 'in_progress'], 'any']
+  ];
+  var recordPages = 0;
+  for (var k = 0; k < PLAN.length; k++) {
+    var role2 = PLAN[k][0], base2 = PLAN[k][1], param = PLAN[k][2], kind = PLAN[k][3],
+        prefer = PLAN[k][4], expect = PLAN[k][5];
+    var ids = candidates(kind, role2, prefer);
+    var best = 0, seenOn = '';
+    for (var c = 0; c < ids.length; c++) {
+      var addr = PRE[role2] + '-' + base2 + '?' + param + '=' + encodeURIComponent(ids[c]);
+      var rec = await open(BASE + addr, role2);
+      recordPages++;
+      var before = controlCount;
+      readControls(rec, role2, recMap, role2 + ' on ' + addr);
+      var got = controlCount - before;
+      /* The office's reply is a form and its withdrawal is a row control, so the
+         way a lane can act on the record in front of it is wider than the move
+         buttons; a ledger with nothing to act on states where the record stands. */
+      var surface = Array.prototype.slice.call(
+        rec.d.querySelectorAll(WORK_SEL + ',button[type=submit]'))
+        .filter(function (b) { return painted(rec.w, b); }).length;
+      var body = rec.d.body.textContent;
+      var stated = /Waiting on/i.test(body) ||
+        /Submitted|Needs Information|Assigned|In Progress|On Hold|Resolved|Closed|Cancelled/.test(body);
+      ok(surface > 0 || stated, role2 + ' on ' + addr +
+        ': the screen either offers a way to act or states where the record stands' +
+        (got ? ' (' + got + ' move(s))' : ''));
+      if (got > best) { best = got; seenOn = addr; }
+      close(rec);
+      if (best > 0 && expect === 'some') break;
+    }
+    if (expect === 'some') {
+      ok(best > 0, role2 + ' on ' + base2 + ': the lane the diagram gives this move to ' +
+        'sees a control for it' + (best ? ' (' + seenOn + ')' : ' (no record offered one)'));
+    }
+  }
+  console.log('  (' + recordPages + ' record pages opened on a signed-in lane)');
+  ok(recordPages >= 12, 'the record screens were driven, not just listed (' + recordPages + ')');
+  console.log('  (' + controlCount + ' painted workflow controls read)');
+  ok(controlCount > 20, 'the lanes offer a real set of controls, not an empty page (' + controlCount + ')');
+  ok(greyed.length === 0, 'no painted workflow control is disabled instead of hidden' +
+    (greyed.length ? ' -> ' + greyed.join(', ') : ''));
+  ok(outside.length === 0, 'no painted workflow control offers a move the lane is not granted' +
+    (outside.length ? ' -> ' + outside.join(', ') : ''));
+});
+
 /* ---------- run ---------- */
 startServer().then(function (srv) {
   ACTIVE_SRV = srv;

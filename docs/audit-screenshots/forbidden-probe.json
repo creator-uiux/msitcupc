@@ -7,12 +7,12 @@
       "hasToken": true
     },
     "forbidden": {
-      "landed": "/or-users.html",
-      "heading": null,
+      "landed": "/or-dashboard.html",
+      "heading": "My service dashboard",
       "neutral": false,
-      "storeRole": null,
-      "rows": 0,
-      "body": null,
+      "storeRole": "requester",
+      "rows": 35,
+      "body": "My service dashboard Good day, A. Delos Reyes. Your office requests, maintenance visits and updates in one place. Open requests 1 Everything currently with IT Awaiting your reply 0 IT needs more information Ready to confirm 0 Resolved by IT, awaiting your answer Maintenance visits 3 Scheduled for yo",
       "apiUsers": {
         "status": 403,
         "body": "{\"ok\": false, \"msg\": \"Blocked by role-based access (28.2).\"}"
@@ -34,12 +34,12 @@
       "hasToken": true
     },
     "forbidden": {
-      "landed": "/or-review.html",
-      "heading": null,
+      "landed": "/itc-dashboard.html",
+      "heading": "Technician dashboard",
       "neutral": false,
-      "storeRole": null,
-      "rows": 0,
-      "body": null,
+      "storeRole": "technician",
+      "rows": 47,
+      "body": "Technician dashboard Good day, J. Tan. Your assigned tickets, maintenance jobs and pending tests. Assigned to me 1 Ready to start In progress 1 Work under way On hold 1 Waiting on a dependency Maintenance jobs 4 Open visits assigned to me Submitted 0 Needs Information 0 Assigned 1 In Progress 1 On H",
       "apiUsers": {
         "status": 403,
         "body": "{\"ok\": false, \"msg\": \"Blocked by role-based access (28.2).\"}"
@@ -50,7 +50,7 @@
       "heading": "Review & Assign",
       "neutral": true,
       "storeRole": "technician",
-      "rows": 0
+      "rows": 2
     }
   },
   "coordinator": {
@@ -61,12 +61,12 @@
       "hasToken": true
     },
     "forbidden": {
-      "landed": "/or-settings.html",
-      "heading": null,
+      "landed": "/ic-dashboard.html",
+      "heading": "Coordination dashboard",
       "neutral": false,
-      "storeRole": null,
-      "rows": 0,
-      "body": null,
+      "storeRole": "coordinator",
+      "rows": 52,
+      "body": "Coordination dashboard Good day, K. Ramos. Review, assignment, dependencies and closure across every office. To review 1 New requests waiting for triage Active work 2 Assigned or in progress Dependency holds 1 Parts, approval or support Overdue 1 Past the target date Submitted 1 Needs Information 1 ",
       "apiUsers": {
         "status": 200,
         "body": "{\"ok\": true, \"users\": [{\"id\": 1, \"username\": \"areyes\", \"name\": \"A. Delos Reyes\", \"role\": \"requester\", \"office\": \"Records Office\", \"email\": \"a.delosreyes@upcebu."
@@ -77,23 +77,23 @@
       "heading": "Settings & reference data",
       "neutral": true,
       "storeRole": "coordinator",
-      "rows": 5
+      "rows": 8
     }
   },
   "management": {
     "signedIn": {
-      "landed": "/mgmt-dashboard.html",
+      "landed": "/mgmt-users.html",
       "auth": null,
       "storeRole": "management",
       "hasToken": true
     },
     "forbidden": {
-      "landed": "/or-request.html",
-      "heading": null,
-      "neutral": null,
-      "storeRole": null,
-      "rows": 0,
-      "body": null,
+      "landed": "/mgmt-users.html",
+      "heading": "Users & roles",
+      "neutral": false,
+      "storeRole": "management",
+      "rows": 10,
+      "body": "Users & roles Accounts, roles and office assignment, the identity written on service records. Search Role All roles Office Requester IT Technician IT Coordinator System Administrator Office All offices Accounting HR IT Office Library Office of the Director Records Office Registrar SDG State All Acti",
       "apiUsers": {
         "status": 200,
         "body": "{\"ok\": true, \"users\": [{\"id\": 1, \"username\": \"areyes\", \"name\": \"A. Delos Reyes\", \"role\": \"requester\", \"office\": \"Records Office\", \"email\": \"a.delosreyes@upcebu."

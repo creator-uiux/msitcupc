@@ -240,3 +240,7 @@ The queue owner per status, used for the "Needs my action" queue and the
 | Every disallowed transition is refused | `python server/tests.py` (the exhaustive transition test) |
 | Each role sees only its own navigation and actions | `node tools/rolepages_test.js` |
 | A wrong-role URL is rejected by the backend, not only hidden | `node tools/pagetest.js` (the access guard tests) and `python tools/api_check.py` |
+| Every step the workflow diagram draws is granted to the lane that draws it, and no other | `python tools/workflow_coverage_check.py` |
+| No file, nav entry, tab bar entry, link, control or granted action belongs to a lane the map denies | `node tools/ui_ownership_check.js` |
+| Every link a signed-in lane actually sees leads inside its own lane | `node tools/rolepages_test.js` (the painted link test walks all 45 lane pages) |
+| A link a record or the command palette offers opens that page in the reader's own lane, and a record is never offered to a lane the map keeps off it | `node tools/pagetest.js` (the record link test, `paletteLane`), `python tools/responsive_behavior.py` (the record link and the hand-off measured in a real browser) |

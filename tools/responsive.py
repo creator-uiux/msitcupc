@@ -37,6 +37,7 @@ import shots  # noqa: E402  (WS, wait_endpoint, free_port, CHROME)
 # 1440, 1536, 1680, 1710, 1920, 2048, 2560, 3440, 3840, 5120 and 7680.
 # Heights follow the device classes; the landscape entries check the phone
 # and tablet rotations that leave the least vertical room.
+SCALE = 1.0
 VIEWPORTS = [
     ("phone-320", 320, 480),
     ("phone-360", 360, 640),
@@ -176,20 +177,41 @@ def main():
     # --pages and --viewports narrow the sweep, so a single screen can be
     # re-checked quickly while a layout is being fixed.
     only = []
+    theme = ""
     for arg in sys.argv[1:]:
         if arg.startswith("--pages="):
             only = [p.strip() for p in arg.split("=", 1)[1].split(",") if p.strip()]
+        elif arg.startswith("--theme="):
+            theme = arg.split("=", 1)[1].strip()
+        elif arg.startswith("--scale="):
+            globals()["SCALE"] = float(arg.split("=", 1)[1])
         elif arg.startswith("--viewports="):
             wanted = [v.strip() for v in arg.split("=", 1)[1].split(",") if v.strip()]
             globals()["VIEWPORTS"] = [v for v in VIEWPORTS if v[0] in wanted]
     if only:
-        pages = [p for p in pages if p in only or p[:-5] in only]
+        # An entry may carry a query, so a screen can be measured in a theme
+        # the page would otherwise only reach through the picker.
+        wanted = {}
+        for o_ in only:
+            name, _, query = o_.partition("?")
+            wanted.setdefault(name, []).append(query)
+        picked = []
+        for p_ in pages:
+            stem = p_[:-5] if p_.endswith(".html") else p_
+            for q in wanted.get(p_, []) + wanted.get(stem, []):
+                picked.append(p_ + (("?" + q) if q else ""))
+        pages = picked
         if not pages:
             print("no matching pages")
             return 2
     if not pages:
         print("no pages found in %s" % ROOT)
         return 2
+    if theme:
+        # --theme=dark measures the same sweep on the explicit dark palette,
+        # which the picker reaches but a batch run cannot click through.
+        pages = [p + ("&theme=" + theme if "?" in p else "?theme=" + theme)
+                 for p in pages]
 
     port = shots.free_port()
     base = "http://127.0.0.1:%d/" % port
@@ -267,6 +289,10 @@ def main():
     def emulation(w, h):
         session["ws"].command("Emulation.setDeviceMetricsOverride",
                               {"width": w, "height": h, "deviceScaleFactor": 1, "mobile": False})
+        if SCALE != 1:
+            # A 200 percent zoom is not a narrow window: the layout keeps its
+            # width and everything is drawn twice as large.
+            session["ws"].command("Emulation.setPageScaleFactor", {"pageScaleFactor": SCALE})
 
     launch()
     restarts = 0
@@ -280,7 +306,8 @@ def main():
                 r = None
                 for attempt in range(3):
                     try:
-                        ok = nav("%s%s?demo=1" % (base, name))
+                        url = base + name + ("&demo=1" if "?" in name else "?demo=1")
+                        ok = nav(url)
                         if ok:
                             time.sleep(0.15)
                             raw = evaluate(MEASURE)
@@ -310,7 +337,7 @@ def main():
                 accepted_scroll = 0
                 if r.get("fit") and r["docH"] > r["vh"] + 2:
                     over = r["docH"] - r["vh"]
-                    limit = FROZEN_SCREEN_SCROLL.get(name)
+                    limit = FROZEN_SCREEN_SCROLL.get(name.split("?")[0])
                     if limit is not None and over <= limit:
                         accepted_scroll = over
                     else:

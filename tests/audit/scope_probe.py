@@ -80,4 +80,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if "--base" in sys.argv:
+        BASE = sys.argv[sys.argv.index("--base") + 1].rstrip("/")
     sys.exit(main())

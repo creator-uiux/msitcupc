@@ -135,7 +135,11 @@ function render() {
 
   var pg = UI.paginate(rows, aPage, A_PER);
   document.getElementById('aBody').innerHTML = pg.items.map(function (a, i) {
-    var link = a.subjectType === 'ticket' && String(a.subjectId).indexOf('IT-') === 0
+    /* The id only becomes a link when the reader's lane may open the record.
+       Audit is the administrator's screen, and the administrator has no
+       ticket detail page, so this renders as plain text there. */
+    var link = a.subjectType === 'ticket' && String(a.subjectId).indexOf('IT-') === 0 &&
+      UI.can('ticket.html')
       ? 'ticket.html?id=' + encodeURIComponent(a.subjectId) : '';
     return '<tr style="--row-index:' + i + '">' +
       '<td data-label="When"><div class="t-title">' + UI.clock(a.at) + '</div><div class="t-sub">' + UI.timeAgo(a.at) + '</div></td>' +

@@ -1,16 +1,19 @@
 """Controlled probes for the POST /api/state merge endpoint (audit only).
 
-Proves two behaviours on a throwaway demo database:
+Probes two behaviours on a throwaway demo database:
 
-  A. A coordinator can create a ticket that is already Resolved through the
-     bulk state merge, without a passed test record (transition bypass).
-  B. The merge replaces the whole ticket collection, so a partial array
-     deletes every record it omits (record loss).
+  A. A coordinator pushes a ticket that is already Resolved through the bulk
+     state merge. The merge must refuse it: a new record enters as Submitted
+     and the server writes its own tests, history and audit entry.
+  B. The merge is then called with a partial array. It must merge by id, so a
+     record the client left out survives.
 
-Run against a disposable server, never against real data:
+Both were reproduced as defects in the 2026-10-29 audit and both are refused
+on the current tree. Run against a disposable server, never against real data:
 
   python server/app.py --port 8899 --db /tmp/audit_itc.sqlite3 --reset --demo --no-worker
   python tests/audit/state_merge_probe.py
+  python tests/audit/state_merge_probe.py --base http://127.0.0.1:8901
 """
 import json
 import sys
@@ -96,4 +99,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if "--base" in sys.argv:
+        BASE = sys.argv[sys.argv.index("--base") + 1].rstrip("/")
     sys.exit(main())

@@ -7,6 +7,11 @@ dark at 1440 and 390 px, then evaluates:
     skipping elements whose effective background is an image or gradient;
   * touch targets smaller than 44 x 44 CSS px at 390 px.
 
+The phone views are measured with touch emulation switched on, because
+`pointer:coarse` is what the sheets key the enlarged tap targets on and a
+desktop pointer at 390 px would measure a device nobody holds. The 1440 views
+stay on the fine pointer.
+
 Prints a JSON summary and writes tests/audit/results/contrast_touch.json.
 
 Run:  python tests/audit/contrast_touch_probe.py
@@ -163,6 +168,8 @@ def main():
         for name, w, h, theme in VIEWS:
             ws.command("Emulation.setDeviceMetricsOverride",
                        {"width": w, "height": h, "deviceScaleFactor": 1, "mobile": w <= 480})
+            ws.command("Emulation.setTouchEmulationEnabled",
+                       {"enabled": w <= 480, "maxTouchPoints": 5 if w <= 480 else 1})
             for page in PAGES:
                 url = "%s%s?demo=1&theme=%s" % (base, page, theme)
                 ws.command("Page.navigate", {"url": url})

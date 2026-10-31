@@ -40,6 +40,10 @@
         "href": "or-reports.html"
       },
       {
+        "text": "Workflow Guide",
+        "href": "or-flow.html"
+      },
+      {
         "text": "Notifications 0",
         "href": "or-notifications.html"
       },
@@ -130,6 +134,10 @@
         "href": "itc-reports.html"
       },
       {
+        "text": "Workflow Guide",
+        "href": "itc-flow.html"
+      },
+      {
         "text": "Notifications 0",
         "href": "itc-notifications.html"
       },
@@ -152,10 +160,9 @@
     "ticketActions": {
       "assigned": {
         "ticket": "IT-2026-000130",
-        "actionCard": "Where this is actioned IT Technician Read-only for your role. This step is actioned by IT Technician. Change status Choose the next step\u2026 Return to work Place on hold for a dependency Only the moves your role may make are listed. Each one opens the screen that records it with the fields it needs. Waiting on: IT Technician Who must act next on this record.",
+        "actionCard": "Where this is actioned IT Technician Read-only for your role. This step is actioned by IT Technician. Change status Choose the next step\u2026 Return to work Only the moves your role may make are listed. Each one opens the screen that records it with the fields it needs. Waiting on: IT Technician Who must act next on this record.",
         "transitions": [
-          "Return to work",
-          "Place on hold for a dependency"
+          "Return to work"
         ]
       },
       "resolved": {
@@ -258,6 +265,10 @@
       {
         "text": "Reports",
         "href": "ic-reports.html"
+      },
+      {
+        "text": "Workflow Guide",
+        "href": "ic-flow.html"
       },
       {
         "text": "Notifications 0",
@@ -377,28 +388,8 @@
       "email": "m.reyes@upcebu.edu.ph",
       "phone": "+63 917 000 0004"
     },
-    "scopeTickets": 9,
+    "scopeTickets": 0,
     "nav": [
-      {
-        "text": "Dashboard",
-        "href": "mgmt-dashboard.html"
-      },
-      {
-        "text": "Service Records 7",
-        "href": "mgmt-tickets.html"
-      },
-      {
-        "text": "Maintenance 5",
-        "href": "mgmt-maintenance.html"
-      },
-      {
-        "text": "Office Register",
-        "href": "mgmt-register.html"
-      },
-      {
-        "text": "Reports",
-        "href": "mgmt-reports.html"
-      },
       {
         "text": "Users",
         "href": "mgmt-users.html"
@@ -408,12 +399,20 @@
         "href": "mgmt-offices.html"
       },
       {
+        "text": "Assets",
+        "href": "mgmt-assets.html"
+      },
+      {
         "text": "Configuration",
         "href": "mgmt-settings.html"
       },
       {
         "text": "Audit Log",
         "href": "mgmt-audit.html"
+      },
+      {
+        "text": "Workflow Guide",
+        "href": "mgmt-flow.html"
       },
       {
         "text": "Notifications 0",
@@ -425,58 +424,10 @@
       }
     ],
     "dashboardHeadings": [
-      "Oversight dashboard",
-      "Ticket activity",
-      "Status breakdown",
-      "Technician workload",
-      "Coming up",
-      "Recent updates",
-      "Active ticket queue",
-      "Service costs, recurring issues and preventive maintenance",
-      "Service breakdown"
+      "Users & roles",
+      "Accounts"
     ],
-    "ticketActions": {
-      "submitted": {
-        "ticket": "IT-2026-000143",
-        "actionCard": "Where this is actioned System Administrator Read-only for your role. This step is actioned by IT Coordinator. Waiting on: IT Coordinator Who must act next on this record.",
-        "transitions": []
-      },
-      "needs_info": {
-        "ticket": "IT-2026-000137",
-        "actionCard": "Where this is actioned System Administrator Read-only for your role. This step is actioned by Office Requester. Waiting on: Office Requester Who must act next on this record.",
-        "transitions": []
-      },
-      "assigned": {
-        "ticket": "IT-2026-000130",
-        "actionCard": "Where this is actioned System Administrator Read-only for your role. This step is actioned by IT Technician. Waiting on: IT Technician Who must act next on this record.",
-        "transitions": []
-      },
-      "resolved": {
-        "ticket": "IT-2026-000141",
-        "actionCard": "Where this is actioned System Administrator Read-only for your role. This step is actioned by Office Requester. Waiting on: Office Requester Who must act next on this record.",
-        "transitions": []
-      },
-      "in_progress": {
-        "ticket": "IT-2026-000142",
-        "actionCard": "Where this is actioned System Administrator Read-only for your role. This step is actioned by IT Technician. Waiting on: IT Technician Who must act next on this record.",
-        "transitions": []
-      },
-      "on_hold": {
-        "ticket": "IT-2026-000139",
-        "actionCard": "Where this is actioned System Administrator Read-only for your role. This step is actioned by IT Coordinator. Waiting on: IT Coordinator Who must act next on this record.",
-        "transitions": []
-      },
-      "cancelled": {
-        "ticket": "IT-2026-000128",
-        "actionCard": "Where this is actioned System Administrator Cancelled requests are closed for action. The record and its history are retained. Waiting on: Nobody Who must act next on this record.",
-        "transitions": []
-      },
-      "closed": {
-        "ticket": "IT-2026-000125",
-        "actionCard": "Where this is actioned System Administrator Read-only for your role. This step is actioned by Nobody. Waiting on: Nobody Who must act next on this record.",
-        "transitions": []
-      }
-    },
+    "ticketActions": {},
     "forbidden": {
       "url": "or-request.html",
       "heading": "Submit an IT service request",
@@ -506,7 +457,8 @@
     }
   },
   "stateMergeProbe": {
-    "status": 200,
-    "ok": true
+    "status": 400,
+    "ok": false,
+    "msg": "New tickets must start as Submitted and advance through the workflow."
   }
 }

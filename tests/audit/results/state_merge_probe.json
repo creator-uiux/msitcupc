@@ -12,21 +12,29 @@
     "IT-2026-000125"
   ],
   "probe_a": {
-    "http": 200,
-    "ok": true,
-    "ticket_created": true,
-    "created_status": "resolved",
-    "created_has_tests": false,
-    "count_after_a": 10
+    "http": 400,
+    "ok": false,
+    "ticket_created": false,
+    "created_status": null,
+    "created_has_tests": null,
+    "count_after_a": 9
   },
   "probe_b": {
     "http": 200,
     "ok": true,
-    "count_after_b": 1,
+    "count_after_b": 9,
     "surviving_ids": [
-      "IT-9999-000099"
+      "IT-2026-000143",
+      "IT-2026-000137",
+      "IT-2026-000130",
+      "IT-2026-000142",
+      "IT-2026-000139",
+      "IT-2026-000141",
+      "IT-2026-000134",
+      "IT-2026-000128",
+      "IT-2026-000125"
     ],
-    "deleted_count": 9
+    "deleted_count": 0
   },
   "probe_requester": {
     "http": 403,

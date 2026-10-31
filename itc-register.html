@@ -149,7 +149,11 @@ function entries() {
     if (scope && j.office !== scope) return;
     out.push({ kind: 'preventive', id: j.id, office: j.office, status: j.status, _status: UI.STATUS[j.status] || [j.status, 'b-assigned'],
       title: 'Preventive maintenance: ' + j.category + ' (' + j.scheduleId + ')', category: j.category, asset: (j.assets || []).join(', '),
-      owner: 'Maintenance plan', technician: j.technician, at: j.visitDate || j.createdAt, createdAt: j.createdAt, href: 'maintenance.html?job=' + encodeURIComponent(j.id) });
+      owner: 'Maintenance plan', technician: j.technician, at: j.visitDate || j.createdAt, createdAt: j.createdAt,
+    /* the office has no maintenance planning screen: its own ledger of the
+       same visits is Maintenance Visits, so the link lands there */
+    href: role() === 'requester' ? 'visits.html'
+      : 'maintenance.html?job=' + encodeURIComponent(j.id) });
   });
   return out;
 }
@@ -380,7 +384,12 @@ function renderMaintenance(scope) {
     (role() === 'requester' ? '' : '<th>Technician</th>') + '<th>Status</th><th>Outcome</th><th>Next due</th></tr></thead><tbody>' +
     mp.items.map(function (j) {
       var st = UI.STATUS[j.status] || [j.status, 'b-submitted'];
-      return '<tr><td class="td-main" data-label="Visit"><a class="t-id" href="maintenance.html?job=' + encodeURIComponent(j.id) + '">' + UI.esc(j.id) + '</a>' +
+      /* the office has no maintenance planning screen: its own reading of the
+         same visits is the Maintenance Visits ledger, so the link lands there */
+      var visit = role() === 'requester'
+        ? '<span class="t-id">' + UI.esc(j.id) + '</span>'
+        : '<a class="t-id" href="maintenance.html?job=' + encodeURIComponent(j.id) + '">' + UI.esc(j.id) + '</a>';
+      return '<tr><td class="td-main" data-label="Visit">' + visit +
         '<div class="t-sub">' + UI.esc(j.category) + '</div></td>' +
         '<td data-label="Schedule"><span class="mono">' + UI.esc(j.scheduleId) + '</span></td>' +
         '<td data-label="Office">' + UI.esc(j.office) + '</td>' +

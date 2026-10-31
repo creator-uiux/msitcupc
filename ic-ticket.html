@@ -196,13 +196,24 @@ function validMoves(t) {
     if (role === 'technician' && t.technician !== UI.viewerName()) return;
     if (next === 'closed' && role === 'coordinator') return;  /* the office closes it */
     if (next === 'in_progress' && t.status === 'resolved') {
-      out.push({ next: next, label: 'Reject the result and return to diagnosis', href: 'confirm.html' });
+      out.push({ next: next, label: 'Reject the result and return to diagnosis', href: lane('confirm.html') });
       return;
     }
     var target = TRANSITION_TARGETS[next] || { label: 'Move to ' + UI.STATUS[next][0], href: 'ticket.html' };
-    out.push({ next: next, label: target.label, href: target.href });
+    out.push({ next: next, label: target.label, href: lane(target.href) });
   });
   return out;
+}
+
+/* A link out of the record stays in the lane the reader opened.  The base name
+   is what the permission map grants; the prefix only names the URL, so a page
+   this role cannot open keeps its plain name rather than looking reachable. */
+function lane(href) {
+  var role = UI.roleKey();
+  var cut = String(href).indexOf("?");
+  var page = cut === -1 ? href : href.slice(0, cut);
+  var rest = cut === -1 ? "" : href.slice(cut);
+  return UI.can(page, role) ? UI.urlFor(page, role) + rest : href;
 }
 
 /* Where the current status is actioned. The record itself is read-only. */
@@ -210,7 +221,7 @@ function whereCard(t) {
   var role = Store.db.role;
   var rows = [];
   function link(href, label, sub) {
-    rows.push('<a class="btn btn-soft btn-block" href="' + href + '">' +
+    rows.push('<a class="btn btn-soft btn-block" href="' + lane(href) + '">' +
       '<span><b>' + label + '</b><br><small class="muted">' + sub + '</small></span></a>');
   }
   function readOnly() {
@@ -373,17 +384,17 @@ function render() {
     '<div class="info mt"><div><div class="k">Job</div><div class="v mono">' + UI.esc(linkedJob.id) + '</div></div>' +
     '<div><div class="k">Schedule</div><div class="v mono">' + UI.esc(linkedJob.scheduleId) + '</div></div>' +
     '<div><div class="k">Status</div><div class="v">' + UI.esc(linkedJob.status) + '</div></div></div>' +
-    '<a class="btn btn-soft mt" href="maintenance.html?job=' + encodeURIComponent(linkedJob.id) + '">Open in maintenance</a></div>'
+    '<a class="btn btn-soft mt" href="' + lane('maintenance.html?job=' + encodeURIComponent(linkedJob.id)) + '">Open in maintenance</a></div>'
     : linkedTkt
       ? '<div class="card card-pad"><h3 class="card-title">Linked service record</h3>' +
       '<div class="info mt"><div><div class="k">Ticket</div><div class="v mono">' + UI.esc(linkedTkt.id) + '</div></div>' +
       '<div><div class="k">Status</div><div class="v">' + UI.STATUS[linkedTkt.status][0] + '</div></div></div>' +
-      '<a class="btn btn-soft mt" href="ticket.html?id=' + encodeURIComponent(linkedTkt.id) + '">Open linked ticket</a></div>'
+      '<a class="btn btn-soft mt" href="' + lane('ticket.html?id=' + encodeURIComponent(linkedTkt.id)) + '">Open linked ticket</a></div>'
       : previousRecord
         ? '<div class="card card-pad"><h3 class="card-title">Previous service record</h3>' +
         '<div class="info mt"><div><div class="k">Ticket</div><div class="v mono">' + UI.esc(previousRecord.id) + '</div></div>' +
         '<div><div class="k">Status</div><div class="v">' + UI.STATUS[previousRecord.status][0] + '</div></div></div>' +
-        '<a class="btn btn-soft mt" href="ticket.html?id=' + encodeURIComponent(previousRecord.id) + '">Open previous record</a></div>'
+        '<a class="btn btn-soft mt" href="' + lane('ticket.html?id=' + encodeURIComponent(previousRecord.id)) + '">Open previous record</a></div>'
         : '';
 
   /* where to act */

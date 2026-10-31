@@ -396,7 +396,8 @@ tests.push(async function ticketDetail() {
 
   /* the record is read-only now  --  transitions live on the section screens */
   ok($$('[data-tact]').length === 0, 'no inline transitions on the record');
-  ok($('#tActions a[href^="review.html"]') !== null, 'record links into Review & Assign for coordinator work');
+  ok($('#tActions a[href^="ic-review.html"]') !== null,
+    'record links into the coordinator lane for coordinator work');
   /* Appendix E.2: the tabbed record sections */
   ok($$('#tTabs .tab').length === 5, 'the record carries the five documented tabs');
   ok($$('#tTabs .tab').map(function (b) { return b.textContent; }).join(',') ===
@@ -844,6 +845,24 @@ tests.push(async function pwaShell() {
     ok(man.start_url === '/login.html', 'the installed app opens at the sign-in page (start_url)');
     ok(man.display === 'standalone', 'the app installs in its own window');
     ok(Array.isArray(man.icons) && man.icons.length > 0, 'the manifest carries the icons');
+    /* An installer needs a real bitmap: an SVG alone is not accepted by every
+       platform, so the PNG pair and a maskable variant have to be listed. */
+    var pngs = (man.icons || []).filter(function (i) { return i.type === 'image/png'; });
+    ok(pngs.some(function (i) { return i.sizes === '192x192' && i.purpose === 'any'; }),
+       'the manifest lists a 192 px PNG');
+    ok(pngs.some(function (i) { return i.sizes === '512x512' && i.purpose === 'any'; }),
+       'the manifest lists a 512 px PNG');
+    ok(pngs.some(function (i) { return (i.purpose || '').indexOf('maskable') > -1; }),
+       'the manifest lists a maskable PNG');
+    var missing = [];
+    for (var n = 0; n < (man.icons || []).length; n++) {
+      var src = String(man.icons[n].src).replace(/^\//, '');
+      var okFetch = false;
+      try { okFetch = (await fetch(BASE + src)).status === 200; } catch (e) { }
+      if (!okFetch) missing.push(man.icons[n].src);
+    }
+    ok(missing.length === 0, 'every icon the manifest lists is served' +
+       (missing.length ? ' (missing ' + missing.join(', ') + ')' : ''));
   }
 
   var swText = '';
@@ -1422,9 +1441,19 @@ tests.push(async function ticketRoleLinks() {
   asRole(p, 'management');
   ok($('#accessPanel') !== null, 'the administrator is blocked from the ticket record (scope 5)');
   asRole(p, 'coordinator');
-  ok($('#tActions a[href^="confirm.html"]') !== null, 'coordinator gets the confirmation link');
+  p.w.render();
+  ok($('#tActions a[href^="ic-confirm.html"]') !== null,
+    'coordinator gets the confirmation link in their own lane');
   asRole(p, 'requester');
-  ok($('#tActions a[href^="confirm.html"]') !== null, 'requester gets the confirmation link');
+  p.w.render();
+  ok($('#tActions a[href^="or-confirm.html"]') !== null,
+    'requester gets the confirmation link in their own lane');
+  /* The next-step selector sends the reader to the screen that records the
+     move, and it stays inside the lane the reader opened. */
+  var moves = $$('#tMove option').map(function (o) { return o.value; })
+    .filter(function (v) { return v !== ''; });
+  ok(moves.length > 0 && moves.every(function (v) { return /^or-[a-z-]+\.html$/.test(v); }),
+    'every move this lane is offered opens in the office lane (' + moves.join(', ') + ')');
   close(p);
 });
 
@@ -1606,9 +1635,11 @@ tests.push(async function workOrderCards() {
     var placed = $$('#tkBoard .wo-card');
     ok(placed.length > 0, 'cards are grouped into the columns (' + placed.length + ')');
     var counts = p.w.Query.queryTickets(p.w.Store.db.tickets, { status: 'open', size: 100 }, null);
+    /* The register links inside the reader's own lane, so the card is keyed by
+       the record it names rather than by the lane file it sits in. */
     var shown = {};
-    placed.forEach(function (c) { shown[c.getAttribute('href')] = 1; });
-    ok(counts.items.every(function (t) { return shown['ticket.html?id=' + encodeURIComponent(t.id)]; }),
+    placed.forEach(function (c) { shown[String(c.getAttribute('href')).split('?')[1]] = 1; });
+    ok(counts.items.every(function (t) { return shown['id=' + encodeURIComponent(t.id)]; }),
       'every filtered ticket reaches its column');
     var moves = $$('#tkBoard [data-move]');
     ok(moves.length > 0, 'open cards expose the coordinator moves (' + moves.length + ')');
@@ -1659,7 +1690,9 @@ tests.push(async function boardMoveGuard() {
   boardBtn.click();
 
   function columnOf(id) {
-    var card = $('#tkBoard .wo-card[href="ticket.html?id=' + encodeURIComponent(id) + '"]');
+    /* The register links inside the reader's own lane, so the card is found by
+       the record it names rather than by the lane file it sits in. */
+    var card = $('#tkBoard .wo-card[href$="' + encodeURIComponent(id) + '"]');
     if (!card) return null;
     var col = card.closest('[data-board-status]');
     return col && col.getAttribute('data-board-status');
@@ -1813,6 +1846,35 @@ tests.push(async function commandPalette() {
 
   ok(p.errors.length === 0, 'no errors from the command palette');
   close(p);
+});
+
+/* The palette is a way in, never a way round the map.  A role the map keeps off
+   the record is not offered a record to open, and a target the reader may open
+   is resolved into their own lane when they pick it. */
+tests.push(async function paletteLane() {
+  var p = await openFeatures(BASE + 'mgmt-users.html', { workspaceCommandPalette: true });
+  asRole(p, 'management');
+  ok(p.errors.length === 0, 'the administrator directory loads for the palette probe');
+  p.w.UI.openPalette('IT-2026');
+  var mgmtHits = $$('#cmdkList [data-cmdk-item]').map(function (a) { return a.dataset.href; })
+    .filter(function (h) { return /(^|-)ticket\.html\?id=/.test(h); });
+  ok(mgmtHits.length === 0,
+    'the administrator palette never offers a record this role cannot open');
+  p.w.UI.closePalette();
+  var lane = p.w.UI.laneHref('ticket.html?id=IT-2026-000130');
+  ok(lane === 'ticket.html?id=IT-2026-000130',
+    'a page outside this role keeps its plain name, so its own guard answers (' + lane + ')');
+  close(p);
+
+  var c = await openFeatures(BASE + 'mgmt-users.html', { workspaceCommandPalette: true });
+  asRole(c, 'coordinator');
+  var target = c.w.UI.laneHref('ticket.html?id=IT-2026-000130');
+  ok(target === 'ic-ticket.html?id=IT-2026-000130',
+    'a coordinator pick opens the record in the coordinator lane (' + target + ')');
+  var office = c.w.UI.laneHref('register.html?office=Records%20Office');
+  ok(office === 'ic-register.html?office=Records%20Office',
+    'an office pick stays in the lane too (' + office + ')');
+  close(c);
 });
 
 /* Links from the palette open the register and the directory already
@@ -2309,6 +2371,554 @@ tests.push(async function scopeAcrossWidths() {
     ok(!api.test(backend), 'the backend exposes no ' + term + ' API route');
     ok(!word.test(backend), 'the backend source carries no hidden ' + term + ' feature');
   });
+});
+
+tests.push(async function readStates() {
+  /* Required test 61 and audit U14: each state the read path can answer with
+     is named on the screen.  A static run carries no backend bridge at all, so
+     the outage panel is held back; the panel belongs to a deployed page whose
+     server stops answering, which is the state reached below. */
+  var p = await open(BASE + 'ic-tickets.html');
+  ok(p.w.ApiMode === undefined, 'the static prototype runs with no backend bridge');
+  ok(p.d.getElementById('outageNotice') === null,
+     'a page with no backend bridge shows no outage panel');
+
+  p.w.ApiMode = false;
+  p.w.UI.renderOutageNotice();
+  var panel = p.d.getElementById('outageNotice');
+  ok(panel !== null, 'a deployed screen whose server does not answer shows the outage panel');
+  ok(/Cannot reach the service desk server/.test(panel.querySelector('h2').textContent),
+     'the outage panel names the server in its heading');
+  ok(/copy stored on this device/.test(panel.querySelector('p').textContent),
+     'the outage panel says which copy the list is holding');
+  ok(panel.getAttribute('role') === 'status', 'the outage panel reaches a screen reader');
+  var retry = panel.querySelector('#ogRetry');
+  ok(retry !== null && retry.textContent.trim() === 'Try again', 'the outage panel offers a retry');
+
+  /* and it goes away the moment a server does answer */
+  p.w.ApiMode = true;
+  p.w.UI.renderOutageNotice();
+  ok(p.d.getElementById('outageNotice') === null, 'a screen backed by the server hides the panel');
+  p.w.ApiMode = false;
+  p.w.UI.renderOutageNotice();
+  ok(p.d.getElementById('outageNotice') !== null, 'the panel returns when the server stops answering');
+  ok(p.d.querySelectorAll('#outageNotice').length === 1, 'the panel is not stacked on re-render');
+
+  /* loading: the one place the app really waits renders an announced skeleton */
+  var sk = p.d.createElement('div');
+  sk.innerHTML = p.w.UI.skeleton(3);
+  var block = sk.querySelector('.skeleton-block');
+  ok(block !== null && block.getAttribute('role') === 'status' &&
+     block.getAttribute('aria-label') === 'Loading', 'the loading state is an announced status');
+  ok(block.querySelectorAll('.skeleton-line').length === 3, 'the loading state shows the asked-for lines');
+  close(p);
+
+  var lanes = ['or-dashboard.html', 'itc-technician.html', 'mgmt-users.html'];
+  for (var li = 0; li < lanes.length; li++) {
+    var q = await open(BASE + lanes[li]);
+    q.w.ApiMode = false;
+    q.w.UI.renderOutageNotice();
+    ok(q.d.getElementById('outageNotice') !== null,
+      lanes[li] + ' carries the same outage notice when its server is silent');
+    close(q);
+  }
+
+  /* empty: a filter that matches nothing says so instead of showing a blank table */
+  var t = await open(BASE + 'ic-tickets.html?q=zzz-no-such-ticket');
+  var empty = t.d.getElementById('tkEmpty');
+  ok(empty !== null && empty.hidden === false, 'a filter with no rows reveals the empty state');
+  ok(/No tickets match these filters\./.test(empty.textContent),
+     'the empty state names why the list is blank: ' + empty.textContent.trim());
+  ok(t.d.getElementById('tkBody').querySelectorAll('tr').length === 0,
+     'the empty state leaves no rows under the table head');
+  close(t);
+});
+
+tests.push(async function badgeIdentity() {
+  /* Required tests 63 and 77: every status badge carries its text and its own
+     glyph, and Resolved is told apart from Closed by colour as well as words.
+     The colour pair is read from the theme sheets rather than from a computed
+     style: the headless DOM here does not run the CSS cascade, so a rendered
+     reading would be a reading of nothing. */
+  var CLASSES = {
+    submitted: 'b-submitted', needs_info: 'b-needs-info', assigned: 'b-assigned',
+    in_progress: 'b-progress', on_hold: 'b-hold', resolved: 'b-resolved',
+    closed: 'b-closed', cancelled: 'b-cancelled'
+  };
+  var LABELS = Object.keys(CLASSES);
+  function escapeRe(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  function chipColours(sheet, selector) {
+    var src = fs.readFileSync(path.join(ROOT, sheet), 'utf8');
+    var out = {};
+    LABELS.forEach(function (st) {
+      var head = selector ? selector + ' .' : '.';
+      var rule = new RegExp(escapeRe(head + CLASSES[st]) +
+        '\\{([^}]*)\\}').exec(src);
+      if (!rule) return;
+      var bg = /(?:^|;)\s*background:\s*([^;]+)/.exec(rule[1]);
+      var fg = /(?:^|;)\s*color:\s*([^;]+)/.exec(rule[1]);
+      if (bg && fg) out[st] = bg[1].trim() + '/' + fg[1].trim();
+    });
+    return out;
+  }
+  /* The light and green palettes keep every status on its own colour pair.
+     The dark sheet reuses one navy chip for Submitted and In Progress, which
+     the frozen theme holds; those two are still told apart by their words and
+     glyphs, so the pair is recorded rather than asserted away. */
+  var PALETTES = [
+    { name: 'light', sheet: 'css/app.css', selector: '', distinct: true },
+    { name: 'dark', sheet: 'css/app.css', selector: 'html[data-theme="dark"]', distinct: false },
+    { name: 'green', sheet: 'css/green.css', selector: '', distinct: true }
+  ];
+  var p = await open(BASE + 'ic-tickets.html');
+  var host = p.d.createElement('div');
+  p.d.body.appendChild(host);
+  var wrong = LABELS.filter(function (st) {
+    host.innerHTML = p.w.UI.badge(st);
+    var b = host.querySelector('.badge');
+    return !b || !b.querySelector('svg') || !b.textContent.trim();
+  });
+  ok(wrong.length === 0, 'every status badge renders an icon and its text' +
+    (wrong.length ? ' -> missing on ' + wrong.join(',') : ''));
+  var seen = {};
+  LABELS.forEach(function (st) {
+    host.innerHTML = p.w.UI.badge(st);
+    var b = host.querySelector('.badge');
+    seen[st] = { text: b.textContent.trim(), cls: b.className };
+  });
+  var dupes = LABELS.filter(function (st) {
+    return LABELS.some(function (other) {
+      return other !== st && seen[other].text === seen[st].text;
+    });
+  });
+  ok(dupes.length === 0, 'no two statuses share a badge label' + (dupes.length ? ' -> ' + dupes.join(',') : ''));
+  ok(seen.resolved.cls !== seen.closed.cls, 'the two badges use different chip classes');
+  PALETTES.forEach(function (pal) {
+    var colours = chipColours(pal.sheet, pal.selector);
+    var unstyled = LABELS.filter(function (st) { return !colours[st]; });
+    ok(unstyled.length === 0, pal.name + ' gives every status its own colour pair' +
+       (unstyled.length ? ' -> missing on ' + unstyled.join(',') : ''));
+    ok(colours.resolved !== undefined && colours.resolved !== colours.closed,
+       pal.name + ' tells Resolved apart from Closed by colour: ' + colours.resolved +
+       ' against ' + colours.closed);
+    var shared = LABELS.filter(function (st) {
+      return LABELS.some(function (other) {
+        return other !== st && colours[other] && colours[other] === colours[st];
+      });
+    });
+    if (pal.distinct) {
+      ok(shared.length === 0, pal.name + ' gives no two statuses the same colour pair' +
+         (shared.length ? ' -> shared by ' + shared.join(',') : ''));
+    } else {
+      ok(shared.slice().sort().join(',') === 'in_progress,submitted',
+         pal.name + ' reuses one chip only for Submitted and In Progress, whose labels and glyphs differ: ' +
+         shared.join(','));
+    }
+  });
+  var pr = ['low', 'medium', 'high', 'critical'].map(function (k) {
+    host.innerHTML = p.w.UI.prio(k);
+    var e = host.querySelector('.prio');
+    return e.querySelector('svg') !== null && e.textContent.trim().length > 0;
+  });
+  ok(pr.every(function (x) { return x; }), 'every priority carries an icon and its word');
+  host.remove();
+  close(p);
+});
+
+tests.push(async function captureAndRecordControls() {
+  /* Required tests 80 and 100: every file input in the app asks the phone for
+     its camera, and the technician workbench opens on today, shows the
+     recording progress and keeps the save bar with the list. */
+  var files = fs.readdirSync(ROOT).filter(function (f) {
+    return f.endsWith('.html') && !f.startsWith('__');
+  });
+  var inputs = 0;
+  var bare = [];
+  files.forEach(function (f) {
+    var src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    var re = /<input[^>]*type="file"[^>]*>/g;
+    var m;
+    while ((m = re.exec(src)) !== null) {
+      inputs++;
+      if (!/capture="environment"/.test(m[0])) bare.push(f);
+    }
+  });
+  ok(inputs >= 9 && bare.length === 0,
+     'every file input in ' + files.length + ' pages asks for the environment camera (' +
+     inputs + ' inputs, ' + bare.join(',') + ' without)');
+
+  var p = await open(BASE + 'itc-technician.html');
+  asRole(p, 'technician');
+  var evInputs = Array.prototype.slice.call(p.d.querySelectorAll('.chk-ev input[type="file"]'));
+  ok(evInputs.length > 0 && evInputs.every(function (f) {
+    return f.getAttribute('capture') === 'environment';
+  }), 'a checklist item takes its evidence straight from the phone camera (' +
+     evInputs.length + ' controls)');
+
+  var today = $('#wToday');
+  var queue = $('#wBody');
+  ok(today !== null && queue !== null,
+     'the workbench holds both the today block and the full queue');
+  ok((today.compareDocumentPosition(queue) & p.w.Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+     'the today block is read before the full queue');
+  var bar = $('.chk-progress');
+  var barText = $('.chk-progress-text');
+  if (bar) {
+    var fill = bar.querySelector('span');
+    var pct = parseFloat(fill.style.width) || 0;
+    ok(pct >= 0 && pct <= 100, 'the checklist progress bar is a share of the whole (' + pct + '%)');
+    ok(barText !== null && /of \d+|All items recorded/.test(barText.textContent),
+       'the progress read-out counts the items: ' + (barText ? barText.textContent.trim() : 'none'));
+    var foot = $('.chk-foot');
+    ok(foot !== null && /of \d+ saved/.test(foot.textContent),
+       'the sticky footer states how much of the visit is saved');
+  } else {
+    ok(false, 'the technician lane renders a job card with a checklist');
+  }
+  close(p);
+});
+
+tests.push(async function coordinatorComingUp() {
+  /* Required test 102: the coordinator dashboard earns its place by listing
+     the work that follows the current queue. */
+  var p = await open(BASE + 'ic-dashboard.html');
+  asRole(p, 'coordinator');
+  var heads = $$('.card-head h3').map(function (h) { return h.textContent.trim(); });
+  ok(heads.indexOf('Coming up') > -1, 'the coordinator dashboard lists the coming-up card');
+  ok($('#maintDue') !== null && $$('#maintDue li').length > 0,
+     'the coming-up card carries the scheduled visits');
+  var link = $('#maintLink');
+  ok(link !== null && /maintenance\.html/.test(link.getAttribute('href')),
+     'the coming-up card opens the maintenance schedule');
+  close(p);
+});
+
+tests.push(async function pwaCachePolicy() {
+  /* Required test 78: the worker caches the shell and nothing that carries a
+     record, and a sign-out tells it to drop what it held. */
+  var swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+  var block = /var NEVER_CACHE = \[([\s\S]*?)\];/.exec(swSrc);
+  ok(block !== null, 'the worker declares the routes it must never cache');
+  var listed = block ? block[1].split('\n').map(function (l) {
+    var m = /'([^']+)'/.exec(l);
+    return m ? m[1] : '';
+  }).filter(Boolean) : [];
+  ok(listed.indexOf('/api/') === 0, 'the never-cache list starts at the API root');
+
+  var jsFiles = fs.readdirSync(path.join(ROOT, 'js')).filter(function (f) { return f.endsWith('.js'); });
+  var called = {};
+  jsFiles.forEach(function (f) {
+    var src = fs.readFileSync(path.join(ROOT, 'js', f), 'utf8');
+    var re = /['"`](\/api\/[a-z-]+)/g;
+    var m;
+    while ((m = re.exec(src)) !== null) called[m[1]] = 1;
+  });
+  var names = Object.keys(called).sort();
+  var uncovered = names.filter(function (pathName) {
+    return !listed.some(function (p) { return pathName.indexOf(p) === 0; });
+  });
+  ok(names.length > 0 && uncovered.length === 0,
+     'every API route the client calls is on the never-cache list (' + names.length +
+     ' routes' + (uncovered.length ? ', missing ' + uncovered.join(',') : '') + ')');
+
+  var shell = /var SHELL = \[([\s\S]*?)\];/.exec(swSrc);
+  var shellItems = shell ? shell[1].split('\n').map(function (l) {
+    var m = /'([^']+)'/.exec(l);
+    return m ? m[1] : '';
+  }).filter(Boolean) : [];
+  ok(shellItems.every(function (s) { return s.indexOf('/api/') !== 0; }),
+     'the precached shell lists no API route');
+
+  ok(/ITC_CLEAR_PRIVATE_DATA/.test(swSrc), 'the worker answers the sign-out clear message');
+  var apiSrc = fs.readFileSync(path.join(ROOT, 'js', 'api.js'), 'utf8');
+  var posts = (apiSrc.match(/ITC_CLEAR_PRIVATE_DATA/g) || []).length;
+  ok(posts >= 2, 'a sign-out posts the clear message to the live worker and the registration (' +
+     posts + ' call sites)');
+  /* the manifest itself, and every icon it lists, is covered by pwaShell */
+});
+
+/* Audit row 83: the ticket register against Appendix E.1.  The columns, the
+   sort, the column picker, the row marks, the pager, the toolbar, the printed
+   copy and the export are read per lane, so a change to the register cannot
+   quietly drop a column an office relies on or hand a lane a control the map
+   keeps from it. */
+tests.push(async function ticketListContract() {
+  var CONSOLE = fs.readFileSync(path.join(ROOT, 'css', 'console.css'), 'utf8');
+  var PRINT = CONSOLE.slice(CONSOLE.indexOf('@media print'));
+  var HEAD_ALL = ['Ticket', 'Office / requester', 'Status', 'Priority', 'Target',
+    'Technician', 'Last update'];
+  var LANES = [
+    { role: 'requester', page: 'or-tickets.html', rec: 'or-ticket.html',
+      cols: ['Office / requester', 'Status', 'Target', 'Last update'],
+      pick: ['office', 'status', 'target', 'updated'] },
+    { role: 'technician', page: 'itc-tickets.html', rec: 'itc-ticket.html',
+      cols: ['Office / requester', 'Status', 'Target', 'Technician', 'Last update'],
+      pick: ['office', 'status', 'target', 'tech', 'updated'] },
+    { role: 'coordinator', page: 'ic-tickets.html', rec: 'ic-ticket.html',
+      cols: HEAD_ALL.slice(1),
+      pick: ['office', 'status', 'priority', 'target', 'tech', 'updated'] }
+  ];
+  /* What the sheets take from a lane, read from the class hooks the register
+     uses: a column is hidden by rule, never by a saved picker state. */
+  function laneHidden(role, th) {
+    var cls = th.className.split(/\s+/);
+    if (cls.indexOf('lead-only') > -1 && (role === 'requester' || role === 'technician')) return true;
+    if (cls.indexOf('staff-only') > -1 && role === 'requester') return true;
+    return false;
+  }
+
+  for (var li = 0; li < LANES.length; li++) {
+    var lane = LANES[li];
+    var p = await open(BASE + lane.page);
+    ok(p.errors.length === 0, lane.role + ': the register opens with no script error' +
+      (p.errors.length ? ' -> ' + p.errors.join(' | ') : ''));
+
+    /* --- 1. the columns, in order, with nothing private among them --- */
+    var ths = $$('#tkTable thead th');
+    var label = function (th) {
+      var b = th.querySelector('.th-sort');
+      /* The direction mark is part of the header but not part of its name. */
+      return (b ? b.childNodes[0].textContent : th.textContent).trim();
+    };
+    var allHeads = ths.map(label);
+    ok(ths.length === 8 && $('#tkTable thead #tkAll') !== null && allHeads[0] === '',
+      lane.role + ': the first column is the selection box, not a data field');
+    ok(allHeads.slice(1).join(',') === HEAD_ALL.join(','),
+      lane.role + ': the register carries the Appendix E.1 columns in order (' +
+      allHeads.slice(1).join(', ') + ')');
+    var shownHeads = ths.slice(1).filter(function (th) { return !laneHidden(lane.role, th); })
+      .map(label);
+    ok(shownHeads.join(',') === ('Ticket,' + lane.cols),
+      lane.role + ': the ' + lane.role + ' lane is left with ' + lane.cols.join(', ') + ' (' +
+      shownHeads.join(', ') + ')');
+    ok(!/cost/i.test(allHeads.join(' ')) && !/delete/i.test(allHeads.join(' ')),
+      lane.role + ': no column prints an internal cost and none offers a delete');
+    var deleteControls = $$('.card-head button, .card-head a, .bulk-bar button, #tkBody button')
+      .filter(function (b) { return /delete|remove/i.test(b.textContent); });
+    ok(deleteControls.length === 0,
+      lane.role + ': no painted control on the register offers a delete');
+
+    /* --- 2. the sort: one live column, its direction, and its mark --- */
+    var sortable = $$('#tkTable th[data-sort-key]');
+    ok(sortable.length === 5,
+      lane.role + ': the headers name a sort key where the query answers one (' + sortable.length + ')');
+    var markless = sortable.filter(function (th) {
+      var s = th.getAttribute('aria-sort');
+      return th.querySelector('.th-sort') === null ||
+        (s !== 'ascending' && s !== 'descending' && s !== 'none');
+    });
+    ok(markless.length === 0,
+      lane.role + ': every sortable header carries a control and a real aria-sort state');
+    var live = $$('#tkTable th[aria-sort]').filter(function (th) {
+      return th.getAttribute('aria-sort') !== 'none';
+    });
+    ok(live.length === 1, lane.role + ': exactly one header shows the live sort (' + live.length + ')');
+    ok(live.length === 1 && /Last update/.test(live[0].textContent) &&
+      live[0].getAttribute('aria-sort') === 'descending',
+      lane.role + ': the register opens sorted by last update, descending');
+    ok(live.length === 1 && live[0].querySelector('.th-mark').textContent.trim() !== '',
+      lane.role + ': the live header carries its direction mark');
+    ok($('#fSort').value === 'updated' && $('#fOrder').value === 'desc',
+      lane.role + ': the filter selects agree with the header');
+    ok($('#tkAdv').hidden === true, lane.role + ': the advanced fields start folded away');
+    $('#tkMore').click();
+    ok($('#tkAdv').hidden === false, lane.role + ': one click opens the advanced fields');
+
+    var idTh = $('#tkTable th[data-sort-key="id"]');
+    idTh.click();
+    ok(idTh.getAttribute('aria-sort') === 'descending',
+      lane.role + ': a header click sorts by that column');
+    idTh.click();
+    ok(idTh.getAttribute('aria-sort') === 'ascending' &&
+      $$('#tkTable th[aria-sort="descending"]').length === 0,
+      lane.role + ': a second click turns the same column around');
+    var ids = $$('#tkBody .t-id').map(function (c) { return c.textContent.trim(); });
+    ok(ids.length >= 1, lane.role + ': the register lists rows for this lane to read (' + ids.length + ')');
+    if (ids.length > 1) {
+      ok(ids.join(',') === ids.slice().sort().join(','),
+        lane.role + ': the rows really come back in ticket number order (' + ids.slice(0, 3).join(' ') + ')');
+    }
+    ok($('#fSort').value === 'id' && $('#fOrder').value === 'asc',
+      lane.role + ': the filter selects follow the header, not the other way round');
+
+    var prioTh = $('#tkTable th[data-sort-key="priority"]');
+    prioTh.click();
+    if (lane.role === 'requester' || lane.role === 'technician') {
+      ok($('#fSort').value === 'id' && prioTh.getAttribute('aria-sort') === 'none',
+        lane.role + ': the priority header offers no sort to a lane that is not shown priority');
+    } else {
+      ok($('#fSort').value === 'priority' && prioTh.getAttribute('aria-sort') === 'descending',
+        lane.role + ': the coordinator can sort the register by priority');
+    }
+
+    /* --- 3. the rows: a real link, the marks, and the pager total --- */
+    var rows = $$('#tkBody tr');
+    var total = /^(\d+) of (\d+)$/.exec($('#tkTotal').textContent.trim());
+    ok(total !== null, lane.role + ': the results head counts the rows and the register ("' +
+      $('#tkTotal').textContent.trim() + '")');
+    ok(rows.length > 0 && rows.length <= 20,
+      lane.role + ': one page holds at most twenty rows (' + rows.length + ')');
+    if (total && rows.length) {
+      ok(rows.length === Math.min(20, parseInt(total[1], 10)),
+        lane.role + ': the rows on the page match the count in the head');
+    }
+    var links = $$('#tkBody .t-link');
+    ok(links.length === rows.length && links.length > 0,
+      lane.role + ': every row numbers its ticket with a link (' + links.length + ' of ' + rows.length + ')');
+    ok(links.every(function (a) { return a.getAttribute('href').indexOf(lane.rec + '?id=IT-') === 0; }),
+      lane.role + ': the ticket link stays inside the ' + lane.role + ' lane');
+    var marks = $$('#tkBody .t-mark');
+    ok(marks.length > 0, lane.role + ': a row carries the attachment and reply marks (' + marks.length + ')');
+    ok($$('#tkBody .t-mark svg').length > 0, lane.role + ': the marks carry their glyph');
+    ok(marks.every(function (m) { return /\d/.test(m.textContent); }),
+      lane.role + ': no mark rests on the glyph alone; each names its count');
+    var unread = $$('#tkBody .t-title.is-unread');
+    var unreadNotifs = p.w.Store.db.notifications.filter(function (n) {
+      return n.ticketId && (n.role === lane.role || n.role === 'any') &&
+        !p.w.UI.notifRead(n);
+    }).length;
+    ok(unread.length === 0 || unreadNotifs > 0,
+      lane.role + ': a bold subject only appears while this lane has unread news (' +
+      unread.length + ' rows, ' + unreadNotifs + ' notices)');
+    var pager = $('#tkPagination');
+    ok(pager !== null && (pager.querySelector('.pagination') === null ||
+      /of \d+/.test(pager.textContent)),
+      lane.role + ': the pager either steps the pages or leaves the count to the head (' +
+      $$('#tkPagination [data-p]').length + ' page buttons)');
+
+    /* --- 4. the column picker only removes what this lane may see --- */
+    var pickBoxes = $$('#tkColsList [data-col]');
+    var pickKeys = pickBoxes.map(function (b) { return b.getAttribute('data-col'); });
+    ok(pickKeys.join(',') === lane.pick.join(','),
+      lane.role + ': the picker offers exactly the columns this lane sees (' + pickKeys.join(', ') + ')');
+    ok(pickBoxes.every(function (b) { return b.checked === true; }),
+      lane.role + ': the picker starts with every offered column shown');
+    var updBox = pickBoxes.filter(function (b) { return b.getAttribute('data-col') === 'updated'; })[0];
+    if (updBox) {
+      updBox.checked = false;
+      updBox.dispatchEvent(new p.w.Event('change', { bubbles: true }));
+      ok($('#tkTable').className.indexOf('hide-updated') > -1,
+        lane.role + ': turning a column off takes it out of the table');
+      ok(p.w.localStorage.getItem('itc_ticket_cols_' + lane.role) === '["updated"]',
+        lane.role + ': the choice is remembered per lane, so no other lane inherits it');
+      updBox.checked = true;
+      updBox.dispatchEvent(new p.w.Event('change', { bubbles: true }));
+      ok($('#tkTable').className.indexOf('hide-updated') === -1,
+        lane.role + ': turning it back on returns the column');
+    }
+    if (lane.role !== 'coordinator') {
+      ok(lane.pick.indexOf('priority') === -1,
+        lane.role + ': the picker never offers the priority column');
+    }
+    if (lane.role === 'requester') {
+      ok(lane.pick.indexOf('tech') === -1,
+        lane.role + ': the picker never offers the technician column');
+    }
+
+    /* --- 5. the printed copy --- */
+    var printBtn = $('#tkPrint');
+    ok(printBtn !== null && /Print/.test(printBtn.textContent),
+      lane.role + ': the register offers a printed list');
+    var printHead = $('#tkPrintHead');
+    ok(printHead !== null && printHead.querySelector('.print-brand') !== null &&
+      /University of the Philippines Cebu/.test(printHead.querySelector('.print-brand').textContent),
+      lane.role + ': the printed copy carries the letterhead');
+    ok(printHead.querySelector('h1') !== null && /Service tickets/.test(printHead.querySelector('h1').textContent),
+      lane.role + ': the printed copy names what it holds');
+    var meta = printHead.querySelector('.print-meta').textContent.replace(/\s+/g, ' ');
+    ok(/Queue: /.test(meta) && /Sorted by/.test(meta),
+      lane.role + ': the printed copy states the queue and the order');
+    ok(/\d+ of \d+ ticket|All \d+ ticket/.test(meta),
+      lane.role + ': the printed copy counts the records on the page');
+    ok(PRINT.indexOf('.col-pick') > -1 && /button\{display:none !important\}/.test(PRINT),
+      lane.role + ': the picker, the buttons and the layout chips leave the paper');
+
+    /* --- 6. the export the lane can press --- */
+    var head = p.w.exportHead(lane.role);
+    ok(head[0] === 'Ticket' && head.indexOf('Status') > -1,
+      lane.role + ': the export starts at the ticket and carries the status');
+    if (lane.role === 'requester') {
+      ok(['Priority', 'Technician', 'Cost'].every(function (c) { return head.indexOf(c) === -1; }),
+        lane.role + ': the office export holds no priority, technician or cost');
+    } else if (lane.role === 'technician') {
+      ok(head.indexOf('Priority') === -1 && head.indexOf('Technician') > -1,
+        lane.role + ': the technician export holds no priority but keeps the assignee');
+    } else {
+      ok(['Priority', 'Technician', 'Cost'].every(function (c) { return head.indexOf(c) > -1; }),
+        lane.role + ': the coordinator export holds the fields the coordinator is shown');
+    }
+    ok($('#tkExport') !== null && /Export CSV/.test($('#tkExport').textContent),
+      lane.role + ': the register offers the CSV export');
+    close(p);
+  }
+
+  /* --- 7. the overdue register: tinted and worded, never colour alone --- */
+  var od = await open(BASE + 'ic-tickets.html?queue=overdue');
+  var odRows = $$('#tkBody tr');
+  ok(od.errors.length === 0, 'the overdue queue opens with no script error');
+  ok(odRows.length > 0, 'the register has overdue work to show (' + odRows.length + ' rows)');
+  ok(odRows.every(function (tr) { return tr.className.indexOf('row-overdue') > -1; }),
+    'every row in the overdue queue carries the overdue row class');
+  ok(odRows.every(function (tr) { return /Overdue/.test(tr.querySelector('.col-status').textContent); }),
+    'and every one of them says the word Overdue, not only the tint');
+  ok(/\.table tbody tr\.row-overdue td\{background:var\(--danger-bg\)\}/.test(CONSOLE),
+    'the tint comes from a theme token, so the dark palette keeps it too');
+  close(od);
+
+  /* --- 8. the selection toolbar belongs to the lane that may assign --- */
+  var co = await open(BASE + 'ic-tickets.html');
+  var firstBox = $('#tkBody [data-sel]');
+  ok(firstBox !== null, 'the coordinator register offers a box per row');
+  firstBox.checked = true;
+  firstBox.dispatchEvent(new co.w.Event('change', { bubbles: true }));
+  ok($('#tkBulk').hidden === false, 'a selection reveals the bulk toolbar');
+  ok($('#tkBulkAssign').hidden === false && /assign/i.test($('#tkBulkAssign').textContent),
+    'the toolbar offers the coordinator the assign move');
+  ok(!/status|transition/i.test($('#tkBulk').textContent),
+    'the toolbar offers no bulk status move that could skip a required field');
+  close(co);
+  var req = await open(BASE + 'or-tickets.html');
+  ok($('#tkBulkAssign').hidden === true, 'the office lane is not offered bulk assign at all');
+  close(req);
+
+  /* --- 9. the whole register: one page of twenty, and the pager steps --- */
+  var all = await open(BASE + 'ic-tickets.html?queue=all');
+  var tot = /^(\d+) of (\d+)$/.exec($('#tkTotal').textContent.trim());
+  ok(all.errors.length === 0, 'the whole register opens with no script error');
+  ok(tot !== null && parseInt(tot[1], 10) > 3,
+    'the register holds more than one small page ("' + $('#tkTotal').textContent.trim() + '")');
+  /* The page size is the register's own. The harness lowers it so the pager is
+     driven on the seeded dataset instead of sitting unexercised on one page. */
+  all.w.PER_PAGE = 3;
+  all.w.render();
+  ok($$('#tkBody tr').length === 3, 'a page holds the rows its own size allows (' + $$('#tkBody tr').length + ')');
+  /* The default order is the one the head states: newest change first. */
+  var stamps = $$('#tkBody tr').map(function (tr) {
+    var id = decodeURIComponent(tr.querySelector('.t-link').getAttribute('href').split('id=')[1]);
+    var t = all.w.Store.getTicket(id);
+    return (t && (t.updatedAt || t.createdAt)) || '';
+  });
+  ok(stamps.every(function (s, i) { return i === 0 || stamps[i - 1] >= s; }),
+    'the rows really come back newest change first');
+  var info = $('#tkPagination .pagination-info');
+  ok(info !== null && /1 to 3 of \d+/.test(info.textContent.replace(/\s+/g, ' ')),
+    'the pager states the range and the whole ("' +
+    (info ? info.textContent.replace(/\s+/g, ' ').trim() : '') + '")');
+  var before = $$('#tkBody .t-id').map(function (c) { return c.textContent.trim(); });
+  var page2 = $('#tkPagination [data-p="2"]');
+  ok(page2 !== null, 'the pager offers the next page');
+  if (page2) {
+    page2.click();
+    var after = $$('#tkBody .t-id').map(function (c) { return c.textContent.trim(); });
+    ok(after.length > 0 && after.join(',') !== before.join(','),
+      'page two lists different records (' + after.length + ' rows)');
+    ok($('#tkPagination [aria-current="page"]') !== null &&
+      $('#tkPagination [aria-current="page"]').textContent.trim() === '2',
+      'the pager marks the page the reader is on');
+    ok($$('#tkBody tr').length === Math.min(3, parseInt(tot[1], 10) - 3),
+      'the next page holds what is left (' + $$('#tkBody tr').length + ' rows)');
+  }
+  close(all);
 });
 
 /* ---------- run ---------- */

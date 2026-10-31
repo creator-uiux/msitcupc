@@ -110,7 +110,11 @@
   function workCard(t, opts) {
     opts = opts || {};
     var role = opts.role || roleKey();
-    var href = opts.href || ('ticket.html?id=' + encodeURIComponent(t.id));
+    /* A card links to the record in the reader's own lane.  A role the map
+       keeps off the record keeps the plain name, which the page then refuses. */
+    var href = opts.href ||
+      ((can('ticket.html', role) ? urlFor('ticket.html', role) : 'ticket.html') +
+       '?id=' + encodeURIComponent(t.id));
     var overdue = t.overdue === undefined
       ? !!(window.Query && Query.isOverdue && Query.isOverdue(t))
       : !!t.overdue;
@@ -1414,7 +1418,9 @@
       (S.db.offices || []).forEach(function (o) { if (o.name) offices[o.name] = 1; });
     }
 
-    var ticketHits = sc.tickets.filter(function (t) {
+    /* A record is only offered to a role the map lets open it.  Hiding the
+       destination beats sending a reader to a screen that refuses them. */
+    var ticketHits = can('ticket.html', sc.role) ? sc.tickets.filter(function (t) {
       return hit([t.id, t.issue, t.office, t.asset, t.category, t.requester, t.technician]);
     }).sort(function (a, b) { return when(b) - when(a); }).slice(0, q ? 6 : 5).map(function (t) {
       return {
@@ -1422,7 +1428,7 @@
         meta: t.office + ' · ' + (STATUS[t.status] ? STATUS[t.status][0] : t.status),
         href: 'ticket.html?id=' + encodeURIComponent(t.id)
       };
-    });
+    }) : [];
 
     var officeHits = Object.keys(offices).sort().filter(function (name) {
       return hit([name]);
@@ -1568,7 +1574,17 @@
   function pickPaletteItem(el) {
     if (!el) return;
     cmRemember({ href: el.dataset.href, label: el.dataset.label, meta: el.dataset.meta, kind: el.dataset.kind });
-    location.href = el.dataset.href;
+    location.href = laneHref(el.dataset.href);
+  }
+  /* A palette target is written as the base page the map grants.  The reader is
+     sent to that page inside their own lane; a page their role cannot open
+     keeps its plain name, so the target answers with its own guard. */
+  function laneHref(href) {
+    var role = roleKey();
+    var cut = String(href || '').indexOf('?');
+    var page = cut === -1 ? String(href || '') : String(href).slice(0, cut);
+    var rest = cut === -1 ? '' : String(href).slice(cut);
+    return can(page, role) ? urlFor(page, role) + rest : href;
   }
   function bindPaletteKeys() {
     if (!feature('workspaceCommandPalette')) return;
@@ -1636,6 +1652,39 @@
       scrim.addEventListener('click', function () { document.body.classList.remove('nav-open'); });
       document.body.appendChild(scrim);
     }
+    renderOutageNotice();
+  }
+
+  /* The read path falls back to the copy held on this device when no server
+     answers.  Say that on the screen rather than leaving the visitor with a
+     quiet stale list (audit U14, required test 61). */
+  function renderOutageNotice() {
+    var existing = document.getElementById('outageNotice');
+    if (window.ApiMode !== false) {
+      if (existing) existing.remove();
+      return;
+    }
+    if (existing || !document.querySelector('.content')) return;
+    var panel = document.createElement('section');
+    panel.className = 'outage';
+    panel.id = 'outageNotice';
+    panel.setAttribute('role', 'status');
+    panel.innerHTML =
+      '<span class="og-ic">' + icon('alert') + '</span>' +
+      '<div class="og-text">' +
+      '<h2>Cannot reach the service desk server</h2>' +
+      '<p>This screen shows the copy stored on this device. Records you add here' +
+      ' stay on this device until the server answers again.</p>' +
+      '</div>' +
+      '<div class="row og-actions">' +
+      '<button type="button" class="btn btn-primary" id="ogRetry">Try again</button>' +
+      '</div>';
+    var foot = document.querySelector('.app-foot');
+    var content = document.querySelector('.content');
+    content.insertBefore(panel, foot && foot.parentNode === content ? foot : content.firstChild);
+    panel.querySelector('#ogRetry').addEventListener('click', function () {
+      location.reload();
+    });
   }
 
   /* The four main destinations for the bottom tab bar, per role, plus More.
@@ -2225,7 +2274,7 @@
     roleKey: roleKey, currentRole: currentRole, can: can, initials: initials, auth: auth,
     homePage: homePage, HOME_PAGE: HOME_PAGE,
     personLinks: personLinks, mailLink: mailLink, telLink: telLink, telHref: telHref,
-    canAct: canAct, nowMs: nowMs, skeleton: skeleton,
+    canAct: canAct, nowMs: nowMs, skeleton: skeleton, renderOutageNotice: renderOutageNotice,
     /* next action owner (specification 4A.3) */
     NEXT_OWNER: NEXT_OWNER, NEXT_OWNER_JOB: NEXT_OWNER_JOB,
     nextOwner: nextOwner, waitsOnMe: waitsOnMe, waitingOn: waitingOn,
@@ -2233,7 +2282,7 @@
     capsRoles: capsRoles,
     /* url role */
     URL_PREFIX: URL_PREFIX, PREFIX_ROLE: PREFIX_ROLE, parseUrlRole: parseUrlRole,
-    urlFor: urlFor, bindUrlRole: bindUrlRole
+    urlFor: urlFor, laneHref: laneHref, bindUrlRole: bindUrlRole
   };
 })();
 

@@ -61,7 +61,7 @@ those places were implemented from the label text and the SOP numbering
 | 12 | Authorization, validation and transitions on a trusted layer | `server/engine.py`, `server/app.py` | `tests.py`, `api_check.py` |
 | 14 | The design system, tokens for Light and Dark, components, page patterns | `css/app.css`, `css/green.css`, `css/kit.css`, `docs/DESIGN_SYSTEM.md` | `tools/validate.py`, `tools/gate_shots.py` |
 | 14.11 | The visual quality gate | `tools/gate_shots.py`, `docs/screenshots/` | the machine check in the tool |
-| 14.12 | Light, Dark and System, no hard coded colours | `css/app.css` (`:root` and the dark selectors), `js/ui.js` `applyTheme` | `tools/gate_shots.py` captures both themes |
+| 14.12 | Light, Dark and System, no hard coded colours | `css/app.css` (`:root` and the dark selectors), `js/ui.js` `applyTheme` | `tools/theme_discipline_check.py` refuses a new colour literal and an unresolved token, `tools/gate_shots.py` captures both themes |
 | 14.13 | The installable PWA and the mobile fit | `manifest.webmanifest`, `sw.js`, `offline.html`, `js/pwa.js`, the More sheet | `tools/gate_shots.py` |
 | 15 | Role based access, office isolation, safe attachments, protected audit | `server/app.py`, `server/engine.py` | `tests.py` access, `api_check.py` |
 | 18 | No em dashes in generated text | the whole tree | `tools/em_dash_check.py` |
@@ -93,12 +93,12 @@ those places were implemented from the label text and the SOP numbering
 | 20 | Audit records every status change and is append only | `engine._audit` | `tests.py` audit trail | verified | none |
 | 21 | Office level permissions are enforced | `engine._office_block`, `app._scoped` | `tests.py` access, `api_check.py` | verified | none |
 | 22 | Ticket list, detail and dashboard have the reference functionality | `tickets.html`, `ticket.html`, `dashboard.html` | `pagetest.js` | verified | the owner's screenshot references could not be opened, so the written requirements were used |
-| 23 | All pages are responsive and accessible | `css/app.css`, `css/console.css` | `tools/responsive.py` (37 viewports from 320x480 to 7680x2160, including 200 percent zoom), `tools/gate_shots.py` | verified | none |
+| 23 | All pages are responsive and accessible | `css/app.css`, `css/console.css` | `tools/responsive.py` (37 viewports from 320x480 to 7680x2160, with `--theme=dark` for the dark palette and `--scale=` for a real 200 percent zoom through `Emulation.setPageScaleFactor`), `tools/responsive_behavior.py` (the register, a record, the review hand-off, the office form and the dashboard clicked through at 390, 768 and 1440 px in headless Chrome), `tools/gate_shots.py`, `tests/audit/contrast_touch_probe.py` (44 px floor under touch emulation) | verified | none |
 | 24 | No primary control is nonfunctional | every action is a guarded engine method | `smoke.js`, `pagetest.js` | verified | none |
 | 25 | Tests and the build were executed, with honest results | the test suites below | the results below | verified | the page suite is flaky while another process is editing the same tree |
 | 26 | The UI follows the design system and looks consistent | `docs/DESIGN_SYSTEM.md`, `docs/screenshots/` | `tools/gate_shots.py` | verified | the screenshots are a machine check plus a read of the captures, not a full designer review |
 | 27 | Role scoping enforced on the backend | `permissions.json`, `engine` guards, `app._scoped_technician` | `tools/permission_parity_check.py`, `rolepages_test.js`, `tests.py` role scope | verified | none |
-| 28 | Light, dark and System themes work everywhere | `css/app.css`, `js/ui.js` | `tools/gate_shots.py` captures both themes at three widths | verified | the font is fetched from a CDN and falls back to the system stack when it is unreachable |
+| 28 | Light, dark and System themes work everywhere | `css/app.css`, `js/ui.js` | `tools/responsive.py --theme=dark` measures the whole 69-page sweep on the explicit dark palette, `tools/gate_shots.py` captures both themes at three widths | verified | the font is fetched from a CDN and falls back to the system stack when it is unreachable |
 | 29 | The app works as a website and an installable PWA | `manifest.webmanifest`, `sw.js`, `offline.html` | `tools/gate_shots.py` | verified | installability was checked by the manifest and the worker, not by a real install |
 | 30 | Appendix C is fully represented | `js/flowdata.js` | `tools/appendix_c_check.py` (81 nodes, 106 edges) | verified | the legend artifact N75 and its two connectors are excluded by design |
 
@@ -114,35 +114,42 @@ those places were implemented from the label text and the SOP numbering
 
 ## Test results
 
-Every count below is the result of the command on this working tree. A suite
-that was not run is not listed.
+Every count below is the result of the command on this working tree, measured
+on 2026-11-01. A suite that was not run is not listed.
 
 | Suite | Command | Result |
 |---|---|---|
-| Backend | `python server/tests.py` | 457 passed, 0 failed |
-| Workflow smoke | `node tools/smoke.js` | 76 passed, 0 failed |
-| Page integration | `node tools/pagetest.js` | 700 passed, 0 failed |
-| Role pages | `node tools/rolepages_test.js` | 182 passed, 0 failed |
+| Backend | `python server/tests.py` | 673 passed, 0 failed |
+| Workflow smoke | `node tools/smoke.js` | 103 passed, 0 failed |
+| Page integration | `node tools/pagetest.js` | 1014 passed, 0 failed |
+| Role pages | `node tools/rolepages_test.js` | 507 passed, 0 failed (45 lane pages, 663 painted links read on a signed-in lane) |
 | API | `python tools/api_check.py` | 17 passed, 0 failed |
-| Markup and DOM ids | `python tools/validate.py` | PASSED |
-| UI house rules | `python tools/ui_check.py` | PASSED (73 pages) |
-| JavaScript syntax | `python tools/js_syntax_check.py` | PASS (25 files, 194 inline blocks) |
+| Markup and DOM ids | `python tools/validate.py` | VALIDATION PASSED |
+| UI house rules | `python tools/ui_check.py` | PASSED (69 pages) |
+| JavaScript syntax | `python tools/js_syntax_check.py` | PASS (27 files, 181 inline blocks) |
 | Em dash sweep | `python tools/em_dash_check.py` | PASS (0 in the tree) |
-| Appendix C coverage | `python tools/appendix_c_check.py` | PASS (81 nodes, 106 edges) |
+| Appendix C coverage | `python tools/appendix_c_check.py` | PASS (81 nodes, 106 edges, four lanes) |
+| Workflow diagram coverage | `python tools/workflow_coverage_check.py` | PASS (63 SOP steps, 45 map actions all claimed by a step, 84 engine guard functions) |
+| UI ownership | `node tools/ui_ownership_check.js` | PASS (69 html files, 21 pages, 4 lanes, 23 live handlers, the wrong-lane table empty) |
 | Permission parity | `python tools/permission_parity_check.py` | PASS |
-| Permission parity (Node.js) | `node tools/parity_check.js` | 55 passed, 0 failed |
-| Role page generation | `python tools/role_pages.py --check` | PASS (50 files) |
-| Asia/Manila display | `node tools/time_check.js` | PASS under three host timezones |
-| Visual gate | `python tools/gate_shots.py` | PASS (60 captures, no overflow, no clipping); 48 role captures also checked in |
-| Responsive | `python tools/responsive.py` | 0 problems across 2701 checks (73 pages x 37 viewports, 320x480 to 7680x2160, including 200 percent zoom); this tree was measured in viewport-bounded passes, and every check passed; the frozen login scroll is bounded and recorded |
-| HTML markup check | `node tools/html_check.js` | 365 passed, 0 failed across 73 pages |
-| UI structure audit | `node tools/ui_audit.js` | 345 passed, 0 issues |
-| Script load order | `node tools/script_order_check.js` | 69 passed, 0 failed across 73 pages |
-| Deep behavior audit | `node tools/deep_audit.js` | 645 passed, 0 issues |
-| Content check | `node tools/content_check.js` | 178 passed, 0 issues |
-| Feature parity | `python tools/feature_parity_check.py` | PASS (11 optional flags off) |
+| Permission parity (Node.js) | `node tools/parity_check.js` | 57 passed, 0 failed |
+| Role page generation | `python tools/role_pages.py --check` | PASS (45 role pages, 45 unique titles) |
+| Asia/Manila display | `node tools/time_check.js` | ASIA/MANILA DISPLAY PASS |
+| Theme token snapshot | `python tests/audit/theme_tokens.py` | 41 tokens, 0 mismatches |
+| Theme discipline | `python tools/theme_discipline_check.py` | PASS (211 custom-property reads all resolve, 40 colour literals in `css/console.css` all allowed, 41 snapshot rows still declared in their sheet, 69 pages carry no own `<style>` block or inline colour) |
+| HTML markup check | `node tools/html_check.js` | 345 assertions passed, 0 failed across 69 pages |
+| UI structure audit | `node tools/ui_audit.js` | 325 checks passed, 0 issues, 69 pages |
+| Script load order | `node tools/script_order_check.js` | 65 passed, 0 failed |
+| Deep behavior audit | `node tools/deep_audit.js` | 608 checks passed, 0 issues |
+| Content check | `node tools/content_check.js` | 166 checks passed, 0 issues |
+| Feature parity | `python tools/feature_parity_check.py` | PASS (11 optional flags, 66 workspace pages) |
 | Printed copies | `python tools/print_check.py` | PASS (2 pages: a record and a report) |
-| Session expiry | `python tools/session_check.py` | 11 checks passed, in a real browser against a live server |
+| Session expiry | `python tools/session_check.py` | PASS (16 checks), in a real browser against a live server |
+| Responsive layout matrix | `python tools/responsive.py` | 0 of 2553 page/viewport checks with problems (69 pages x 37 widths, 320 to 7680 px); `--theme=dark` repeats the same 2553 measures with 0 problems |
+| 200 percent zoom | `python tools/responsive.py --scale=2 --viewports=phone-390,tablet-768,landscape-1180,desktop-1440,zoom-1280` | 0 of 345 checks at a real `Emulation.setPageScaleFactor` of 2 |
+| Primary screens driven in a browser | `python tools/responsive_behavior.py` | RESPONSIVE BEHAVIOR PASS (126 checks, 0 problems, signed-in lane at 390, 768 and 1440 px) |
+| Touch targets and contrast | `python tests/audit/contrast_touch_probe.py` | 666 interactive controls across 26 phone views with touch emulation on, none under 44 px; 7172 text pairs checked with the lowest ratio 1.41, recorded as finding V4 against the frozen tokens |
+| Role, office and merge scope | `python tests/audit/scope_probe.py`, `technician_scope_probe.py`, `state_merge_probe.py` | All three refused what they must against a freshly reset disposable demo server |
 
 There is no separate build step. The repository root is the served tree and
 `server/app.py` serves it directly; there is no `public/` assembly step in V5.

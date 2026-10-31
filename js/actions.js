@@ -242,7 +242,6 @@
 
       case 'noresp': after(F.officeDecision(id, 'no_response', {}), cb); break;
       case 'remind': after(F.sendReminder(id), cb); break;
-      case 'close': after(F.close(id, 'confirmation'), cb); break;
 
       case 'autoclose':
         U.openModal('Authorized closure: confirmation not on record',
@@ -275,31 +274,10 @@
         };
         break;
 
-      case 'reply': location.href = 'request.html?respond=' + encodeURIComponent(id); break;
-
-      /* ---- conversation (reply composer, shared with the record screen) ---- */
-      case 'comment':
-        U.openModal('Reply: ' + id,
-          U.field('Message', U.textarea('text', 'Write a message or update…', '', 3, true)) +
-          '<div class="note mt"><span>' + UI.icon('eye') + '</span><div>Post an <b>internal note</b> from the record screen to keep staff-only detail out of the office view.</div></div>',
-          '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Send reply</button>');
-        document.getElementById('mGo').onclick = function () {
-          var r = F.addComment(id, { text: U.modalValue('text'), visibility: 'public' });
-          U.closeModal(); after(r, cb);
-        };
-        break;
-
-      case 'note':
-        U.openModal('Internal note: ' + id,
-          U.field('Internal note (IT staff only)', U.textarea('text', 'e.g. Waiting on the vendor RMA; do not promise a date to the office.', '', 3, true)),
-          '<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" id="mGo">Record note</button>');
-        document.getElementById('mGo').onclick = function () {
-          var r = F.addComment(id, { text: U.modalValue('text'), visibility: 'internal' });
-          U.closeModal(); after(r, cb);
-        };
-        break;
-
       /* ---- requester corrections while Submitted / Needs Information ---- */
+      /* The office's reply and the staff note are composed on the record
+         screen itself, which posts through Flow.addComment with the visibility
+         the writer is entitled to, so this layer carries no conversation case. */
       case 'edit-intake':
         U.openModal('Edit your request: ' + id,
           U.field('What is the problem?', U.textarea('issue', 'Describe the issue in your own words', t.issue, 3, true, 10)) +
