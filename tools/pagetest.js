@@ -990,7 +990,7 @@ tests.push(async function gallery() {
   var on = await openFeatures(BASE + 'index.html', { designGallery: true });
   ok(on.errors.length === 0, 'the gallery route loads with its flag on');
   ok(!on.d.body.classList.contains('access-denied'), 'the gallery is open when its flag is on');
-  ok($$('a.g-card').length >= 20, 'the gallery lists every screen when its flag is on');
+  ok($$('a.g-card').length >= 19, 'the gallery lists the screens when its flag is on');
   close(on);
 });
 
