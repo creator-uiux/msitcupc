@@ -248,6 +248,7 @@ All suites should end with `PASSED` / `0 failed` / `0 problems`.
 | `docs/DATA_MODEL.md` | the entities, the fields, the relationships, the indexes and the integrity rules |
 | `docs/OPERATIONS.md` | every backend operation, the roles that may call it and what it writes |
 | `docs/ROLE_MATRIX.md` | the permission map: pages, actions, transitions and the data scope per role |
+| `docs/USER_HANDBOOK.md` | how to use the system lane by lane, with every screen at desktop and phone and the Figma hand-off |
 | `docs/REPORT_DEFINITIONS.md` | one definition per metric, used by every screen and every report |
 | `docs/IMPLEMENTATION_CHECKLIST.md` | the live progress against the specification |
 | `docs/TRACEABILITY.md` | the requirement to code to test map, with verified and unverified separated |
