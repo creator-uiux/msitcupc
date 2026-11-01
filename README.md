@@ -140,8 +140,8 @@ hit area (desktop density is deliberately unchanged).
 **Automated (recommended):**
 
 ```
-python tools/shots.py --figma    # 49 screens x desktop+phone x canvas+full, then the Figma manifest
-python tools/shots.py            # 49 screens x 6 viewports, canvas frames only
+python tools/shots.py --figma    # 48 screens x desktop+phone x canvas+full, then the Figma manifest
+python tools/shots.py            # 48 screens x 6 viewports, canvas frames only
 python tools/screen_book.py      # A4 landscape PDF, one page per screen with what it is, what it is for and how to use it
 python tools/shots.py --only dashboard.html reports.html
 python tools/shots.py --viewports desktop mobile
@@ -301,8 +301,8 @@ The checked-in visual evidence is `docs/screenshots/`, 108 captures: 60 base
 screens at 390, 768 and 1440 px in both themes, plus 48 role captures of the
 dashboard and ticket detail for each role at the same widths and themes. The
 base set is produced by `python tools/gate_shots.py`. For the full screen
-atlas, `python tools/shots.py --figma` renders the 45 lane pages and the four
-shared entry screens at desktop and phone in canvas and full-page mode (196
+atlas, `python tools/shots.py --figma` renders the 45 lane pages and the three
+shared entry screens at desktop and phone in canvas and full-page mode (192
 frames), then rewrites the Figma manifest and board. The generated frames and
 the review gallery live in `shots/`. For a readable copy, `python
 tools/screen_book.py` writes `shots/screen-book.pdf`, 50 pages with a cover, a

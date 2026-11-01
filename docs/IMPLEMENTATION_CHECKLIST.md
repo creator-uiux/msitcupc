@@ -739,6 +739,17 @@ rule is now a fixed rule in `docs/DECISIONS.md`.
 | 56.4 | Checks | DONE | this phase's own run on this tree: Python compile PASS, PDF 50 pages with 48 guide sidebars, 48 occurrences of each heading, 2 embedded images per screen (96) and 0 replacement glyphs, validation PASSED, UI consistency PASSED (69 pages), role page check PASS (45 files, 45 unique titles), page suite 1050 passed and 0 failed, lane pages 513 passed and 0 failed, UI ownership PASS, em dash check 0 and sweep PASS. The cover, contents, first screen and last screen were rendered and read |
 | 56.5 | Limitations | OPEN | the Gallery remains part of the Figma atlas and its PNG frames, because that hand-off is a visual archive of every captured address; only the printable book omits it. The book still prints the design canvases rather than the full-page frames, and the guide box still has a fixed height that clips a future overlong explanation |
 
+## Phase 57. The Gallery leaves the Figma atlas and its PNG frames
+
+| # | Item | Status | Evidence |
+|---|---|---|---|
+| 57.1 | The atlas no longer captures the Gallery | DONE | `tools/shots.py` now holds three shared entry screens (`login.html`, `404.html`, `offline.html`) instead of four. A full `python tools/shots.py --figma` run captured 48 screens at desktop and phone in canvas and full-page mode: 192 frames with 0 problems. The four `shots/index--*.png` frames were deleted from the repository |
+| 57.2 | The manifest and board exclude it | DONE | `tools/figma_manifest.py` drops `index` from its shared pages, page order, title and frame-slug maps, so `shots/figma-manifest.csv` holds 192 rows with 0 Gallery rows, 0 missing files, 0 size mismatches and 0 sources that do not resolve; `shots/figma-board.html` holds five lane sections and 96 figures with 0 broken images and 0 Gallery references |
+| 57.3 | The book follows the new atlas | DONE | `tools/screen_book.py` no longer needs its own Gallery filter; the rebuilt `shots/screen-book.pdf` is 50 pages over the 48 captured screens, with 48 guide sidebars, 48 occurrences of each heading and 0 Gallery mentions in the PDF or the book HTML |
+| 57.4 | The docs and handbook match | DONE | `README.md` and `docs/USER_HANDBOOK.md` state the 48-screen and 192-frame scope, the three shared entry screens and the Gallery omission. The handbook entry-point table and image block no longer list the Gallery, which also removes its links to the deleted frames |
+| 57.5 | Checks | DONE | this phase's own run on this tree: Python compile PASS, Figma capture 192 frames with 0 problems, manifest and board validation 0 missing files, 0 size mismatches and 0 broken images, PDF 50 pages with 0 replacement glyphs, validation PASSED, UI consistency PASSED (69 pages), role page check PASS (45 files, 45 unique titles), page suite 1050 passed and 0 failed, lane pages 513 passed and 0 failed, UI ownership PASS, em dash check 0 and sweep PASS |
+| 57.6 | Limitations | OPEN | `index.html` still exists as the development preview page and is still linked from the repository notes; it is simply outside the atlas, manifest, frames and book. `--only index.html` can still capture it on request, but the manifest ignores those frames. The earlier Phase 50 and Phase 53 entries remain the historical record of the old 49-screen and 196-frame scope |
+
 ## Known gaps
 
 The items that remain partial or unverified are listed in

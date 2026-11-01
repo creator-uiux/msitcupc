@@ -32,10 +32,6 @@ OUT = os.path.join(ROOT, "shots")
 GUIDE = os.path.join(ROOT, "docs", "SCREEN_GUIDE.md")
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 
-# The preview index is a development gallery, not a product screen, so the
-# printable book leaves it out even though the Figma atlas still captures it.
-EXCLUDE = {"index.html"}
-
 sys.path.insert(0, HERE)
 import figma_manifest  # noqa: E402
 
@@ -74,8 +70,6 @@ def screens():
     groups, order = {}, []
     for row in figma_manifest.rows():
         source = row["source_url"].split("?", 1)[0]
-        if source in EXCLUDE:
-            continue
         key = (row["figma_page"], source)
         if key not in groups:
             groups[key] = {

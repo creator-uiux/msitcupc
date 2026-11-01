@@ -842,7 +842,6 @@ Contact details, the password panel, and appearance and session preferences.
 
 | Screen | Address | What it is for |
 |---|---|---|
-| Gallery | `index.html` | The preview index of the build |
 | Sign in | `login.html` | UPMail sign-in and the demo accounts |
 | Offline | `offline.html` | The offline fallback for an installed copy |
 | Not found | `404.html` | The not-found page |
@@ -850,10 +849,6 @@ Contact details, the password panel, and appearance and session preferences.
 ![Sign in, desktop](../shots/login--desktop-full.png)
 
 ![Sign in, phone](../shots/login--mobile-full.png)
-
-![Gallery, desktop](../shots/index--desktop-full.png)
-
-![Gallery, phone](../shots/index--mobile-full.png)
 
 ![Not found, desktop](../shots/404--desktop-full.png)
 
@@ -906,10 +901,11 @@ The atlas uses two viewports: desktop at 1440 by 900 and phone at 390 by 844.
 Each screen is captured twice, once as the design canvas and once as the full
 scroll height. The frames are at 1x device scale.
 
-The default scope is the atlas: 49 screens made of the 45 role-named lane pages
-and the four shared entry screens (`index.html`, `login.html`, `404.html`,
-`offline.html`). The `--figma` preset captures them at desktop and phone in both
-modes and then rewrites the manifest and the board:
+The default scope is the atlas: 48 screens made of the 45 role-named lane pages
+and the three shared entry screens (`login.html`, `404.html`, `offline.html`).
+The development Gallery at `index.html` is not a product screen and is not
+captured. The `--figma` preset captures the 48 screens at desktop and phone in
+both modes and then rewrites the manifest and the board:
 
 ```
 python tools/shots.py --figma
@@ -958,10 +954,11 @@ is fast, offline and exact.
 
 `python tools/screen_book.py` writes `shots/screen-book.pdf`, an A4 landscape
 book with a cover, a contents page and one page per product screen. The
-development Gallery at `index.html` is not a product screen and is left out.
-Each page carries the lane and screen title, what the screen is, what it is
-for, numbered steps for how to use it, the desktop and phone design canvases,
-the Figma frame names, the full-page archive names and the source URL.
+development Gallery at `index.html` is not a product screen, is not captured in
+the atlas and is left out of the book. Each page carries the lane and screen
+title, what the screen is, what it is for, numbered steps for how to use it,
+the desktop and phone design canvases, the Figma frame names, the full-page
+archive names and the source URL.
 
 The three explanations come from `docs/SCREEN_GUIDE.md`, one section per source
 page, so the book and the spoken walkthrough cannot drift. The generator
@@ -981,7 +978,7 @@ python tools/shots.py --figma
 python tools/screen_book.py
 ```
 
-The first command recaptures every lane page plus the four shared entry
+The first command recaptures every lane page plus the three shared entry
 screens at desktop and phone in both modes, and rewrites
 `shots/figma-manifest.csv` and `shots/figma-board.html`. The second rebuilds the
 50-page PDF from the manifest and `docs/SCREEN_GUIDE.md`. To rewrite only the

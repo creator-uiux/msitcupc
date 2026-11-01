@@ -8,8 +8,9 @@ Every capture loads the page with ?demo=1, which (see js/store.js) rebuilds the
 canonical seed, freezes the clock and disables the random intake simulation, so
 the PNGs are deterministic and identical on every run.
 
-The default scope is the atlas: the 45 role-named lane pages plus the four
-shared entry screens (index, login, 404, offline).
+The default scope is the atlas: the 45 role-named lane pages plus the three
+shared entry screens (login, 404, offline). The development Gallery at
+index.html is not a product screen and is not captured.
 
 Run:  python tools/shots.py --figma         # atlas at desktop+phone, canvas+full,
                                             # then rewrite the Figma manifest/board
@@ -44,7 +45,7 @@ VIEWPORTS = [    ("desktop", 1440, 900),
     ("mobile", 390, 844),
     ("small", 320, 720),
 ]
-SHARED_PAGES = ["index.html", "login.html", "404.html", "offline.html"]
+SHARED_PAGES = ["login.html", "404.html", "offline.html"]
 LANE_PREFIXES = ("or", "itc", "ic", "mgmt")
 
 

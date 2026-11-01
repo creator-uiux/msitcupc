@@ -10,8 +10,9 @@ Reads the role frames in shots/ and writes two artifacts:
 
 Frames come from tools/shots.py, which names them
 <page>--<viewport>[-full].png. Only the four lane prefixes (or, itc, ic,
-mgmt) and the four shared entry screens are listed; older base-page captures
-in the same folder are ignored.
+mgmt) and the three shared entry screens are listed; older base-page captures
+in the same folder are ignored, and the development Gallery at index.html is
+not part of the atlas.
 
 Run:  python tools/figma_manifest.py
 """
@@ -35,14 +36,13 @@ LANE_BY_PREFIX = {p: (i, name, tag) for i, (p, name, tag) in enumerate(LANES)}
 # One workflow order for every lane. A lane simply skips the pages it does not
 # hold, so the same sheet reads the same way whichever lane is open.
 PAGE_ORDER = [
-    "index", "login", "404", "offline",
+    "login", "404", "offline",
     "dashboard", "request", "tickets", "ticket", "review", "technician",
     "maintenance", "confirm", "visits", "register", "users", "offices",
     "assets", "settings", "audit", "reports", "notifications", "profile",
     "flow", "roles",
 ]
 PAGE_TITLE = {
-    "index": "Gallery",
     "login": "Sign In",
     "404": "Not Found",
     "offline": "Offline",
@@ -68,9 +68,9 @@ PAGE_TITLE = {
     "roles": "Roles and Access",
 }
 VIEWPORT_WIDTH = {"desktop": 1440, "mobile": 390}
-SHARED_PAGES = {"index", "login", "404", "offline"}
+SHARED_PAGES = {"login", "404", "offline"}
 FRAME_SLUG = {
-    "index": "Gallery", "login": "SignIn", "404": "NotFound", "offline": "Offline",
+    "login": "SignIn", "404": "NotFound", "offline": "Offline",
     "dashboard": "Dashboard", "request": "NewRequest", "tickets": "ServiceTickets",
     "ticket": "ServiceRecord", "review": "ReviewAssign", "technician": "MyWork",
     "maintenance": "Maintenance", "confirm": "ConfirmationClosure",
