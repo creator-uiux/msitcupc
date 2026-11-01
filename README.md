@@ -142,7 +142,7 @@ hit area (desktop density is deliberately unchanged).
 ```
 python tools/shots.py --figma    # 49 screens x desktop+phone x canvas+full, then the Figma manifest
 python tools/shots.py            # 49 screens x 6 viewports, canvas frames only
-python tools/screen_book.py      # A4 landscape PDF, one page per screen with details
+python tools/screen_book.py      # A4 landscape PDF, one page per screen with what it is, what it is for and how to use it
 python tools/shots.py --only dashboard.html reports.html
 python tools/shots.py --viewports desktop mobile
 ```
@@ -252,7 +252,8 @@ All suites should end with `PASSED` / `0 failed` / `0 problems`.
 | `docs/OPERATIONS.md` | every backend operation, the roles that may call it and what it writes |
 | `docs/ROLE_MATRIX.md` | the permission map: pages, actions, transitions and the data scope per role |
 | `docs/USER_HANDBOOK.md` | how to use the system lane by lane, with every screen at desktop and phone and the Figma hand-off |
-| `shots/screen-book.pdf` | the printable screen atlas: one page per screen with its purpose, both design canvases, frame names and source page |
+| `shots/screen-book.pdf` | the printable screen atlas: one page per screen with what it is, what it is for, how to use it, both design canvases, frame names and source page |
+| `docs/SCREEN_GUIDE.md` | the what, what for and how to use explanation behind every page of the printable screen book |
 | `docs/REPORT_DEFINITIONS.md` | one definition per metric, used by every screen and every report |
 | `docs/IMPLEMENTATION_CHECKLIST.md` | the live progress against the specification |
 | `docs/TRACEABILITY.md` | the requirement to code to test map, with verified and unverified separated |
@@ -305,5 +306,7 @@ shared entry screens at desktop and phone in canvas and full-page mode (196
 frames), then rewrites the Figma manifest and board. The generated frames and
 the review gallery live in `shots/`. For a readable copy, `python
 tools/screen_book.py` writes `shots/screen-book.pdf`, 51 pages with a cover, a
-contents page and one page per screen.
+contents page and one page per screen. Every screen page carries what the
+screen is, what it is for and numbered steps for how to use it, read from
+`docs/SCREEN_GUIDE.md`.
 

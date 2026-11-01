@@ -1,14 +1,14 @@
 """Build the printable screen book from the Figma atlas.
 
 The book is generated, not hand-written. It reads the frames through
-tools/figma_manifest.py and takes each screen's purpose from the matching
-section of docs/USER_HANDBOOK.md, so the PDF cannot drift from the atlas or
-repeat the prose in a second place.
+tools/figma_manifest.py and takes each screen's what, what for and how from
+docs/SCREEN_GUIDE.md, so the PDF cannot drift from the atlas or hide an
+unexplained screen.
 
 Layout: A4 landscape, one fixed page per screen. A page carries the lane and
-screen title, the purpose, the desktop and phone design canvases at their
-captured sizes, the Figma frame names, the full-page archive names and the
-source URL. The full-page PNGs stay in shots/ because the workflow guide is
+screen title, the three explanations, the desktop and phone design canvases at
+their captured sizes, the Figma frame names, the full-page archive names and
+the source URL. The full-page PNGs stay in shots/ because the workflow guide is
 tens of thousands of pixels tall and would be unreadable on paper.
 
 Run:  python tools/screen_book.py
@@ -27,32 +27,33 @@ from pathlib import Path
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
 OUT = os.path.join(ROOT, "shots")
-HANDBOOK = os.path.join(ROOT, "docs", "USER_HANDBOOK.md")
+GUIDE = os.path.join(ROOT, "docs", "SCREEN_GUIDE.md")
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 
 sys.path.insert(0, HERE)
 import figma_manifest  # noqa: E402
 
-SHARED_DESC = {
-    "index": "The preview index of the build: one card for every lane screen, with a link into each lane.",
-    "login": "UPMail sign-in and the four demo accounts, on every host.",
-    "404": "The not-found page, with a route back into the app.",
-    "offline": "The offline fallback for an installed copy of the app.",
-}
 
-
-def handbook_descriptions():
-    """Map '<lane>-<page>' to the prose under its 'Your screens' heading."""
-    text = open(HANDBOOK, encoding="utf-8").read()
+def guide_entries():
+    """Map a source file to its what, what for and how to use it text."""
+    text = open(GUIDE, encoding="utf-8").read()
     out = {}
-    for block in re.finditer(r"### Your screens\n(.*?)(?=\n### |\n## |\Z)", text, re.S):
-        for chunk in re.split(r"\n#### ", block.group(1))[1:]:
-            title, _, rest = chunk.partition("\n")
-            found = re.search(r"\.\./shots/([a-z0-9-]+)--desktop-full\.png", rest)
-            if not found:
-                continue
-            prose = rest.split("![", 1)[0]
-            out[found.group(1)] = " ".join(line.strip() for line in prose.splitlines()).strip()
+    for block in re.finditer(r"^## ([a-z0-9-]+\.html)\n(.*?)(?=^## |\Z)",
+                             text, re.M | re.S):
+        source, body = block.group(1), block.group(2)
+        parts = re.split(r"\*\*(What it is|What it is for|How to use it)\.\*\*", body)
+        fields = {parts[i]: parts[i + 1] for i in range(1, len(parts) - 1, 2)}
+        how = []
+        for item in re.split(r"\n(?=\d+\.\s)", fields.get("How to use it", "").strip()):
+            item = re.sub(r"^\d+\.\s+", "", item.strip())
+            item = " ".join(item.split())
+            if item:
+                how.append(item)
+        out[source] = {
+            "what": " ".join(fields.get("What it is", "").split()),
+            "why": " ".join(fields.get("What it is for", "").split()),
+            "how": how,
+        }
     return out
 
 
@@ -82,14 +83,14 @@ def screens():
 
 
 def read_book():
-    descriptions = handbook_descriptions()
+    guides = guide_entries()
     records = screens()
     missing = []
     for record in records:
-        desc = descriptions.get(record["stem"]) or SHARED_DESC.get(record["stem"])
-        if not desc:
-            missing.append(record["source"])
-        record["desc"] = desc
+        guide = guides.get(record["source"])
+        if not guide or not guide["what"] or not guide["why"] or len(guide["how"]) < 2:
+            missing.append("%s (missing what, what for or how)" % record["source"])
+        record["guide"] = guide
         for needed in (("desktop", "canvas"), ("mobile", "canvas"),
                        ("desktop", "full-page"), ("mobile", "full-page")):
             if needed not in record["frames"]:
@@ -131,25 +132,32 @@ def screen_page(record, number, total):
         ("PNG files", "<br>".join("<code>%s</code>" % html.escape(f) for f in files)),
     ]
     meta = "".join('<div class="kv"><span>%s</span><div>%s</div></div>' % (k, v) for k, v in kv)
+    guide = record["guide"]
+    steps = "".join("<li>%s</li>" % inline(step) for step in guide["how"])
+    guide_html = (
+        '<aside class="guide">'
+        '<h3>What it is</h3><p>%s</p>'
+        '<h3>What it is for</h3><p>%s</p>'
+        '<h3>How to use it</h3><ol>%s</ol>'
+        '</aside>' % (inline(guide["what"]), inline(guide["why"]), steps))
     return """<section class="page screen">
   <div class="head">
     <div class="eyebrow">%s <em>/</em> Screen %02d</div>
     <h2>%s</h2>
-    <p class="purpose">%s</p>
   </div>
-  <div class="shots">%s%s</div>
+  <div class="body">%s%s%s</div>
   <div class="meta">%s</div>
   <div class="foot"><span>ITC Maintenance System | Screen atlas</span><span>%d / %d</span></div>
 </section>""" % (html.escape(record["lane"]), number, html.escape(record["title"]),
-                 inline(record["desc"]), figure(record, "desktop", "desktop"),
-                 figure(record, "mobile", "phone"), meta, number, total)
+                 figure(record, "desktop", "desktop"),
+                 figure(record, "mobile", "phone"), guide_html, meta, number, total)
 
 
 def cover_page(total):
     return """<section class="page cover">
   <div class="mark">ITC MAINTENANCE SYSTEM</div>
   <h1>Screen atlas<br><span>and Figma hand-off</span></h1>
-  <p class="lead">Every lane screen, captured from the working app with deterministic demo data.</p>
+  <p class="lead">Every lane screen with what it is, what it is for and how to use it, captured from the working app.</p>
   <div class="stats">
     <div><b>49</b><span>screens</span></div>
     <div><b>5</b><span>lanes</span></div>
@@ -157,6 +165,7 @@ def cover_page(total):
     <div><b>2</b><span>viewports</span></div>
   </div>
   <div class="cover-note">
+    <p>Each screen page states what the screen is, what it is for and how to use it, beside the desktop and phone design canvases.</p>
     <p>Desktop is captured at 1440 x 900 and phone at 390 x 844, each as a design canvas and as a full scroll height. Every frame loads <code>?demo=1</code>, so the seed and the clock are frozen and the images are identical on every run.</p>
     <p>The PDF is a readable archive and print copy. Figma still receives the flat PNG frames through <code>shots/figma-manifest.csv</code>; this file does not become editable Figma layers.</p>
   </div>
@@ -179,7 +188,7 @@ def contents_page(records, start_page, total):
     return """<section class="page contents">
   <div class="eyebrow">Contents</div>
   <h2>Five lanes, one workflow</h2>
-  <p class="lead">Each screen has one page: purpose, both design canvases, frame names and the source page.</p>
+  <p class="lead">Each screen has one page: what it is, what it is for, how to use it, both design canvases and the source page.</p>
   <div class="toc">%s</div>
   <div class="foot"><span>ITC Maintenance System | Screen atlas</span><span>2 / %d</span></div>
 </section>""" % ("".join(columns), total)
@@ -232,17 +241,23 @@ code { font-family: Consolas, "SFMono-Regular", monospace; font-size: .92em; col
 .toc-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .toc-row b { font-weight: 600; color: #64748b; }
 
-.screen .head { height: 31mm; }
-.screen h2 { margin-bottom: 1.5mm; }
-.purpose { font-size: 9pt; line-height: 1.45; color: #334155; margin: 0; max-width: 255mm; }
-.shots { display: flex; gap: 8mm; align-items: flex-start; height: 116mm; }
-.shots figure { margin: 0; display: flex; flex-direction: column; min-width: 0; }
-.shots img { display: block; height: auto; width: auto; max-height: 101mm; border: .25mm solid #dbe3ee; border-radius: 1.5mm; }
-.shots .desktop img { max-width: 174mm; }
-.shots .phone img { max-width: 52mm; }
-.shots figcaption { padding-top: 2mm; display: flex; flex-direction: column; gap: .6mm; font-size: 7.5pt; color: #64748b; }
-.shots figcaption b { color: #334155; font-weight: 700; }
-.meta { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 2mm 6mm; margin-top: 2mm; }
+.screen .head { height: 20mm; }
+.screen h2 { margin-bottom: 0; }
+.body { display: flex; gap: 4mm; align-items: flex-start; height: 103mm; }
+.body figure { margin: 0; display: flex; flex-direction: column; min-width: 0; }
+.body img { display: block; height: auto; width: auto; max-height: 96mm; border: .25mm solid #dbe3ee; border-radius: 1.5mm; }
+.body .desktop img { max-width: 154mm; }
+.body .phone img { max-width: 45mm; }
+.body figcaption { padding-top: 2mm; display: flex; flex-direction: column; gap: .6mm; font-size: 7.5pt; color: #64748b; }
+.body figcaption b { color: #334155; font-weight: 700; }
+.guide { flex: 1; min-width: 0; height: 103mm; border-left: .3mm solid #e2e8f0; padding-left: 4mm; overflow: hidden; }
+.guide h3 { font-size: 6.6pt; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: #014421; margin: 2.6mm 0 1mm; }
+.guide h3:first-child { margin-top: 0; }
+.guide p, .guide li { font-size: 7.1pt; line-height: 1.36; color: #334155; margin: 0; }
+.guide ol { margin: 0; padding-left: 4mm; }
+.guide li { margin-bottom: 1.1mm; }
+.guide code { font-size: .92em; }
+.meta { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 2mm 6mm; margin-top: 3mm; }
 .kv { border-top: .25mm solid #e2e8f0; padding-top: 1.4mm; min-width: 0; }
 .kv > span { display: block; font-size: 6.8pt; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: #64748b; margin-bottom: .8mm; }
 .kv > div { font-size: 7.5pt; line-height: 1.45; color: #334155; overflow-wrap: anywhere; }
