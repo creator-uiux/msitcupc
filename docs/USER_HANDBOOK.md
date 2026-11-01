@@ -954,15 +954,31 @@ served pages with the html.to.design plugin and point it at the running app
 server running and a plugin, and some components still flatten. The PNG route
 is fast, offline and exact.
 
+### The printable screen book
+
+`python tools/screen_book.py` writes `shots/screen-book.pdf`, an A4 landscape
+book with a cover, a contents page and one page per screen. Each page carries
+the lane and screen title, the purpose from this handbook, the desktop and
+phone design canvases, the Figma frame names, the full-page archive names and
+the source URL.
+
+The book prints the design canvases rather than the full-page frames because
+the workflow guide is tens of thousands of pixels tall. The full-page PNGs stay
+in `shots/` and the manifest lists them. The PDF is for reading, printing and
+sharing; import the PNGs into Figma, because a PDF does not become editable
+layers.
+
 ### Regenerate after a change
 
 ```
 python tools/shots.py --figma
+python tools/screen_book.py
 ```
 
-That recaptures every lane page plus the four shared entry screens at desktop
-and phone in both modes, and rewrites `shots/figma-manifest.csv` and
-`shots/figma-board.html` from the files on disk. To rewrite only the manifest
+The first command recaptures every lane page plus the four shared entry
+screens at desktop and phone in both modes, and rewrites
+`shots/figma-manifest.csv` and `shots/figma-board.html`. The second rebuilds the
+51-page PDF from the manifest and this handbook. To rewrite only the manifest
 and the board, run `python tools/figma_manifest.py`.
 
 ## 12. Where the rules live
