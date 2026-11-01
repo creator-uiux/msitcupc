@@ -57,7 +57,7 @@
       <div class="card mt">
         <div class="card-head"><h3>Preventive maintenance: scheduling and confirmation</h3>
           <span class="hint">Agree visit availability, then confirm completed visits</span></div>
-        <div id="cfJobs"></div>
+        <div id="cfJobs" class="cf-body"></div>
       </div>
     </main>
 
@@ -86,6 +86,12 @@ function kpi(label, value, delta, cls, dot) {
     '</div><div class="value">' + value + '</div><div class="delta">' + delta + '</div></div>';
 }
 function btn(label, a, cls) { return '<button class="btn ' + cls + '" data-act="' + a + '">' + label + '</button>'; }
+function decisionLabel(st) {
+  return {
+    pending: 'Pending', none: 'Pending', accepted: 'Accepted',
+    rejected: 'Rejected', no_response: 'No response'
+  }[st] || st;
+}
 
 /* Office tenancy: mirrors app._scoped_requester.  The office owns its records,
    and a person also keeps the requests they raised for another office.  The
@@ -200,12 +206,12 @@ function render() {
       (Store.db.role === 'requester' ? '' :
         '<div><div class="k">Technician</div><div class="v">' + UI.esc(t.technician || 'Unassigned') + '</div></div>') +
       '<div><div class="k">Resolution</div><div class="v">' + UI.esc(t.diagnosis.actions || t.diagnosis.findings || 'Not recorded') + '</div></div>' +
-      '<div><div class="k">Decision</div><div class="v">' + UI.esc(st === 'none' ? 'pending' : st) + '</div></div>' +
+      '<div><div class="k">Decision</div><div class="v">' + UI.esc(decisionLabel(st)) + '</div></div>' +
       '<div><div class="k">Confirming person</div><div class="v">' + UI.esc(t.confirmation.person || 'Not recorded') + '</div></div>' +
       '<div><div class="k">Confirmed on</div><div class="v">' + (t.confirmation.date ? UI.clock(t.confirmation.date) : 'Not set') + '</div></div>' +
       '</div>' +
       (t.confirmation.feedback ? '<div class="note mt"><span>' + UI.icon('message') + '</span><div><b>Office feedback:</b> ' + UI.esc(t.confirmation.feedback) + '</div></div>' : '') +
-      '<div class="row mt">' + ticketActions(t) + '</div>' +
+      '<div class="cf-detail-actions">' + ticketActions(t) + '</div>' +
       '</div>';
     panel.querySelectorAll('[data-act]').forEach(function (b) {
       b.addEventListener('click', function () { Actions.act(b.dataset.act, t.id, render); });
@@ -214,24 +220,28 @@ function render() {
 
   /* Maintenance: office availability (Requester lane) + Section 3 confirmation */
   function jobHead(j) {
-    return '<div class="card-head-row">' +
-      '<div class="row"><span class="t-id">' + UI.esc(j.id) + '</span><span class="chip">' + UI.esc(j.office) + '</span>' +
+    return '<div class="cf-job-top">' +
+      '<div class="cf-job-id"><span class="t-id">' + UI.esc(j.id) + '</span>' +
+      '<span class="chip">' + UI.esc(j.office) + '</span>' +
       '<span class="chip">' + UI.esc(j.category) + '</span></div>' +
-      '<span class="hint">' + (j.visitDate ? 'visit ' + UI.dateOnly(j.visitDate) : 'visit not set') + '</span></div>' +
-      '<div class="t-sub mt-xs">Schedule ' + UI.esc(j.scheduleId) + ' · ' + UI.esc(j.assets.join(', ')) +
-      (Store.db.role === 'requester' ? '' : ' · technician ' + UI.esc(j.technician)) + '</div>';
+      '<span class="cf-job-date">' + (j.visitDate ? 'Visit ' + UI.dateOnly(j.visitDate) : 'Visit not set') + '</span></div>' +
+      '<div class="cf-job-meta">' +
+      '<span><b>Schedule</b>' + UI.esc(j.scheduleId) + '</span>' +
+      '<span><b>Assets</b>' + UI.esc(j.assets.join(', ')) + '</span>' +
+      (Store.db.role === 'requester' ? '' : '<span><b>Technician</b>' + UI.esc(j.technician) + '</span>') +
+      '</div>';
   }
 
   var openHTML = openJobs.length ? openJobs.map(function (j) {
-    return '<div class="card-block">' + jobHead(j) +
-      '<div class="row mt">' +
+    return '<div class="cf-job">' + jobHead(j) +
+      '<div class="cf-job-actions">' +
       '<button class="btn btn-sm btn-primary" data-job="' + j.id + '" data-jact="availYes">Office available, confirm visit</button>' +
       '<button class="btn btn-sm btn-ghost" data-job="' + j.id + '" data-jact="availNo">Not available, propose a new date</button>' +
       '</div></div>';
   }).join('') : '<div class="empty"><img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No maintenance visit is waiting on your office.</div>';
 
   var doneHTML = jobs.length ? jobs.map(function (j) {
-    var h = '<div class="card-block">' + jobHead(j) + '<div class="row mt">';
+    var h = '<div class="cf-job">' + jobHead(j) + '<div class="cf-job-actions">';
     if (Store.db.role === 'requester') {
       h += '<button class="btn btn-sm btn-primary" data-job="' + j.id + '" data-jact="confYes">Office accepts, confirm and close</button>' +
         '<button class="btn btn-sm btn-ghost" data-job="' + j.id + '" data-jact="confNo">Office rejects, continue verification</button>' +
@@ -243,14 +253,17 @@ function render() {
     return h + '</div></div>';
   }).join('') : '<div class="empty"><img src="img/empty-inbox.svg" alt="" width="120" height="90" loading="lazy">No completed maintenance visit is awaiting confirmation.</div>';
 
-  /* visits pair up two per row: each block carries only a head and one
-     action row, so one per row left most of the page width empty */
+  /* Each visit is one full-width row: the id, office, category and visit date
+     align in a single line, the schedule details share one metadata line, and
+     the actions sit together under them. */
   document.getElementById('cfJobs').innerHTML =
-    '<div class="card-head-row"><h3 class="card-title">Awaiting office availability</h3>' +
-    '<span class="hint">Office available? Yes → coordinate the visit · No → agree a new maintenance date</span></div>' +
-    '<div class="cf-jobs">' + openHTML + '</div>' +
-    '<div class="card-head-row mt"><h3 class="card-title">Completed visits: office decision</h3></div>' +
-    '<div class="cf-jobs">' + doneHTML + '</div>';
+    '<div class="cf-section">' +
+    '<div class="cf-section-head"><h3 class="card-title">Awaiting office availability</h3>' +
+    '<p class="cf-section-note">Office available? Yes → coordinate the visit · No → agree a new maintenance date</p></div>' +
+    '<div class="cf-jobs">' + openHTML + '</div></div>' +
+    '<div class="cf-section">' +
+    '<div class="cf-section-head"><h3 class="card-title">Completed visits: office decision</h3></div>' +
+    '<div class="cf-jobs">' + doneHTML + '</div></div>';
 
   document.querySelectorAll('#cfJobs [data-jact]').forEach(function (b) {
     b.addEventListener('click', function () { jobAct(b.dataset.jact, b.dataset.job); });

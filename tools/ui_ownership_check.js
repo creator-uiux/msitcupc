@@ -44,6 +44,12 @@ var LANE = {
    tools/role_pages.py keeps the same list for the generated files. */
 var NO_ROLE = ['login.html', '404.html', 'index.html', 'offline.html'];
 
+/* Pages the map opens on purpose but no lane links to.  The work guide was
+   taken out of every lane's navigation by the owner in Phase 51 and is kept
+   routable by direct URL only, as recorded in docs/DESIGN_SYSTEM.md.  A
+   reachability miss on these is the documented state, not a defect. */
+var UNLISTED = ['flow.html'];
+
 var problems = [];
 function bad(text) { problems.push(text); }
 
@@ -477,7 +483,7 @@ ROLES.forEach(function (role) {
     scriptPages(file).forEach(add);
   }
   entitled.forEach(function (page) {
-    if (seen[page]) return;
+    if (seen[page] || UNLISTED.indexOf(page) > -1) return;
     bad('the ' + LANE[role] + ' lane may open ' + page +
         ', but no nav entry, bar entry, account entry or page link leads there');
   });

@@ -1193,12 +1193,39 @@ html[data-density="compact"] .list li{padding-top:8px;padding-bottom:8px}
   .notes-2{grid-template-columns:minmax(0,1fr)}
 }
 
-/* Confirmation: maintenance visit blocks pair up two per row. */
-.cf-jobs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px}
-.cf-jobs > .card-block{border-top:0;border-bottom:1px solid var(--line);padding:14px 4px}
-.cf-jobs > .empty{grid-column:1/-1}
-@media (max-width:899px){
-  .cf-jobs{grid-template-columns:minmax(0,1fr)}
+/* Confirmation: each maintenance visit is one full-width row.  Two-up
+   columns left a lone visit in a half-empty column and a rule that stopped
+   mid-card.  The body is padded so the rows sit inside the card instead of
+   touching its border, and the second section is separated by a rule. */
+.cf-body{padding:16px 18px}
+.cf-section + .cf-section{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.cf-jobs{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.cf-job{
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  padding:14px 16px;
+  background:var(--surface);
+}
+.cf-job-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cf-job-id{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.cf-job-date{font-size:var(--text-sm);color:var(--muted);white-space:nowrap}
+.cf-job-meta{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:8px}
+.cf-job-meta>span{display:flex;flex-wrap:wrap;gap:0 6px;font-size:var(--text-sm);color:var(--muted);min-width:0}
+.cf-job-meta b{color:var(--text-secondary);font-weight:var(--w-semibold)}
+.cf-job-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px}
+.cf-section-head{margin-bottom:10px}
+.cf-section-note{margin:3px 0 0;font-size:var(--text-sm);line-height:1.45;color:var(--muted)}
+.cf-jobs>.empty{padding:18px 12px}
+.cf-detail-actions{
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px;
+  margin-top:16px;padding-top:14px;border-top:1px solid var(--line);
+}
+.cf-detail-actions .btn{flex:1 1 100%}
+@media (max-width:599px){
+  .cf-body{padding:12px 12px}
+  .cf-job{padding:12px 12px}
+  .cf-job-date{white-space:normal}
+  .cf-job-actions .btn{flex:1 1 100%}
 }
 
 /* In a narrow card the office name or the status name keeps its words:
