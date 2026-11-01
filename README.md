@@ -252,7 +252,7 @@ All suites should end with `PASSED` / `0 failed` / `0 problems`.
 | `docs/OPERATIONS.md` | every backend operation, the roles that may call it and what it writes |
 | `docs/ROLE_MATRIX.md` | the permission map: pages, actions, transitions and the data scope per role |
 | `docs/USER_HANDBOOK.md` | how to use the system lane by lane, with every screen at desktop and phone and the Figma hand-off |
-| `shots/screen-book.pdf` | the printable screen atlas: one page per screen with what it is, what it is for, how to use it, both design canvases, frame names and source page |
+| `shots/screen-book.pdf` | the printable screen atlas: one page per product screen with what it is, what it is for, how to use it, both design canvases, frame names and source page; the development Gallery is omitted |
 | `docs/SCREEN_GUIDE.md` | the what, what for and how to use explanation behind every page of the printable screen book |
 | `docs/REPORT_DEFINITIONS.md` | one definition per metric, used by every screen and every report |
 | `docs/IMPLEMENTATION_CHECKLIST.md` | the live progress against the specification |
@@ -305,8 +305,9 @@ atlas, `python tools/shots.py --figma` renders the 45 lane pages and the four
 shared entry screens at desktop and phone in canvas and full-page mode (196
 frames), then rewrites the Figma manifest and board. The generated frames and
 the review gallery live in `shots/`. For a readable copy, `python
-tools/screen_book.py` writes `shots/screen-book.pdf`, 51 pages with a cover, a
-contents page and one page per screen. Every screen page carries what the
-screen is, what it is for and numbered steps for how to use it, read from
-`docs/SCREEN_GUIDE.md`.
+tools/screen_book.py` writes `shots/screen-book.pdf`, 50 pages with a cover, a
+contents page and one page per product screen. The development Gallery at
+`index.html` is left out because it is not a product screen. Every screen page
+carries what the screen is, what it is for and numbered steps for how to use
+it, read from `docs/SCREEN_GUIDE.md`.
 

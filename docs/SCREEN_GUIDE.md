@@ -1,20 +1,10 @@
 # Screen guide
 
-One entry per screen. The heading is the source file. Every entry answers
-three questions: what the screen is, what it is for, and how to use it. The
-screen book reads this file, so the PDF and the explanations stay in step.
-
-## index.html
-
-**What it is.** The build's preview index: one card for each lane screen with a link into the app.
-
-**What it is for.** Choose a lane and open a representative screen, or follow the sign-in link for a real session.
-
-**How to use it.**
-
-1. Open `index.html` from the repository or the hosted site.
-2. Pick the card for the lane or screen you want to review.
-3. Follow the card link; sign in when the screen needs a session.
+One entry per product screen. The heading is the source file. Every entry
+answers three questions: what the screen is, what it is for, and how to use it.
+The screen book reads this file, so the PDF and the explanations stay in step.
+The development Gallery at `index.html` is not a product screen and has no
+entry.
 
 ## login.html
 

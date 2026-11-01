@@ -729,6 +729,16 @@ rule is now a fixed rule in `docs/DECISIONS.md`.
 | 55.4 | Checks | DONE | this phase's own run on this tree: Python compile PASS, PDF 51 pages with 49 guide sidebars and 0 replacement glyphs, validation PASSED, UI consistency PASSED (69 pages), role page check PASS (45 files, 45 unique titles), page suite 1050 passed and 0 failed, lane pages 513 passed and 0 failed, UI ownership PASS, em dash check 0 and sweep PASS |
 | 55.5 | Limitations | OPEN | the PDF stays a rendering and does not become editable Figma layers. The guide box has a fixed height and clips overflow, so a future explanation longer than the current longest needs a deliberate page split rather than more text. The atlas frames keep two pre-existing capture states: `or-ticket.html` shows the empty "No tickets" detail because no record is selected, and `mgmt-roles.html` shows its neutral feature-gate panel because the roles reference page is not opened by a lane. The book still prints the design canvases, not the full-page frames |
 
+## Phase 56. The printable book leaves out the Gallery
+
+| # | Item | Status | Evidence |
+|---|---|---|---|
+| 56.1 | The Gallery is not a page in the book | DONE | `tools/screen_book.py` skips `index.html` when it groups the manifest rows, so the rebuilt `shots/screen-book.pdf` holds 50 pages (cover, contents and 48 product screens) and 192 represented frames instead of 51 pages and 49 screens. The PDF and the book HTML contain 0 mentions of Gallery, and the cover stats are now derived from the records instead of hard-coded |
+| 56.2 | The explanation source matches the book | DONE | `docs/SCREEN_GUIDE.md` drops the `index.html` section, so one entry remains per screen the book prints (48), and the header states that the development Gallery has no entry. The generator still requires what, what for and at least two steps for every included screen |
+| 56.3 | The docs describe the omission | DONE | `README.md` and `docs/USER_HANDBOOK.md` state that the PDF is 50 pages over product screens only and that the development Gallery is left out; the documentation table and the regenerate recipe agree |
+| 56.4 | Checks | DONE | this phase's own run on this tree: Python compile PASS, PDF 50 pages with 48 guide sidebars, 48 occurrences of each heading, 2 embedded images per screen (96) and 0 replacement glyphs, validation PASSED, UI consistency PASSED (69 pages), role page check PASS (45 files, 45 unique titles), page suite 1050 passed and 0 failed, lane pages 513 passed and 0 failed, UI ownership PASS, em dash check 0 and sweep PASS. The cover, contents, first screen and last screen were rendered and read |
+| 56.5 | Limitations | OPEN | the Gallery remains part of the Figma atlas and its PNG frames, because that hand-off is a visual archive of every captured address; only the printable book omits it. The book still prints the design canvases rather than the full-page frames, and the guide box still has a fixed height that clips a future overlong explanation |
+
 ## Known gaps
 
 The items that remain partial or unverified are listed in

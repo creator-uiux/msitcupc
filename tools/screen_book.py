@@ -11,6 +11,8 @@ their captured sizes, the Figma frame names, the full-page archive names and
 the source URL. The full-page PNGs stay in shots/ because the workflow guide is
 tens of thousands of pixels tall and would be unreadable on paper.
 
+The development Gallery (index.html) is not a product screen and is omitted.
+
 Run:  python tools/screen_book.py
 Writes: shots/screen-book.html and shots/screen-book.pdf
 """
@@ -29,6 +31,10 @@ ROOT = os.path.normpath(os.path.join(HERE, ".."))
 OUT = os.path.join(ROOT, "shots")
 GUIDE = os.path.join(ROOT, "docs", "SCREEN_GUIDE.md")
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+
+# The preview index is a development gallery, not a product screen, so the
+# printable book leaves it out even though the Figma atlas still captures it.
+EXCLUDE = {"index.html"}
 
 sys.path.insert(0, HERE)
 import figma_manifest  # noqa: E402
@@ -68,6 +74,8 @@ def screens():
     groups, order = {}, []
     for row in figma_manifest.rows():
         source = row["source_url"].split("?", 1)[0]
+        if source in EXCLUDE:
+            continue
         key = (row["figma_page"], source)
         if key not in groups:
             groups[key] = {
@@ -153,15 +161,17 @@ def screen_page(record, number, total):
                  figure(record, "mobile", "phone"), guide_html, meta, number, total)
 
 
-def cover_page(total):
+def cover_page(records, total):
+    lanes = len({record["lane"] for record in records})
+    frames = sum(len(record["frames"]) for record in records)
     return """<section class="page cover">
   <div class="mark">ITC MAINTENANCE SYSTEM</div>
   <h1>Screen atlas<br><span>and Figma hand-off</span></h1>
-  <p class="lead">Every lane screen with what it is, what it is for and how to use it, captured from the working app.</p>
+  <p class="lead">Every product screen with what it is, what it is for and how to use it, captured from the working app.</p>
   <div class="stats">
-    <div><b>49</b><span>screens</span></div>
-    <div><b>5</b><span>lanes</span></div>
-    <div><b>196</b><span>PNG frames</span></div>
+    <div><b>%d</b><span>screens</span></div>
+    <div><b>%d</b><span>lanes</span></div>
+    <div><b>%d</b><span>PNG frames</span></div>
     <div><b>2</b><span>viewports</span></div>
   </div>
   <div class="cover-note">
@@ -170,7 +180,7 @@ def cover_page(total):
     <p>The PDF is a readable archive and print copy. Figma still receives the flat PNG frames through <code>shots/figma-manifest.csv</code>; this file does not become editable Figma layers.</p>
   </div>
   <div class="foot"><span>Book generated %s</span><span>1 / %d</span></div>
-</section>""" % (date.today().strftime("%d %B %Y"), total)
+</section>""" % (len(records), lanes, frames, date.today().strftime("%d %B %Y"), total)
 
 
 def contents_page(records, start_page, total):
@@ -266,7 +276,7 @@ code { font-family: Consolas, "SFMono-Regular", monospace; font-size: .92em; col
 
 def build_html(records, path):
     total = len(records) + 2
-    pages = [cover_page(total), contents_page(records, 3, total)]
+    pages = [cover_page(records, total), contents_page(records, 3, total)]
     pages += [screen_page(r, 3 + i, total) for i, r in enumerate(records)]
     doc = """<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">

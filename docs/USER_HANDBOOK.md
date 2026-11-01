@@ -957,10 +957,11 @@ is fast, offline and exact.
 ### The printable screen book
 
 `python tools/screen_book.py` writes `shots/screen-book.pdf`, an A4 landscape
-book with a cover, a contents page and one page per screen. Each page carries
-the lane and screen title, what the screen is, what it is for, numbered steps
-for how to use it, the desktop and phone design canvases, the Figma frame
-names, the full-page archive names and the source URL.
+book with a cover, a contents page and one page per product screen. The
+development Gallery at `index.html` is not a product screen and is left out.
+Each page carries the lane and screen title, what the screen is, what it is
+for, numbered steps for how to use it, the desktop and phone design canvases,
+the Figma frame names, the full-page archive names and the source URL.
 
 The three explanations come from `docs/SCREEN_GUIDE.md`, one section per source
 page, so the book and the spoken walkthrough cannot drift. The generator
@@ -983,7 +984,7 @@ python tools/screen_book.py
 The first command recaptures every lane page plus the four shared entry
 screens at desktop and phone in both modes, and rewrites
 `shots/figma-manifest.csv` and `shots/figma-board.html`. The second rebuilds the
-51-page PDF from the manifest and `docs/SCREEN_GUIDE.md`. To rewrite only the
+50-page PDF from the manifest and `docs/SCREEN_GUIDE.md`. To rewrite only the
 manifest and the board, run `python tools/figma_manifest.py`.
 
 ## 12. Where the rules live
