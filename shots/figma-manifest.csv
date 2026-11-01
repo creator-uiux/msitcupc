@@ -32,9 +32,9 @@ Office Requester,14,OR-ServiceRecord-1440-Full,Service Record,full-page,desktop,
 Office Requester,15,OR-ServiceRecord-390,Service Record,canvas,mobile,390,844,or-ticket--mobile.png,or-ticket.html?demo=1
 Office Requester,16,OR-ServiceRecord-390-Full,Service Record,full-page,mobile,390,844,or-ticket--mobile-full.png,or-ticket.html?demo=1
 Office Requester,17,OR-ConfirmationClosure-1440,Confirmation and Closure,canvas,desktop,1440,900,or-confirm--desktop.png,or-confirm.html?demo=1
-Office Requester,18,OR-ConfirmationClosure-1440-Full,Confirmation and Closure,full-page,desktop,1440,1323,or-confirm--desktop-full.png,or-confirm.html?demo=1
+Office Requester,18,OR-ConfirmationClosure-1440-Full,Confirmation and Closure,full-page,desktop,1440,1357,or-confirm--desktop-full.png,or-confirm.html?demo=1
 Office Requester,19,OR-ConfirmationClosure-390,Confirmation and Closure,canvas,mobile,390,844,or-confirm--mobile.png,or-confirm.html?demo=1
-Office Requester,20,OR-ConfirmationClosure-390-Full,Confirmation and Closure,full-page,mobile,390,2194,or-confirm--mobile-full.png,or-confirm.html?demo=1
+Office Requester,20,OR-ConfirmationClosure-390-Full,Confirmation and Closure,full-page,mobile,390,2226,or-confirm--mobile-full.png,or-confirm.html?demo=1
 Office Requester,21,OR-MaintenanceVisits-1440,Maintenance Visits,canvas,desktop,1440,900,or-visits--desktop.png,or-visits.html?demo=1
 Office Requester,22,OR-MaintenanceVisits-1440-Full,Maintenance Visits,full-page,desktop,1440,900,or-visits--desktop-full.png,or-visits.html?demo=1
 Office Requester,23,OR-MaintenanceVisits-390,Maintenance Visits,canvas,mobile,390,844,or-visits--mobile.png,or-visits.html?demo=1
@@ -132,9 +132,9 @@ IT Coordinator,22,IC-Maintenance-1440-Full,Maintenance,full-page,desktop,1440,23
 IT Coordinator,23,IC-Maintenance-390,Maintenance,canvas,mobile,390,844,ic-maintenance--mobile.png,ic-maintenance.html?demo=1
 IT Coordinator,24,IC-Maintenance-390-Full,Maintenance,full-page,mobile,390,7880,ic-maintenance--mobile-full.png,ic-maintenance.html?demo=1
 IT Coordinator,25,IC-ConfirmationClosure-1440,Confirmation and Closure,canvas,desktop,1440,900,ic-confirm--desktop.png,ic-confirm.html?demo=1
-IT Coordinator,26,IC-ConfirmationClosure-1440-Full,Confirmation and Closure,full-page,desktop,1440,1479,ic-confirm--desktop-full.png,ic-confirm.html?demo=1
+IT Coordinator,26,IC-ConfirmationClosure-1440-Full,Confirmation and Closure,full-page,desktop,1440,1706,ic-confirm--desktop-full.png,ic-confirm.html?demo=1
 IT Coordinator,27,IC-ConfirmationClosure-390,Confirmation and Closure,canvas,mobile,390,844,ic-confirm--mobile.png,ic-confirm.html?demo=1
-IT Coordinator,28,IC-ConfirmationClosure-390-Full,Confirmation and Closure,full-page,mobile,390,3142,ic-confirm--mobile-full.png,ic-confirm.html?demo=1
+IT Coordinator,28,IC-ConfirmationClosure-390-Full,Confirmation and Closure,full-page,mobile,390,3257,ic-confirm--mobile-full.png,ic-confirm.html?demo=1
 IT Coordinator,29,IC-OfficeRegister-1440,Office Register,canvas,desktop,1440,900,ic-register--desktop.png,ic-register.html?demo=1
 IT Coordinator,30,IC-OfficeRegister-1440-Full,Office Register,full-page,desktop,1440,2146,ic-register--desktop-full.png,ic-register.html?demo=1
 IT Coordinator,31,IC-OfficeRegister-390,Office Register,canvas,mobile,390,844,ic-register--mobile.png,ic-register.html?demo=1

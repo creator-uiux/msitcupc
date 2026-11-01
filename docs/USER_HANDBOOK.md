@@ -906,22 +906,25 @@ The atlas uses two viewports: desktop at 1440 by 900 and phone at 390 by 844.
 Each screen is captured twice, once as the design canvas and once as the full
 scroll height. The frames are at 1x device scale.
 
+The default scope is the atlas: 49 screens made of the 45 role-named lane pages
+and the four shared entry screens (`index.html`, `login.html`, `404.html`,
+`offline.html`). The `--figma` preset captures them at desktop and phone in both
+modes and then rewrites the manifest and the board:
+
+```
+python tools/shots.py --figma
+```
+
+To recapture one screen while checking a change:
+
 ```
 python tools/shots.py --only or-dashboard.html --viewports desktop mobile --both
 ```
 
-Run the full set for one lane:
-
-```
-python tools/shots.py --only or-dashboard.html or-request.html or-tickets.html \
-  or-ticket.html or-confirm.html or-register.html or-visits.html or-reports.html \
-  or-notifications.html or-profile.html or-flow.html or-roles.html \
-  --viewports desktop mobile --both
-```
-
-The exported frames sit in `shots/` and the review gallery is
-`shots/index.html`. Both `shots/index.html` and the PNG files are build
-artifacts, not source files.
+The exported frames sit in `shots/`, and the review gallery is
+`shots/index.html`. The frames are generated, but they are committed to the
+repository as the visual archive; the folder is ignored by default, so new
+frames are force-added.
 
 ### Import into Figma
 
@@ -954,15 +957,13 @@ is fast, offline and exact.
 ### Regenerate after a change
 
 ```
-python tools/shots.py --only $(ls -1 or-*.html itc-*.html ic-*.html mgmt-*.html) \
-  index.html login.html 404.html offline.html \
-  --viewports desktop mobile --both
-python tools/figma_manifest.py
+python tools/shots.py --figma
 ```
 
-The first command recaptures every lane page plus the four shared entry
-screens, the second rewrites the manifest and the board from the files on
-disk.
+That recaptures every lane page plus the four shared entry screens at desktop
+and phone in both modes, and rewrites `shots/figma-manifest.csv` and
+`shots/figma-board.html` from the files on disk. To rewrite only the manifest
+and the board, run `python tools/figma_manifest.py`.
 
 ## 12. Where the rules live
 

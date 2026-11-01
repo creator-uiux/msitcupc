@@ -140,8 +140,8 @@ hit area (desktop density is deliberately unchanged).
 **Automated (recommended):**
 
 ```
-python tools/shots.py            # all 20 pages x 6 viewports -> shots/
-python tools/shots.py --both     # canvas frames + full-page frames
+python tools/shots.py --figma    # 49 screens x desktop+phone x canvas+full, then the Figma manifest
+python tools/shots.py            # 49 screens x 6 viewports, canvas frames only
 python tools/shots.py --only dashboard.html reports.html
 python tools/shots.py --viewports desktop mobile
 ```
@@ -150,6 +150,8 @@ Every capture loads the page with `?demo=1`, which rebuilds the canonical seed,
 freezes the clock and disables the random intake simulation  --  so the PNGs are
 **deterministic** (identical on every run) and ready to import as design frames
 at 1x scale. Output goes to `shots/` plus a `shots/index.html` review gallery.
+`--figma` recaptures the atlas and then rewrites `shots/figma-manifest.csv` and
+`shots/figma-board.html`, so one command refreshes the whole hand-off.
 
 - **Canvas frames** (`<page>--<view>.png`) are exactly the design canvas
   (1440×900, 1024×768, 768×1024, 390×844, 360×800).
@@ -295,7 +297,9 @@ data still persists to `localStorage` and syncs across tabs.
 The checked-in visual evidence is `docs/screenshots/`, 108 captures: 60 base
 screens at 390, 768 and 1440 px in both themes, plus 48 role captures of the
 dashboard and ticket detail for each role at the same widths and themes. The
-base set is produced by `python tools/gate_shots.py`. For a larger export,
-`python tools/shots.py` renders 20 pages at six viewports into the generated
-`shots/` directory, and `shots/index.html` is the review gallery.
+base set is produced by `python tools/gate_shots.py`. For the full screen
+atlas, `python tools/shots.py --figma` renders the 45 lane pages and the four
+shared entry screens at desktop and phone in canvas and full-page mode (196
+frames), then rewrites the Figma manifest and board. The generated frames and
+the review gallery live in `shots/`.
 

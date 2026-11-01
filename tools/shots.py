@@ -8,7 +8,12 @@ Every capture loads the page with ?demo=1, which (see js/store.js) rebuilds the
 canonical seed, freezes the clock and disables the random intake simulation, so
 the PNGs are deterministic and identical on every run.
 
-Run:  python tools/shots.py                 # all pages, all 6 viewports
+The default scope is the atlas: the 45 role-named lane pages plus the four
+shared entry screens (index, login, 404, offline).
+
+Run:  python tools/shots.py --figma         # atlas at desktop+phone, canvas+full,
+                                            # then rewrite the Figma manifest/board
+      python tools/shots.py                 # atlas, all 6 viewports, canvas only
       python tools/shots.py --only dashboard.html reports.html
       python tools/shots.py --viewports desktop mobile
 """
@@ -39,10 +44,15 @@ VIEWPORTS = [    ("desktop", 1440, 900),
     ("mobile", 390, 844),
     ("small", 320, 720),
 ]
-PAGES = ["index.html", "login.html", "roles.html", "dashboard.html", "ticket.html", "request.html",
-         "review.html", "technician.html", "maintenance.html", "confirm.html", "reports.html", "flow.html",
-         "tickets.html", "register.html", "notifications.html", "audit.html",
-         "users.html", "offices.html", "settings.html", "profile.html"]
+SHARED_PAGES = ["index.html", "login.html", "404.html", "offline.html"]
+LANE_PREFIXES = ("or", "itc", "ic", "mgmt")
+
+
+def atlas_pages():
+    """Every screen the Figma hand-off carries: shared entry plus lane pages."""
+    lane = sorted(os.path.basename(p) for p in glob.glob(os.path.join(ROOT, "*.html"))
+                  if os.path.basename(p).split("-", 1)[0] in LANE_PREFIXES)
+    return SHARED_PAGES + lane
 
 
 # ------------------------------------------------------------------ websocket
@@ -285,7 +295,7 @@ DBG_PORT = None
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--only", nargs="*", default=PAGES)
+    ap.add_argument("--only", nargs="*", default=None)
     ap.add_argument("--viewports", nargs="*", default=[v[0] for v in VIEWPORTS])
     ap.add_argument("--theme", default="", choices=["", "light", "dark"],
                     help="capture in a specific colour theme (default: the saved one)")
@@ -293,7 +303,14 @@ def main():
                     help="capture the whole scroll height instead of the design canvas")
     ap.add_argument("--both", action="store_true",
                     help="emit both the design canvas and the full-page frame")
+    ap.add_argument("--figma", action="store_true",
+                    help="atlas preset: desktop and phone, canvas and full-page, "
+                         "then rewrite the Figma manifest and board")
     args = ap.parse_args()
+
+    if args.figma:
+        args.viewports = ["desktop", "mobile"]
+        args.both = True
 
     global BASE, PORT, DBG_PORT
     global THEME
@@ -316,7 +333,7 @@ def main():
             print("!! no such page: %s" % ", ".join(missing))
             return 2
     else:
-        pages = list(PAGES)
+        pages = atlas_pages()
     vps = [v for v in VIEWPORTS if v[0] in args.viewports]
 
     # The threaded, no-store server from tools/serve.py.  The single threaded
@@ -395,6 +412,12 @@ def main():
 
     contact_sheet(entries)
     print("\n%d frames -> shots/  (%d problems)" % (len(entries), problems))
+    if args.figma:
+        if problems:
+            print("!! Figma manifest not refreshed because the capture reported problems")
+        else:
+            import figma_manifest
+            figma_manifest.main()
     return 1 if problems else 0
 
 
