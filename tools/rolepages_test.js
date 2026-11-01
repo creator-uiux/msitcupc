@@ -612,12 +612,12 @@ tests.push(async function capabilityRowsFollowTheMap() {
 
 tests.push(async function roleNavigationMatchesPermissionMap() {
   var CASES = [
-    ['requester', 'or-dashboard.html', ['my requests', 'new request', 'office register', 'workflow guide'], ['maintenance', 'users']],
-    ['technician', 'itc-dashboard.html', ['my tickets', 'my maintenance jobs', 'office register', 'workflow guide'], ['users', 'new request']],
-    ['coordinator', 'ic-dashboard.html', ['tickets', 'maintenance', 'reports', 'workflow guide'], ['users', 'offices', 'audit log']],
-    ['management', 'mgmt-users.html', ['users', 'offices', 'configuration', 'audit log', 'workflow guide'],
+    ['requester', 'or-dashboard.html', ['my requests', 'new request', 'office register'], ['maintenance', 'users', 'flow.html']],
+    ['technician', 'itc-dashboard.html', ['my tickets', 'my maintenance jobs', 'office register'], ['users', 'new request', 'flow.html']],
+    ['coordinator', 'ic-dashboard.html', ['tickets', 'maintenance', 'reports'], ['users', 'offices', 'audit log', 'flow.html']],
+    ['management', 'mgmt-users.html', ['users', 'offices', 'configuration', 'audit log'],
      ['new request', 'review and assign', 'tickets', 'my tickets', 'maintenance',
-      'office register', 'reports', 'dashboard']]
+      'office register', 'reports', 'dashboard', 'flow.html']]
   ];
   for (var i = 0; i < CASES.length; i++) {
     var role = CASES[i][0], page = CASES[i][1];

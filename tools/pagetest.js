@@ -1228,13 +1228,13 @@ tests.push(async function roleNav() {
   var nav = function () {
     return $$('.side-link[href]').map(function (a) { return a.textContent.replace(/\s+/g, ' ').trim(); });
   };
-  /* The Workflow Guide is shared by every signed-in lane, so it is listed for
-     all four roles.  The roles and access reference stays behind its registry
-     flag and out of the navigation. */
+  /* The Workflow Guide is hidden from every lane, so no role lists it.  The
+     roles and access reference stays behind its registry flag and out of the
+     navigation. */
   ['requester', 'technician', 'coordinator', 'management'].forEach(function (r) {
     asRole(p, r);
     var refs = nav().join('|');
-    ok(refs.indexOf('Workflow Guide') > -1, r + ' lists the workflow guide');
+    ok(refs.indexOf('Workflow Guide') === -1, r + ' does not list the workflow guide');
     ok(refs.indexOf('Roles and Access') === -1, r + ' does not list the roles and access reference');
   });
   asRole(p, 'coordinator');
@@ -1254,7 +1254,7 @@ tests.push(async function roleNav() {
   var m = nav().join('|');
   ok(m.indexOf('New Request') === -1, 'management cannot submit requests');
   ok(m.indexOf('Roles and Access') === -1, 'the reference pages stay out of the sidebar');
-  ok(m.indexOf('Workflow Guide') > -1, 'the administrator also sees the workflow guide');
+  ok(m.indexOf('Workflow Guide') === -1, 'the administrator does not see the workflow guide');
   /* Role scope 5: Administration plus the read-only audit viewer, nothing else. */
   ok(m.indexOf('Maintenance') === -1, 'the administrator lane holds no maintenance screen');
   ok(m.indexOf('Service Records') === -1 && m.indexOf('Tickets') === -1,
@@ -1636,10 +1636,10 @@ tests.push(async function mobileNav() {
         'More sheet reaches the notification centre');
       ok(hrefs.some(function (h) { return /profile\.html$/.test(h); }),
         'More sheet reaches the profile');
-      /* the workflow guide is shared by every signed-in lane; the roles
-         reference stays behind its registry flag */
-      ok(hrefs.some(function (h) { return /flow\.html$/.test(h); }),
-        'More sheet reaches the workflow guide');
+      /* the workflow guide is hidden from every lane; the roles reference
+         stays behind its registry flag */
+      ok(!hrefs.some(function (h) { return /flow\.html$/.test(h); }),
+        'More sheet does not list the workflow guide');
       ok(!hrefs.some(function (h) { return /roles\.html$/.test(h); }),
         'More sheet does not list the roles and access reference');
       /* a destination must never be listed twice */
@@ -2427,15 +2427,15 @@ tests.push(async function scopeAcrossWidths() {
     ['mgmt', 'management']
   ];
   var expected = {
-    requester: ['confirm.html', 'dashboard.html', 'flow.html', 'notifications.html',
+    requester: ['confirm.html', 'dashboard.html', 'notifications.html',
       'profile.html', 'register.html', 'reports.html', 'request.html',
       'tickets.html?queue=mine', 'visits.html'],
-    technician: ['dashboard.html', 'flow.html', 'maintenance.html', 'notifications.html',
+    technician: ['dashboard.html', 'maintenance.html', 'notifications.html',
       'profile.html', 'register.html', 'reports.html', 'technician.html'],
-    coordinator: ['confirm.html', 'dashboard.html', 'flow.html', 'maintenance.html',
+    coordinator: ['confirm.html', 'dashboard.html', 'maintenance.html',
       'notifications.html', 'profile.html', 'register.html', 'reports.html',
       'request.html', 'review.html', 'tickets.html'],
-    management: ['assets.html', 'audit.html', 'flow.html', 'notifications.html',
+    management: ['assets.html', 'audit.html', 'notifications.html',
       'offices.html', 'profile.html', 'settings.html', 'users.html']
   };
   /* Each lane is opened at its own landing page: the administrator has no

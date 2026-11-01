@@ -1124,13 +1124,6 @@
         { href: 'reports.html', label: 'Reports', ic: 'chart' }
       ]);
     }
-    /* The Workflow Guide is shared by every signed-in lane (role scope:
-       "Shared by every signed-in role: Notifications, Workflow Guide,
-       profile, theme toggle, sign out").  It explains the process; it never
-       offers an action, so it is safe to show in all four lanes. */
-    add('Reference', [
-      { href: 'flow.html', label: 'Workflow Guide', ic: 'flow' }
-    ]);
     return groups;
   }
 

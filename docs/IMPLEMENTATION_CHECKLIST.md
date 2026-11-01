@@ -680,6 +680,14 @@ rule is now a fixed rule in `docs/DECISIONS.md`.
 | 50.4 | Checks | DONE | this phase's own run, on this tree: capture 196 frames with 0 problems, validation PASSED, JS syntax PASS (26 files, 181 inline blocks), permission parity PASS (21 pages, 45 actions, 8 transition sources), feature parity PASS, workflow coverage PASS (63 SOP steps, 45 actions, 84 guards), UI ownership PASS, theme discipline PASS (6 sheets), script order 65, UI consistency PASS (69 pages), markup 345, content 166, page suite 1050, lane pages 513, em dash 0, and the 96 handbook image references all resolve |
 | 50.5 | Limitations | OPEN | the frames are flat images, so Figma receives a visual archive rather than editable layers, and no `.fig` file can be produced from here; a phone full-page frame draws the fixed bottom tab bar at the original viewport edge because Chrome captures the whole scroll height with fixed elements in place; `shots/` is gitignored, so the frames, the manifest and the board are local build artifacts and the handbook's images are absent until the capture command is run; the handbook describes the system as built, not a substitute for the signed-in walkthrough a person should make before a deployment |
 
+## Phase 51. The workflow guide leaves every lane's navigation
+
+| # | Item | Status | Evidence |
+|---|---|---|---|
+| 51.1 | The guide is no longer offered in any lane | DONE | `navModel()` now ends after the role groups (`js/ui.js:1127`), so the desktop rail carries no Reference group. The phone More sheet and the command palette both build from `navModel()`, so neither lists `flow.html` either. The permission map is unchanged and the guide stays routable at `flow.html` and the four lane copies, matching the documented state in `docs/DESIGN_SYSTEM.md:326-329` and `docs/KNOWN_LIMITATIONS.md:194-197` |
+| 51.2 | Proof | DONE | `tools/pagetest.js:1237` checks all four roles for no Workflow Guide entry, `tools/pagetest.js:1257` checks the administrator, `tools/pagetest.js:1642` checks the More sheet, and `scopeAcrossWidths` no longer expects `flow.html` in any lane; `tools/rolepages_test.js:615-620` now treats `flow.html` as a forbidden rail link. The shell cache is raised to `itc-shell-v20` (`sw.js:14`) so a deployed client picks up the new `js/ui.js`. On this tree: page suite 1050 passed and 0 failed, lane pages 513 passed and 0 failed, and `node --check` is clean on the edited files |
+| 51.3 | Limitations | OPEN | The guide remains routable by direct URL because the permission map and the Appendix C coverage requirement are unchanged, and the roles capability table still names the guide as a shared page. The page suite still drives `flow.html` directly at `tools/pagetest.js:895` |
+
 ## Known gaps
 
 The items that remain partial or unverified are listed in

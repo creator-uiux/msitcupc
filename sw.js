@@ -11,7 +11,7 @@
  */
 'use strict';
 
-var VERSION = 'itc-shell-v19';
+var VERSION = 'itc-shell-v20';
 var SHELL_CACHE = VERSION + '-shell';
 
 /* The app shell.  Role-prefixed pages are generated from these, so they are
