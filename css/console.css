@@ -1230,6 +1230,12 @@ html[data-density="compact"] .list li{padding-top:8px;padding-bottom:8px}
   .dash-split{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 }
 
+/* The office lane acts on records rather than reading throughput; volume over
+   time is the coordinator's view.  With the activity panel gone the status
+   breakdown takes the row instead of leaving a blank column. */
+body.role-requester .dash-activity{display:none !important}
+body.role-requester .dash-split{grid-template-columns:minmax(0,1fr)}
+
 /* A table cell breaks long words anywhere; an action button keeps its label
    on one line, so "CSV" or "Activate" never splits into "CS / V". */
 .table .btn{white-space:nowrap}

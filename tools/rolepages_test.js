@@ -456,6 +456,9 @@ tests.push(async function roleVisibility() {
     /* role, page, selector, shouldShow */
     ['requester', 'or-dashboard.html', '#depWrap', false],
     ['requester', 'or-dashboard.html', '.staff-only', false],
+    ['requester', 'or-dashboard.html', '.dash-activity', false],
+    ['coordinator', 'ic-dashboard.html', '.dash-activity', true],
+    ['technician', 'itc-dashboard.html', '.dash-activity', true],
     ['requester', 'or-dashboard.html', '.tech-only', false],
     ['requester', 'or-dashboard.html', '.actor-only', true],
     ['technician', 'itc-dashboard.html', '.actor-only', true],
