@@ -23,3 +23,6 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Firebase CLI deploy cache
+.firebase/
