@@ -142,12 +142,22 @@ var replyVisibility = 'public';
    are drawn.  The chip carries the index, the viewer carries the details. */
 var attachRecords = [], attachTicketId = '';
 
+/* Office tenancy: mirrors app._scoped_requester.  A requester reads the office
+   records and the requests they raised, even when a request names another
+   office.  A record outside that scope is not opened, even by a typed URL. */
+function inMyScope(t) {
+  if (Store.db.role !== 'requester') return true;
+  var a = UI.auth() || {};
+  return !a.office || t.office === a.office || t.requester === a.name;
+}
+
 function pickList() {
   var sel = document.getElementById('tPick');
   if (!sel) return;
   var searchEl = document.getElementById('tSearch');
   var search = searchEl ? searchEl.value.toLowerCase() : '';
   var tickets = Store.db.tickets.filter(function (t) {
+    if (!inMyScope(t)) return false;
     return t.id.toLowerCase().includes(search) || t.office.toLowerCase().includes(search) || t.requester.toLowerCase().includes(search) || t.issue.toLowerCase().includes(search);
   });
   sel.innerHTML = tickets.map(function (t) {
@@ -246,6 +256,18 @@ function whereCard(t) {
     rows.push('<div class="note danger"><span>' + UI.icon('ban') + '</span><div>Cancelled requests are closed for action. The record and its history are retained.</div></div>');
   }
 
+  /* SOP 7: the office asks for withdrawal, and the IT Coordinator records the
+     cancellation reason, so the status stays until they action it. */
+  var active = ['submitted', 'needs_info', 'assigned', 'in_progress', 'on_hold', 'resolved'];
+  var withdraw = '';
+  if (role === 'requester' && active.indexOf(t.status) > -1) {
+    withdraw = t.withdrawal
+      ? '<div class="note mt"><span>' + UI.icon('repeat') + '</span><div><b>Withdrawal requested.</b> ' +
+        UI.esc(t.withdrawal.reason || '') + ' The IT Coordinator will record the cancellation reason.</div></div>'
+      : '<button class="btn btn-danger-soft btn-block mt" data-withdraw="' + UI.attr(t.id) + '">Request withdrawal</button>' +
+        '<div class="hint mt-xs">The reason goes to the IT Coordinator, who records the cancellation.</div>';
+  }
+
   /* the valid transitions for this role, and only those */
   var moves = validMoves(t);
   var selector = '';
@@ -264,16 +286,45 @@ function whereCard(t) {
   return '<div class="card-head-row">' +
     '<h3 class="card-title">Where this is actioned</h3>' +
     '<span class="chip">' + UI.esc(window.ROLES[role].title) + '</span></div>' +
-    '<div class="btn-stack">' + rows.join('') + '</div>' + selector +
+    '<div class="btn-stack">' + rows.join('') + '</div>' + selector + withdraw +
     '<div class="card-foot">' + UI.waitingOn(t.status) +
     '<span class="hint">Who must act next on this record.</span></div>';
+}
+
+function askWithdrawal(id) {
+  UI.openModal('Request withdrawal: ' + id,
+    '<div class="note mb-sm"><span>' + UI.icon('info') + '</span><div>The IT Coordinator records the cancellation reason, ' +
+    'so the request keeps its status until they action it.</div></div>' +
+    UI.field('Why is the request no longer needed?', UI.textarea('reason', 'e.g. Issue resolved without IT; request no longer needed.', '', 3, true)),
+    '<button class="btn btn-ghost" data-close>Keep request</button><button class="btn btn-danger-soft" id="mGo">Request withdrawal</button>');
+  document.getElementById('mGo').onclick = function () {
+    var r = Flow.requestWithdrawal(id, UI.modalValue('reason'));
+    UI.closeModal(); UI.toast(r.msg, r.ok ? 'ok' : 'err');
+    if (r.ok) { UI.renderBell(); render(); }
+  };
 }
 
 function render() {
   if (PICKER) pickList();
   var role = Store.db.role;
-  var t = Store.getTicket(currentId);
-  if (!t) { document.getElementById('tTitle').textContent = 'No tickets'; return; }
+  var raw = Store.getTicket(currentId);
+  var t = raw && inMyScope(raw) ? raw : null;
+  if (!t) {
+    document.getElementById('tTitle').textContent = 'No tickets';
+    /* A typed id can name another office, and a role switch can leave the
+       previous reader's panels in place.  Clear the record so no stale
+       action or note stays on screen. */
+    ['tHead', 'tComposer', 'tThread', 'tHistory', 'tLinked', 'tConfirm',
+     'tDep', 'tTests', 'tWorkCard'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = '';
+    });
+    document.getElementById('tActions').innerHTML = raw
+      ? '<div class="note"><span>' + UI.icon('eye') + '</span><div>Record ' + UI.esc(raw.id) +
+        ' belongs to another office and is not available to your role.</div></div>'
+      : '<div class="note"><span>' + UI.icon('eye') + '</span><div>No record is selected. Open one from your queue.</div></div>';
+    return;
+  }
   document.getElementById('tTitle').innerHTML = UI.esc(UI.cut(t.issue, 54));
   var pickEl = document.getElementById('tPick');
   if (pickEl) pickEl.value = t.id;
@@ -399,6 +450,8 @@ function render() {
 
   /* where to act */
   document.getElementById('tActions').innerHTML = whereCard(t);
+  var wb = document.querySelector('#tActions [data-withdraw]');
+  if (wb) wb.addEventListener('click', function () { askWithdrawal(t.id); });
 
   /* conversation: reply composer + attachments + merged timeline */
   renderComposer(t);

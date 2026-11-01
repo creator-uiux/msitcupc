@@ -87,8 +87,20 @@ function kpi(label, value, delta, cls, dot) {
 }
 function btn(label, a, cls) { return '<button class="btn ' + cls + '" data-act="' + a + '">' + label + '</button>'; }
 
+/* Office tenancy: mirrors app._scoped_requester.  The office owns its records,
+   and a person also keeps the requests they raised for another office.  The
+   trusted backend already scopes the snapshot; this keeps the browser demo
+   from showing another office's queue. */
+function inMyScope(t) {
+  var role = Store.db.role;
+  if (role !== 'requester') return true;
+  var a = UI.auth() || {};
+  return !a.office || t.office === a.office || t.requester === a.name;
+}
+
 function confirmable() {
   return Store.db.tickets.filter(function (t) {
+    if (!inMyScope(t)) return false;
     return t.status === 'resolved' || (t.status === 'closed' && !t.recurring);
   });
 }

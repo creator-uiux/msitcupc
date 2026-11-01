@@ -457,8 +457,18 @@ tests.push(async function confirmClose() {
   ok($$('#cfPanel [data-act="close"]').length === 0, 'close is NOT offered before acceptance (guard)');
 
   asRole(p, 'requester');
+  /* The office queue holds only its own records (SOP 28.2).  The seeded
+     Records Office record is already closed, so it returns to Resolved here
+     to exercise the office decision on a record the requester may act on. */
+  p.w.Store.update(function (db) {
+    var t = db.tickets.filter(function (x) { return x.id === 'IT-2026-000125'; })[0];
+    t.status = 'resolved';
+    t.recurring = false;
+    t.confirmation = { state: 'pending', person: '', date: null, feedback: '' };
+  });
+  ok($$('#cfPanel [data-act="accept"]').length === 1, 'the office record offers the acceptance');
   $$('#cfPanel [data-act="accept"]')[0].click();
-  var cf = p.w.Store.getTicket('IT-2026-000141');
+  var cf = p.w.Store.getTicket('IT-2026-000125');
   ok(cf.confirmation.state === 'accepted', 'office acceptance recorded');
   ok(cf.status === 'closed', 'acceptance closes the ticket in one step');
   ok(cf.confirmation.person === 'A. Delos Reyes' && !!cf.confirmation.date,
@@ -476,8 +486,8 @@ tests.push(async function confirmClose() {
   $('#mGo').click();
   ok(p.w.Store.db.tickets.length === n0 + 1, 'recurrence creates a NEW linked ticket');
   var nt = p.w.Store.db.tickets[0];
-  ok(nt.linkedTo === 'IT-2026-000141', 'new ticket linked to previous record');
-  ok(p.w.Store.getTicket('IT-2026-000141').recurring === true, 'closed record flagged as recurring');
+  ok(nt.linkedTo === 'IT-2026-000125', 'new ticket linked to previous record');
+  ok(p.w.Store.getTicket('IT-2026-000125').recurring === true, 'closed record flagged as recurring');
   ok(p.errors.length === 0, 'no errors after confirmation flow');
   close(p);
 });
@@ -540,6 +550,95 @@ tests.push(async function requestWithdraw() {
   }
   ok(p.errors.length === 0, 'no errors after withdraw');
   close(p);
+});
+
+tests.push(async function ticketRecordWithdraw() {
+  /* SOP 7 in the office lane: withdrawal starts from the record the office is
+     tracking, not only from the intake page.  The coordinator records the
+     cancellation, so the status never moves on this action. */
+  var p = await open(BASE + 'ticket.html?id=IT-2026-000142');
+  asRole(p, 'requester');
+  var btn = $('#tActions [data-withdraw]');
+  ok(btn !== null, 'the office record offers Request withdrawal');
+  ok(btn && btn.textContent.trim() === 'Request withdrawal', 'the control is named Request withdrawal');
+  if (btn) {
+    btn.click();
+    var modal = $('.modal-host');
+    ok(modal !== null, 'the record withdrawal modal opens');
+    modal.querySelector('[name="reason"]').value = 'Resolved without IT.';
+    $('#mGo').click();
+    var t = p.w.Store.getTicket('IT-2026-000142');
+    ok(t.status === 'in_progress', 'the request keeps its status after the withdrawal request');
+    ok(t.withdrawal && t.withdrawal.reason === 'Resolved without IT.', 'the record carries the withdrawal reason');
+    ok($('#tActions [data-withdraw]') === null && /Withdrawal requested/.test($('#tActions').textContent),
+      'the record states the request now waits on the coordinator');
+  }
+  asRole(p, 'coordinator');
+  ok($('#tActions [data-withdraw]') === null, 'the coordinator records the cancellation, not the withdrawal');
+  asRole(p, 'technician');
+  ok($('#tActions [data-withdraw]') === null, 'the technician is not offered the office withdrawal');
+  ok(p.errors.length === 0, 'no errors on the record withdrawal flow');
+  close(p);
+
+  /* an office record is never opened from another office's id */
+  var x = await open(BASE + 'ticket.html?id=IT-2026-000130');
+  asRole(x, 'requester');
+  ok(/No tickets/.test($('#tTitle').textContent), 'a typed URL does not open another office record');
+  ok($('#tActions [data-withdraw]') === null, 'no office action appears on a record outside the scope');
+  close(x);
+});
+
+tests.push(async function requesterScope() {
+  /* Specification 4A.2 and SOP 28.2: the office reads its own records and the
+     requests it raised, never another office.  The backend scopes the
+     snapshot; the browser demo must not reopen the gap. */
+  var p = await open(BASE + 'confirm.html');
+  asRole(p, 'requester');
+  var a = p.w.UI.auth();
+  var mine = $$('#cfBody tr').map(function (tr) { return p.w.Store.getTicket(tr.dataset.id); })
+    .filter(Boolean);
+  ok(mine.length > 0, 'the requester has records waiting for confirmation');
+  ok(mine.every(function (t) { return t.office === a.office || t.requester === a.name; }),
+    'the confirmation queue holds only the office records and requests raised');
+  var everyOffice = {};
+  p.w.Store.db.tickets.forEach(function (t) {
+    if (t.status === 'resolved' || (t.status === 'closed' && !t.recurring)) everyOffice[t.office] = 1;
+  });
+  ok(Object.keys(everyOffice).length > 1, 'the seed carries confirmation records in more than one office');
+  asRole(p, 'coordinator');
+  var seen = {};
+  $$('#cfBody tr').forEach(function (tr) {
+    var t = p.w.Store.getTicket(tr.dataset.id);
+    if (t) seen[t.office] = 1;
+  });
+  ok(Object.keys(seen).length > 1, 'the coordinator confirmation queue still spans offices');
+  ok(p.errors.length === 0, 'no errors while switching the confirmation scope');
+  close(p);
+
+  var r = await open(BASE + 'reports.html');
+  asRole(r, 'requester');
+  var ra = r.w.UI.auth();
+  var allowed = {};
+  allowed[ra.office] = 1;
+  r.w.Store.db.tickets.forEach(function (t) { if (t.requester === ra.name) allowed[t.office] = 1; });
+  var opts = $$('#fOffice option').map(function (o) { return o.value; }).filter(Boolean);
+  ok(opts.length > 0, 'the requester report filter lists an office');
+  ok(opts.every(function (o) { return allowed[o]; }),
+    'the office filter lists only offices the requester can read (' + opts.join(', ') + ')');
+  var rowOffices = $$('#rBody tr td[data-label="Office"] .t-title').map(function (e) { return e.textContent; });
+  ok(rowOffices.length > 0, 'the requester report lists service history');
+  ok(rowOffices.every(function (o) { return allowed[o]; }),
+    'the service history stays inside the requester scope');
+  var scopeCount = r.w.Store.db.tickets.filter(function (t) {
+    return t.office === ra.office || t.requester === ra.name;
+  }).length;
+  var total = /of (\d+)/.exec($('#rCount').textContent);
+  ok(total && parseInt(total[1], 10) === scopeCount, 'the record count states the scoped total (' + $('#rCount').textContent + ')');
+  asRole(r, 'coordinator');
+  var co = $$('#fOffice option').map(function (o) { return o.value; }).filter(Boolean);
+  ok(co.length > opts.length, 'the coordinator filter spans more offices than the requester one');
+  ok(r.errors.length === 0, 'no errors while switching the report scope');
+  close(r);
 });
 
 tests.push(async function technicianPage() {
@@ -1444,8 +1543,17 @@ tests.push(async function ticketRoleLinks() {
   p.w.render();
   ok($('#tActions a[href^="ic-confirm.html"]') !== null,
     'coordinator gets the confirmation link in their own lane');
-  asRole(p, 'requester');
-  p.w.render();
+  close(p);
+
+  /* The office lane reads its own record, so the seeded Accounting record is
+     never the page the requester opens. */
+  var q = await open(BASE + 'ticket.html?id=IT-2026-000125');
+  asRole(q, 'requester');
+  q.w.Store.update(function (db) {
+    var x = db.tickets.filter(function (t) { return t.id === 'IT-2026-000125'; })[0];
+    x.status = 'resolved';
+    x.recurring = false;
+  });
   ok($('#tActions a[href^="or-confirm.html"]') !== null,
     'requester gets the confirmation link in their own lane');
   /* The next-step selector sends the reader to the screen that records the
@@ -1454,7 +1562,7 @@ tests.push(async function ticketRoleLinks() {
     .filter(function (v) { return v !== ''; });
   ok(moves.length > 0 && moves.every(function (v) { return /^or-[a-z-]+\.html$/.test(v); }),
     'every move this lane is offered opens in the office lane (' + moves.join(', ') + ')');
-  close(p);
+  close(q);
 });
 
 tests.push(async function accessGuard() {

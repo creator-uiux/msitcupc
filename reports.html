@@ -145,9 +145,29 @@ var reportPage = 1;
 var printAll = false;
 const REPORTS_PER_PAGE = 15;
 
+/* Office tenancy: mirrors app._scoped_requester.  A ticket belongs to the
+   office and to the person who raised it, even when that request names another
+   office.  A visit belongs to the office alone.  The backend already scopes the
+   snapshot; this also keeps the browser demo and its filter lists honest. */
+function inScope(r, isJob) {
+  if (UI.roleKey() !== 'requester') return true;
+  var a = UI.auth() || {};
+  if (!a.office) return true;
+  if (isJob) return r.office === a.office;
+  return r.office === a.office || r.requester === a.name;
+}
+
+var filterRole = null;
 function fillFilters() {
+  var role = UI.roleKey();
+  /* A filter chosen in one lane can name an office the next lane cannot read. */
+  if (filterRole !== role) {
+    filterRole = role;
+    F_ = { office: '', from: F_.from, to: F_.to, cat: '', tech: '', status: '' };
+  }
   var db = Store.db, offices = {}, cats = {}, techs = {}, sts = {};
   db.tickets.forEach(function (t) {
+    if (!inScope(t)) return;
     offices[t.office] = 1; cats[t.category] = 1;
     if (t.technician) techs[t.technician] = 1;
     sts[t.status] = 1;
@@ -155,6 +175,7 @@ function fillFilters() {
   /* Maintenance jobs feed the same filters: an office, category or status
      that only appears on a visit must still be selectable. */
   db.jobs.forEach(function (j) {
+    if (!inScope(j, true)) return;
     if (j.office) offices[j.office] = 1;
     if (j.category) cats[j.category] = 1;
     if (j.technician) techs[j.technician] = 1;
@@ -166,8 +187,11 @@ function fillFilters() {
   fill('fStatus', 'All statuses', Object.keys(sts), F_.status, function (s) { return UI.STATUS[s] ? UI.STATUS[s][0] : s; });
   function fill(id, all, arr, cur, label) {
     var el = document.getElementById(id);
-    if (el.dataset.filled) { el.value = cur; return; }
-    el.dataset.filled = '1';
+    /* The option list belongs to the signed-in role, so a role switch rebuilds
+       it instead of keeping another lane's offices and technicians. */
+    var key = UI.roleKey();
+    if (el.dataset.filled === key) { el.value = cur; return; }
+    el.dataset.filled = key;
     el.innerHTML = '<option value="">' + all + '</option>' + arr.map(function (v) {
       return '<option value="' + UI.attr(v) + '">' + UI.esc(label ? label(v) : v) + '</option>';
     }).join('');
@@ -202,6 +226,7 @@ document.getElementById('fPrint').addEventListener('click', function () {
 
 function filtered() {
   return Store.db.tickets.filter(function (t) {
+    if (!inScope(t)) return false;
     if (F_.office && t.office !== F_.office) return false;
     if (F_.cat && t.category !== F_.cat) return false;
     if (F_.tech && t.technician !== F_.tech) return false;
@@ -217,6 +242,7 @@ function filtered() {
    both service records and preventive visits. */
 function jobFiltered() {
   return Store.db.jobs.filter(function (j) {
+    if (!inScope(j, true)) return false;
     if (F_.office && j.office !== F_.office) return false;
     if (F_.cat && j.category !== F_.cat) return false;
     if (F_.tech && j.technician !== F_.tech) return false;
@@ -270,7 +296,8 @@ function render() {
   }
 
   /* table */
-  document.getElementById('rCount').textContent = rows.length + ' of ' + db.tickets.length;
+  var scopeTotal = db.tickets.filter(function (t) { return inScope(t); }).length;
+  document.getElementById('rCount').textContent = rows.length + ' of ' + scopeTotal;
   document.getElementById('rEmpty').hidden = rows.length > 0;
 
   var pg = UI.paginate(rows, printAll ? 1 : reportPage,
@@ -294,15 +321,17 @@ function render() {
   /* recurring */
   var recur = {};
   db.tickets.forEach(function (t) {
+    if (!inScope(t)) return;
     if (t.linkedTo && t.linkedTo.indexOf('IT-') === 0) {
       (recur[t.linkedTo] = recur[t.linkedTo] || []).push(t);
     }
   });
   var keys = Object.keys(recur);
   document.getElementById('rRecur').innerHTML = keys.length ? keys.map(function (k) {
+    var src = Store.getTicket(k);
     return '<li><span class="ico warn">' + UI.icon('refresh') + '</span><div class="body"><strong>' + UI.esc(k) + ' → ' +
       recur[k].map(function (t) { return UI.esc(t.id); }).join(', ') + '</strong>' +
-      '<span>' + UI.esc((Store.getTicket(k) || {}).issue || '') + '</span></div>' +
+      '<span>' + UI.esc(src && inScope(src) ? src.issue : '') + '</span></div>' +
       '<span class="when">' + recur[k].length + ' recurrence(s)</span></li>';
   }).join('') : '<li><div class="body"><strong>No recurring issues in this period</strong><span>Recurrence appears when a closed ticket is reopened through a linked corrective ticket.</span></div></li>';
 
